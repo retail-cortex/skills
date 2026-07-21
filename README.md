@@ -50,7 +50,6 @@ skill-builder/
 ├── BUILD.bazel                # Root Bazel aliases and filegroups
 ├── .bazelignore               # Bazel directory exclusions
 ├── pyproject.toml             # Root uv workspace configuration
-├── Makefile                   # Developer convenience wrapper
 ├── LICENSE                    # Apache 2.0 License
 ├── NOTICE                     # Legal attribution notices
 ├── validator_report.json      # Persisted 5-point SDLC audit results
@@ -107,6 +106,12 @@ skill-builder/
 
 The primary build interface is powered by Bazel 9.2 ([MODULE.bazel](file:///Users/rmcguinness/Projects/skill-builder/MODULE.bazel)) with root convenience aliases defined in [BUILD.bazel](file:///Users/rmcguinness/Projects/skill-builder/BUILD.bazel):
 
+- **Start Interactive ADK Programming Agent CLI**:
+  ```bash
+  bazel run //:start-agent
+  ```
+  Launches the interactive ADK programming agent REPL ([//packages/skills-agent:start_agent](file:///Users/rmcguinness/Projects/skill-builder/packages/skills-agent/BUILD.bazel)) wired with all 23 enterprise skills and FastAPI control plane.
+
 - **Run Full 5-Point SDLC Validator**:
   ```bash
   bazel run //:validate
@@ -117,13 +122,8 @@ The primary build interface is powered by Bazel 9.2 ([MODULE.bazel](file:///User
   ```bash
   bazel test //...
   ```
-  Executes hermetic test targets across all workspace packages including [//packages/validator:test_validator](file:///Users/rmcguinness/Projects/skill-builder/packages/validator/BUILD.bazel).
+  Executes hermetic test targets across all workspace packages including [//packages/validator:test_validator](file:///Users/rmcguinness/Projects/skill-builder/packages/validator/BUILD.bazel) and [//packages/skills-agent:test_agent](file:///Users/rmcguinness/Projects/skill-builder/packages/skills-agent/BUILD.bazel).
 
-- **View Audit Artifact**:
-  ```bash
-  make report
-  ```
-  Displays the structured JSON verification report.
 
 ---
 

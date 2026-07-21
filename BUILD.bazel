@@ -1,5 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "skills_data",
+    srcs = glob(["skills/**"], allow_empty = True),
+)
+
 alias(
     name = "validate",
     actual = "//packages/validator:validate_skills",
@@ -9,3 +14,9 @@ alias(
     name = "test",
     actual = "//packages/validator:test_validator",
 )
+
+alias(
+    name = "start-agent",
+    actual = "//packages/skills-agent:start_agent",
+)
+

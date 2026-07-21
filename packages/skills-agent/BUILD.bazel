@@ -1,0 +1,58 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "skills_agent_lib",
+    srcs = glob(["src/skills_agent/**/*.py"]),
+    data = ["//:skills_data"],
+    imports = ["src"],
+)
+
+py_binary(
+    name = "start_agent",
+    srcs = ["src/skills_agent/cli.py"],
+    data = ["//:skills_data"],
+    main = "src/skills_agent/cli.py",
+    deps = [":skills_agent_lib"],
+)
+
+py_binary(
+    name = "server",
+    srcs = ["src/skills_agent/server.py"],
+    data = ["//:skills_data"],
+    main = "src/skills_agent/server.py",
+    deps = [":skills_agent_lib"],
+)
+
+py_test(
+    name = "test_skills_loader",
+    srcs = ["tests/test_skills_loader.py"],
+    data = ["//:skills_data"],
+    main = "tests/test_skills_loader.py",
+    deps = [":skills_agent_lib"],
+)
+
+py_test(
+    name = "test_agent",
+    srcs = ["tests/test_agent.py"],
+    data = ["//:skills_data"],
+    main = "tests/test_agent.py",
+    deps = [":skills_agent_lib"],
+)
+
+py_test(
+    name = "test_server",
+    srcs = ["tests/test_server.py"],
+    data = ["//:skills_data"],
+    main = "tests/test_server.py",
+    deps = [":skills_agent_lib"],
+)
+
+py_test(
+    name = "test_cli",
+    srcs = ["tests/test_cli.py"],
+    data = ["//:skills_data"],
+    main = "tests/test_cli.py",
+    deps = [":skills_agent_lib"],
+)

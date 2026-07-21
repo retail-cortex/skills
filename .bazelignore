@@ -1,0 +1,6 @@
+.venv
+scratch
+node_modules
+dist
+build
+skills

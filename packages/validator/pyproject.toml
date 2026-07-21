@@ -1,0 +1,9 @@
+[project]
+name = "skill-validator"
+version = "1.0.0"
+description = "Automated 5-point SDLC validator for agentskills.io AI Agent Skills"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv]
+package = false

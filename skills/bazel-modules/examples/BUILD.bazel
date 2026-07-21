@@ -1,0 +1,25 @@
+load("@bazel_gazelle//:def.bzl", "gazelle", "gazelle_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+# Root Gazelle configuration for Go
+# gazelle:prefix github.com/enterprise/monorepo
+# gazelle:proto disable_global
+gazelle(name = "gazelle")
+
+# Root Gazelle configuration for Python
+# gazelle:python_root .
+# gazelle:python_manifest //:gazelle_python.yaml
+gazelle(
+    name = "gazelle_python",
+    gazelle = ":gazelle_binary",
+)
+
+gazelle_binary(
+    name = "gazelle_binary",
+    languages = [
+        "@bazel_gazelle//language/go",
+        "@bazel_gazelle//language/proto",
+        "@rules_python_gazelle_plugin//python",
+    ],
+)

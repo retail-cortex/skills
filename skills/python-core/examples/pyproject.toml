@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enterprise-core"
+version = "0.1.0"
+description = "Enterprise Core Python Stack with SQLModel, Pydantic v2, and Google GenAI SDK"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.13.0",
+    "sqlmodel>=0.0.22",
+    "google-genai>=1.0.0",
+    "google-cloud-logging>=3.12.0",
+    "google-cloud-bigquery>=3.25.0",
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.23.8",
+    "ruff>=0.4.6",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"

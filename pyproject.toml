@@ -1,0 +1,10 @@
+[project]
+name = "skill-builder"
+version = "1.0.0"
+description = "Enterprise Project Pattern Registry for AI Agent Skills"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv]
+package = false

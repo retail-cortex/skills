@@ -15,14 +15,30 @@ from skills_loader.types import SkillDefinition, SkillSummary
 def find_registry_root() -> Path:
     """Discovers the root workspace directory containing the skills folder."""
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
-        workspace = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]).resolve()
+        workspace = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
         if (workspace / "skills").is_dir():
             return workspace
 
-    if "TEST_SRCDIR" in os.environ and "TEST_WORKSPACE" in os.environ:
-        runfiles_root = (Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"]).resolve()
-        if (runfiles_root / "skills").is_dir():
-            return runfiles_root
+    if "TEST_SRCDIR" in os.environ:
+        test_srcdir = Path(os.environ["TEST_SRCDIR"])
+        workspace_name = os.environ.get("TEST_WORKSPACE", "")
+
+        candidates = []
+        if workspace_name:
+            candidates.append(test_srcdir / workspace_name)
+        candidates.extend([
+            test_srcdir / "_main",
+            test_srcdir / "skill_builder",
+            test_srcdir,
+        ])
+
+        for cand in candidates:
+            if (cand / "skills").is_dir():
+                return cand
+
+        for cand in test_srcdir.rglob("skills"):
+            if cand.is_dir() and any(cand.glob("*/SKILL.md")):
+                return cand.parent
 
     current: Path = Path(__file__).resolve().parent
     for parent in [current] + list(current.parents):
@@ -31,10 +47,12 @@ def find_registry_root() -> Path:
 
     runfiles = os.environ.get("PYTHON_RUNFILES", "")
     if runfiles:
-        rf_path = Path(runfiles).resolve()
+        rf_path = Path(runfiles)
+        if (rf_path / "skills").is_dir():
+            return rf_path
         for cand in rf_path.rglob("skills"):
-            if cand.is_dir():
-                return cand.parent.resolve()
+            if cand.is_dir() and any(cand.glob("*/SKILL.md")):
+                return cand.parent
 
     return Path.cwd().resolve()
 
@@ -139,8 +157,7 @@ def parse_skill_root_uri(uri: str) -> Tuple[str, str, Optional[str], Optional[st
 
 def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
     """Loads a single skill definition from its directory, enforcing symlink boundary checks."""
-    skill_dir_resolved = skill_dir.resolve()
-    skill_md = skill_dir_resolved / "SKILL.md"
+    skill_md = skill_dir / "SKILL.md"
     if not skill_md.is_file():
         return None
 
@@ -151,24 +168,36 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
         description = fm_data.get("description", f"Enterprise skill for {name}")
 
         references: Dict[str, str] = {}
-        ref_dir = skill_dir_resolved / "references"
+        ref_dir = skill_dir / "references"
         if ref_dir.is_dir():
             for ref_file in sorted(ref_dir.glob("*.md")):
                 try:
-                    if not ref_file.resolve().is_relative_to(skill_dir_resolved):
-                        continue
+                    resolved_ref = ref_file.resolve()
+                    resolved_base = skill_dir.resolve()
+                    if resolved_ref != resolved_base and resolved_base not in resolved_ref.parents:
+                        try:
+                            if not resolved_ref.is_relative_to(resolved_base):
+                                continue
+                        except ValueError:
+                            continue
                     references[ref_file.name] = ref_file.read_text(encoding="utf-8")
                 except Exception:
                     pass
 
         examples: Dict[str, str] = {}
-        ex_dir = skill_dir_resolved / "examples"
+        ex_dir = skill_dir / "examples"
         if ex_dir.is_dir():
             for ex_file in sorted(ex_dir.iterdir()):
                 if ex_file.is_file() and not ex_file.name.startswith("."):
                     try:
-                        if not ex_file.resolve().is_relative_to(skill_dir_resolved):
-                            continue
+                        resolved_ex = ex_file.resolve()
+                        resolved_base = skill_dir.resolve()
+                        if resolved_ex != resolved_base and resolved_base not in resolved_ex.parents:
+                            try:
+                                if not resolved_ex.is_relative_to(resolved_base):
+                                    continue
+                            except ValueError:
+                                continue
                         examples[ex_file.name] = ex_file.read_text(encoding="utf-8")
                     except Exception:
                         pass
@@ -179,7 +208,7 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
             instructions=body.strip(),
             references=references,
             examples=examples,
-            path=str(skill_dir_resolved),
+            path=str(skill_dir),
         )
     except Exception:
         return None

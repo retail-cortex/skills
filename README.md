@@ -6,7 +6,8 @@ This registry provides a comprehensive, standardized suite of 23 AI Agent Skills
 
 ## Documentation Site (MkDocs)
 
-The full documentation is organized in the [docs](file:///Users/rmcguinness/Projects/skill-builder/docs) directory and powered by MkDocs Material.
+The full documentation site is published live at **[https://retail-cortex.github.io/skills/](https://retail-cortex.github.io/skills/)**.
+Source files are organized in the [docs](file:///Users/rmcguinness/Projects/skill-builder/docs) directory and powered by MkDocs Material.
 
 ### Serving Documentation Locally
 

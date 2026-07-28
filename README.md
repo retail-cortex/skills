@@ -36,8 +36,8 @@ uv run mkdocs build
 
 The repository uses official GitHub Actions workflows for continuous integration and automated GitHub Pages deployment:
 
-- **[Bazel CI Workflow](file:///Users/rmcguinness/Projects/skill-builder/.github/workflows/bazel-ci.yml)**: Automated build, hermetic testing (`bazel test //...`), and SDLC validation on every `push` and `pull_request` using `bazelbuild/setup-bazelisk@v3` and `astral-sh/setup-uv@v5`.
-- **[GitHub Pages Workflow](file:///Users/rmcguinness/Projects/skill-builder/.github/workflows/deploy-docs.yml)**: Automated MkDocs build (`uv run build-docs`) and deployment to GitHub Pages using `actions/upload-pages-artifact@v3` and `actions/deploy-pages@v4`.
+- **[Bazel CI Workflow](file:///Users/rmcguinness/Projects/skill-builder/.github/workflows/bazel-ci.yml)**: Automated build, hermetic testing (`bazel test //...`), and SDLC validation on every `push` and `pull_request` using Node 24 native actions (`bazelbuild/setup-bazelisk@v4`, `astral-sh/setup-uv@v6`, `actions/checkout@v5`, `actions/setup-python@v6`).
+- **[GitHub Pages Workflow](file:///Users/rmcguinness/Projects/skill-builder/.github/workflows/deploy-docs.yml)**: Automated MkDocs build (`uv run build-docs`) and deployment to GitHub Pages using Node 24 native actions (`actions/upload-pages-artifact@v4`, `actions/deploy-pages@v5`, `actions/configure-pages@v6`).
 
 ---
 

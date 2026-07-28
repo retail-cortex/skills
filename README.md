@@ -7,7 +7,7 @@ This registry provides a comprehensive, standardized suite of 23 AI Agent Skills
 ## Documentation Site (MkDocs)
 
 The full documentation site is published live at **[https://retail-cortex.github.io/skills/](https://retail-cortex.github.io/skills/)**.
-Source files are organized in the [docs](file:///Users/rmcguinness/Projects/skill-builder/docs) directory and powered by MkDocs Material.
+Source files are organized in the [docs](docs/) directory and powered by MkDocs Material.
 
 ### Serving Documentation Locally
 
@@ -37,18 +37,18 @@ uv run mkdocs build
 
 The repository uses official GitHub Actions workflows for continuous integration and automated GitHub Pages deployment:
 
-- **[Bazel CI Workflow](file:///Users/rmcguinness/Projects/skill-builder/.github/workflows/bazel-ci.yml)**: Automated build, hermetic testing (`bazel test //...`), and SDLC validation on every `push` and `pull_request` using Node 24 native actions (`bazelbuild/setup-bazelisk@v3`, `astral-sh/setup-uv@v7`, `actions/checkout@v7`, `actions/setup-python@v7`).
-- **[GitHub Pages Workflow](file:///Users/rmcguinness/Projects/skill-builder/.github/workflows/deploy-docs.yml)**: Automated MkDocs build (`uv run build-docs`) and deployment to GitHub Pages using Node 24 native actions (`actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`, `actions/configure-pages@v6`).
+- **[Bazel CI Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/bazel-ci.yml)**: Automated build, hermetic testing (`bazel test //...`), and SDLC validation on every `push` and `pull_request` using Node 24 native actions (`bazelbuild/setup-bazelisk@v3`, `astral-sh/setup-uv@v7`, `actions/checkout@v7`, `actions/setup-python@v7`).
+- **[GitHub Pages Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/deploy-docs.yml)**: Automated MkDocs build (`uv run build-docs`) and deployment to GitHub Pages using Node 24 native actions (`actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`, `actions/configure-pages@v6`).
 
 ---
 
 ## Documentation Sections
 
-1. **[Project Overview](file:///Users/rmcguinness/Projects/skill-builder/docs/index.md)**: Introduction, features, quickstart guidelines, and workspace structure.
-2. **[Architecture](file:///Users/rmcguinness/Projects/skill-builder/docs/architecture.md)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
-3. **[Skills Registry](file:///Users/rmcguinness/Projects/skill-builder/docs/skills.md)**: Scaffolding meta-skills (`mono-repo-setup`, `python-project-setup`, `go-project-setup`, `java-project-setup`) and 19 technology domain skills.
-4. **[Packages & Tooling](file:///Users/rmcguinness/Projects/skill-builder/docs/packages.md)**: Utility packages (`skills-loader`, `skills-agent`, `validator`) and Bazel targets.
-5. **[Examples & Demos](file:///Users/rmcguinness/Projects/skill-builder/docs/examples.md)**: Running native ADK agents and FastAPI web applications.
+1. **[Project Overview](https://retail-cortex.github.io/skills/)**: Introduction, features, quickstart guidelines, and workspace structure.
+2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
+3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Scaffolding meta-skills (`mono-repo-setup`, `python-project-setup`, `go-project-setup`, `java-project-setup`) and 19 technology domain skills.
+4. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Utility packages (`skills-loader`, `skills-agent`, `validator`) and Bazel targets.
+5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Running native ADK agents and FastAPI web applications.
 
 ---
 
@@ -89,4 +89,4 @@ uv run pytest
 
 ## License & Legal Notices
 
-This project is licensed under the Apache License, Version 2.0. See [LICENSE](file:///Users/rmcguinness/Projects/skill-builder/LICENSE) for details. Attribution notices are maintained in [NOTICE](file:///Users/rmcguinness/Projects/skill-builder/NOTICE).
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/retail-cortex/skills/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE](https://github.com/retail-cortex/skills/blob/main/NOTICE).

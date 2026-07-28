@@ -2,6 +2,8 @@ site_name: Agent Skill Builder
 site_description: Enterprise Project Pattern Registry for AI Agent Skills
 site_author: Retail Cortex
 site_url: https://retail-cortex.github.io/skills/
+repo_url: https://github.com/retail-cortex/skills
+repo_name: retail-cortex/skills
 
 theme:
   name: material

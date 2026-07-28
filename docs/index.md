@@ -61,17 +61,17 @@ adk> How do I build resilient BigQuery CAPI services with Gemini API skills?
 
 This documentation site is organized into logical sections:
 
-- [Project Overview](file:///Users/rmcguinness/Projects/skill-builder/docs/index.md): Introduction, quickstart commands, repository layout, and licensing.
-- [Architecture](file:///Users/rmcguinness/Projects/skill-builder/docs/architecture.md): Engineering standards, Google OAuth2 integration, HTTP 429 rate limit resilience, and multi-language defensive safety.
-- [Skills Registry](file:///Users/rmcguinness/Projects/skill-builder/docs/skills.md): Scaffolding meta-skills and specialized domain/technology skills catalog.
-- [Packages](file:///Users/rmcguinness/Projects/skill-builder/docs/packages.md): Core Python workspace packages (`skills-loader`, `skills-agent`, `validator`) and Bazel targets.
-- [Examples](file:///Users/rmcguinness/Projects/skill-builder/docs/examples.md): Integration scripts, web servers, and setup guides.
+- [Project Overview](index.md): Introduction, quickstart commands, repository layout, and licensing.
+- [Architecture](architecture.md): Engineering standards, Google OAuth2 integration, HTTP 429 rate limit resilience, and multi-language defensive safety.
+- [Skills Registry](skills.md): Scaffolding meta-skills and specialized domain/technology skills catalog.
+- [Packages](packages.md): Core Python workspace packages (`skills-loader`, `skills-agent`, `validator`) and Bazel targets.
+- [Examples](examples.md): Integration scripts, web servers, and setup guides.
 
 ---
 
 ## Workspace Directory Layout
 
-The project is governed by a root [MODULE.bazel](file:///Users/rmcguinness/Projects/skill-builder/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
+The project is governed by a root [MODULE.bazel](https://github.com/retail-cortex/skills/blob/main/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
 
 ```
 skill-builder/
@@ -99,4 +99,4 @@ skill-builder/
 
 ## License & Legal Notices
 
-This project is licensed under the Apache License, Version 2.0. See [LICENSE](file:///Users/rmcguinness/Projects/skill-builder/LICENSE) for details. Attribution notices are maintained in [NOTICE](file:///Users/rmcguinness/Projects/skill-builder/NOTICE).
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/retail-cortex/skills/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE](https://github.com/retail-cortex/skills/blob/main/NOTICE).

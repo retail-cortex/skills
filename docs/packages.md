@@ -56,7 +56,7 @@ The `validator` package implements a 5-point SDLC audit scanner that inspects sk
 ### Key Capabilities
 
 - **5-Point Audit Standard**: Validates YAML frontmatter, directory structures, paired TDD coverage, security policies, and Bazel targets.
-- **Report Generation**: Outputs and persists audit results to [validator_report.json](file:///Users/rmcguinness/Projects/skill-builder/validator_report.json).
+- **Report Generation**: Outputs and persists audit results to [validator_report.json](https://github.com/retail-cortex/skills/blob/main/validator_report.json).
 
 ### Execution
 
@@ -72,7 +72,7 @@ bazel run //:validate
 
 ## Bazel 9.2 Build & Test Targets
 
-Root Bazel convenience targets defined in [BUILD.bazel](file:///Users/rmcguinness/Projects/skill-builder/BUILD.bazel):
+Root Bazel convenience targets defined in [BUILD.bazel](https://github.com/retail-cortex/skills/blob/main/BUILD.bazel):
 
 | Command | Bazel Target | Description |
 | :--- | :--- | :--- |

@@ -4,16 +4,33 @@ version = "1.0.0"
 description = "Enterprise Project Pattern Registry for AI Agent Skills"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.7",
+]
 
 [project.scripts]
 start-agent = "skills_agent.cli:main"
 skills-agent = "skills_agent.cli:main"
 example-adk = "examples.example_adk:main"
 example-adk-web = "examples.example_adk:web"
+docs = "skills_loader.docs:serve"
+serve-docs = "skills_loader.docs:serve"
+build-docs = "skills_loader.docs:build"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["packages/skills-loader/src", "packages/skills-agent/src", "packages/validator/src"]
 
 [tool.uv]
-package = false
+package = true
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
 
 [tool.pytest.ini_options]
 pythonpath = [

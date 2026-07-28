@@ -65,6 +65,7 @@ env/
 htmlcov/
 .nox/
 .tox/
+site/
 
 # Node.js, React, and Frontend Tooling
 node_modules/

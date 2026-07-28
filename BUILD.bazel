@@ -5,6 +5,11 @@ filegroup(
     srcs = glob(["skills/**"], allow_empty = True),
 )
 
+filegroup(
+    name = "docs_data",
+    srcs = glob(["docs/**"], allow_empty = True) + ["mkdocs.yml"],
+)
+
 alias(
     name = "validate",
     actual = "//packages/validator:validate_skills",
@@ -20,3 +25,12 @@ alias(
     actual = "//packages/skills-agent:start_agent",
 )
 
+alias(
+    name = "docs",
+    actual = "//packages/skills-loader:docs",
+)
+
+alias(
+    name = "serve-docs",
+    actual = "//packages/skills-loader:docs",
+)

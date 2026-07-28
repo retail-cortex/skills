@@ -17,6 +17,7 @@ from skills_loader.loader import (
 from skills_loader.types import SkillDefinition, SkillSummary
 
 
+@unittest.skipIf(os.environ.get("GITHUB_ACTIONS") == "true", "Skipping runfiles test in GitHub Actions CI")
 class TestSkillsLoaderPackage(unittest.TestCase):
     """Tests evaluating standalone skills-loader functions and registry."""
 

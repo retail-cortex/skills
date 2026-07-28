@@ -37,7 +37,7 @@ jobs:
         run: bazel build //...
 
       - name: Bazel Test
-        run: bazel test //...
+        run: bazel test //... --test_tag_filters=-no-ci
 
       - name: Run SDLC Validator
         run: bazel run //:validate

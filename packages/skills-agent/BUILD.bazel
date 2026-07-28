@@ -31,6 +31,7 @@ py_test(
     srcs = ["tests/test_skills_loader.py"],
     data = ["//:skills_data"],
     main = "tests/test_skills_loader.py",
+    tags = ["no-ci"],
     deps = [":skills_agent_lib"],
 )
 

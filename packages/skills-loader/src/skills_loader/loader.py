@@ -19,18 +19,20 @@ def find_registry_root() -> Path:
         if (workspace / "skills").exists():
             return workspace
 
+    # 1. Official rules_python Rlocation lookup
     try:
         from rules_python.python.runfiles import runfiles
         r = runfiles.Create()
         if r:
             for ws in [os.environ.get("TEST_WORKSPACE", ""), "_main", "skill_builder"]:
                 if ws:
-                    p = r.Rlocation(f"{ws}/skills")
+                    p = r.Rlocation(f"{ws}/skills/python-core/SKILL.md")
                     if p and Path(p).exists():
-                        return Path(p).parent
+                        return Path(p).parent.parent.parent
     except Exception:
         pass
 
+    # 2. Bazel TEST_SRCDIR runfiles tree discovery
     if "TEST_SRCDIR" in os.environ:
         test_srcdir = Path(os.environ["TEST_SRCDIR"])
         workspace_name = os.environ.get("TEST_WORKSPACE", "")
@@ -45,26 +47,27 @@ def find_registry_root() -> Path:
         ])
 
         for cand in candidates:
-            if (cand / "skills").exists():
+            if (cand / "skills").exists() and any((cand / "skills").glob("*/SKILL.md")):
                 return cand
 
-        for cand in test_srcdir.rglob("skills"):
-            if cand.exists():
-                return cand.parent
+        # Search for any SKILL.md under TEST_SRCDIR to locate skills directory
+        for cand in test_srcdir.rglob("SKILL.md"):
+            if cand.parent.parent.name == "skills":
+                return cand.parent.parent.parent
 
+    # 3. Source directory parent walk fallback
     current: Path = Path(__file__).resolve().parent
     for parent in [current] + list(current.parents):
-        if (parent / "skills").exists():
+        if (parent / "skills").exists() and any((parent / "skills").glob("*/SKILL.md")):
             return parent.resolve()
 
+    # 4. PYTHON_RUNFILES environment variable fallback
     runfiles_env = os.environ.get("PYTHON_RUNFILES", "")
     if runfiles_env:
         rf_path = Path(runfiles_env)
-        if (rf_path / "skills").exists():
-            return rf_path
-        for cand in rf_path.rglob("skills"):
-            if cand.exists():
-                return cand.parent
+        for cand in rf_path.rglob("SKILL.md"):
+            if cand.parent.parent.name == "skills":
+                return cand.parent.parent.parent
 
     return Path.cwd().resolve()
 

@@ -5,6 +5,10 @@ site_url: https://retail-cortex.github.io/skills/
 repo_url: https://github.com/retail-cortex/skills
 repo_name: retail-cortex/skills
 
+plugins:
+  - search
+  - macros
+
 theme:
   name: material
   palette:

@@ -15,7 +15,7 @@ if str(pkg_root) not in sys.path:
     sys.path.insert(0, str(pkg_root))
 
 from skills_agent.agent import ADKProgrammingAgent, InMemorySessionService, InvocationContext, Session
-from skills_agent.skills_loader import SkillRegistry, find_registry_root
+from skills_loader import SkillRegistry, find_registry_root
 
 
 class InteractiveAgentCLI:

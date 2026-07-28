@@ -5,8 +5,7 @@ import json
 import random
 from typing import AsyncGenerator, Callable, Dict, List, Optional
 
-from skills_agent.skills_loader import SkillRegistry
-from skills_agent.types import SkillDefinition
+from skills_loader import SkillDefinition, SkillRegistry
 
 
 class ToolContext:

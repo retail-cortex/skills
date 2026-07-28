@@ -2,6 +2,58 @@
 
 This registry provides a comprehensive, standardized suite of 23 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
 
+## Quickstart: Running Examples & Agents
+
+Explore native Google Agent Development Kit (ADK) agent execution, qualified URI loading (`file://` and `github://...:branch`), and selective `.env` skill filtering:
+
+### 1. Run Native ADK Example Script
+
+Run the native ADK agent example demonstrating unified local workspace and remote GitHub skill loading:
+
+```bash
+PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:. uv run python -m examples.example_adk
+# or direct script execution
+uv run python examples/example-adk/main.py
+```
+
+### 2. Interactive ADK CLI Interface (`start-agent`)
+
+Launch the interactive REPL terminal CLI to query and execute with loaded skills:
+
+```bash
+PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src uv run start-agent
+# or using Bazel
+bazel run //:start-agent
+```
+
+Inside the `adk>` prompt:
+```text
+adk> skills
+adk> search bigquery
+adk> How do I build resilient BigQuery CAPI services with Gemini API skills?
+```
+
+### 3. Run All Workspace Test Suites
+
+- **Hermetic Bazel Execution (Primary Standard)**:
+  ```bash
+  bazel test //...
+  ```
+
+- **Local Developer Execution (`pytest`)**:
+  ```bash
+  uv run pytest
+  ```
+
+- **Built-in Offline Fallback (`unittest`)**:
+  ```bash
+  PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:packages/validator/src uv run python -m unittest discover -s packages/skills-loader/tests && \
+  PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:packages/validator/src uv run python -m unittest discover -s packages/skills-agent/tests && \
+  PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:packages/validator/src uv run python -m unittest discover -s packages/validator/tests
+  ```
+
+---
+
 ## Rigorous Engineering, Google OAuth2 & Resilience Invariants
 
 Every skill in this registry enforces a complete, production-grade Software Development Lifecycle (SDLC) with zero-tolerance security, Google OAuth2 authentication, and HTTP 429 rate limit resilience:

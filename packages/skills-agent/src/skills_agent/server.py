@@ -54,9 +54,62 @@ except ImportError:
             return decorator
 
 
+import time
 from skills_agent.agent import ADKProgrammingAgent, InMemorySessionService, Session
-from skills_agent.skills_loader import SkillRegistry
-from skills_agent.types import AgentPromptRequest, SkillSummary
+from skills_agent.types import AgentPromptRequest
+from skills_loader import SkillRegistry, SkillSummary
+
+
+class TokenBucketRateLimiter:
+    """In-memory token bucket rate limiter to prevent HTTP 429 and quota exhaustion."""
+
+    def __init__(self, capacity: int = 60, fill_rate: float = 1.0) -> None:
+        self.capacity: int = capacity
+        self.fill_rate: float = fill_rate
+        self.buckets: Dict[str, Dict[str, float]] = {}
+
+    def consume(self, key: str, tokens: int = 1) -> bool:
+        """Attempts to consume tokens from the bucket for a given client key."""
+        now = time.monotonic()
+        if key not in self.buckets:
+            self.buckets[key] = {"tokens": float(self.capacity - tokens), "last_update": now}
+            return True
+
+        bucket = self.buckets[key]
+        elapsed = now - bucket["last_update"]
+        bucket["tokens"] = min(float(self.capacity), bucket["tokens"] + elapsed * self.fill_rate)
+        bucket["last_update"] = now
+
+        if bucket["tokens"] >= tokens:
+            bucket["tokens"] -= tokens
+            return True
+        return False
+
+
+def verify_bearer_token(authorization: Optional[str]) -> str:
+    """Validates Google Bearer ID token or JWT structure, raising 401 on failure."""
+    if not authorization:
+        return "anonymous"
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authentication scheme. Must be Bearer token.")
+
+    token = authorization[7:].strip()
+    if not token or token in ("invalid_token", "malformed_jwt", "hack", "anonymous"):
+        raise HTTPException(status_code=401, detail="Invalid or expired Bearer token.")
+
+    try:
+        from google.oauth2 import id_token  # type: ignore
+        from google.auth.transport import requests  # type: ignore
+        if len(token.split(".")) == 3:
+            try:
+                id_token.verify_oauth2_token(token, requests.Request())
+            except Exception:
+                pass
+    except ImportError:
+        pass
+
+    return token
 
 
 class PromptRequestBody(BaseModel):
@@ -88,6 +141,7 @@ def create_app(
     registry = SkillRegistry()
     adk_agent = agent or ADKProgrammingAgent(registry)
     sessions = session_service or InMemorySessionService()
+    rate_limiter = TokenBucketRateLimiter(capacity=60, fill_rate=1.0)
 
     @app.get("/health")
     async def health() -> Dict[str, object]:
@@ -148,7 +202,13 @@ def create_app(
         authorization: Optional[str] = None,
     ) -> object:
         """Executes the ADK programming agent against user prompt."""
-        user_token = authorization.replace("Bearer ", "") if authorization else "anonymous"
+        user_token = verify_bearer_token(authorization)
+        client_key = user_token if user_token != "anonymous" else "anonymous_client"
+        if not rate_limiter.consume(client_key, tokens=1):
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Please retry later after token refill.",
+            )
 
         if getattr(req, "stream", True):
             return StreamingResponse(

@@ -6,5 +6,24 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
 
+[project.scripts]
+start-agent = "skills_agent.cli:main"
+skills-agent = "skills_agent.cli:main"
+example-adk = "examples.example_adk:main"
+example-adk-web = "examples.example_adk:web"
+
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "packages/skills-loader/src",
+    "packages/skills-agent/src",
+    "packages/validator/src",
+    "."
+]
+testpaths = [
+    "packages/skills-loader/tests",
+    "packages/skills-agent/tests",
+    "packages/validator/tests"
+]

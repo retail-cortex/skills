@@ -84,11 +84,11 @@ def audit_skill_directory(skill_dir: Path) -> SkillAuditResult:
         result.errors.append("Missing HTTP 429 rate limit or backoff resilience guidelines")
 
     # 5. Clickable File Links Check
-    has_links = bool(re.search(r"\[.*?\]\(file:///[^)]+\)", content))
+    has_links = bool(re.search(r"\[.*?\]\(file:///[^)]+\)", full_text))
     if has_links:
         result.clickable_links_valid = True
     else:
-        result.errors.append("SKILL.md missing markdown clickable links using file:/// scheme")
+        result.errors.append("SKILL.md or references missing markdown clickable links using file:/// scheme")
 
     return result
 

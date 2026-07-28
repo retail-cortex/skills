@@ -1,9 +1,7 @@
-"""Backward-compatible re-export module delegating to the standalone skills-loader package."""
+"""Standalone reusable skill scanner and loader package for Google ADK agents."""
 
-from skills_loader import (
-    SkillDefinition,
+from skills_loader.loader import (
     SkillRegistry,
-    SkillSummary,
     find_registry_root,
     load_all_skills,
     load_skill_from_dir,
@@ -13,6 +11,7 @@ from skills_loader import (
     parse_frontmatter,
     parse_skill_root_uri,
 )
+from skills_loader.types import SkillDefinition, SkillSummary
 
 __all__ = [
     "SkillDefinition",

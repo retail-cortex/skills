@@ -16,8 +16,20 @@ def find_registry_root() -> Path:
     """Discovers the root workspace directory containing the skills folder."""
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
         workspace = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-        if (workspace / "skills").is_dir():
+        if (workspace / "skills").exists():
             return workspace
+
+    try:
+        from rules_python.python.runfiles import runfiles
+        r = runfiles.Create()
+        if r:
+            for ws in [os.environ.get("TEST_WORKSPACE", ""), "_main", "skill_builder"]:
+                if ws:
+                    p = r.Rlocation(f"{ws}/skills")
+                    if p and Path(p).exists():
+                        return Path(p).parent
+    except Exception:
+        pass
 
     if "TEST_SRCDIR" in os.environ:
         test_srcdir = Path(os.environ["TEST_SRCDIR"])
@@ -33,25 +45,25 @@ def find_registry_root() -> Path:
         ])
 
         for cand in candidates:
-            if (cand / "skills").is_dir():
+            if (cand / "skills").exists():
                 return cand
 
         for cand in test_srcdir.rglob("skills"):
-            if cand.is_dir() and any(cand.glob("*/SKILL.md")):
+            if cand.exists():
                 return cand.parent
 
     current: Path = Path(__file__).resolve().parent
     for parent in [current] + list(current.parents):
-        if (parent / "skills").is_dir():
+        if (parent / "skills").exists():
             return parent.resolve()
 
-    runfiles = os.environ.get("PYTHON_RUNFILES", "")
-    if runfiles:
-        rf_path = Path(runfiles)
-        if (rf_path / "skills").is_dir():
+    runfiles_env = os.environ.get("PYTHON_RUNFILES", "")
+    if runfiles_env:
+        rf_path = Path(runfiles_env)
+        if (rf_path / "skills").exists():
             return rf_path
         for cand in rf_path.rglob("skills"):
-            if cand.is_dir() and any(cand.glob("*/SKILL.md")):
+            if cand.exists():
                 return cand.parent
 
     return Path.cwd().resolve()

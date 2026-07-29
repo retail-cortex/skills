@@ -53,5 +53,7 @@ nav:
   - Architecture: architecture.md
   - Critical Analysis: analysis.md
   - Skills Registry: skills.md
+  - CLI Client (skm): cli.md
   - Packages: packages.md
   - Examples: examples.md
+

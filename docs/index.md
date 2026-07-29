@@ -52,8 +52,10 @@ This documentation site is organized into logical sections:
 - [Architecture](architecture.md): Engineering standards, Google OAuth2 integration, HTTP 429 rate limit resilience, and multi-language defensive safety.
 - [Critical Analysis](analysis.md): Comparative analysis against agentskills.io specification and ecosystem showcase clients.
 - [Skills Registry](skills.md): Specialized domain and technology skills catalog.
+- [CLI Client (skm)](cli.md): Standalone `skm` Go CLI client manual, cross-platform builds, polyglot URI resolution, subcommands, and Oh My Zsh plugin.
 - [Packages](packages.md): Modular Python workspace packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`) and Bazel targets.
 - [Examples](examples.md): Standalone integration packages, web servers, and setup guides.
+
 
 ---
 

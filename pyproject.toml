@@ -23,7 +23,22 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = [
+    "packages/skills-loader/src",
+    "tests/adk-agent/src",
+    "packages/validator/src",
+    "packages/skills-python/src",
+    "packages/skills-go/src",
+    "packages/skills-java/src",
+    "packages/skills-devops/src",
+    "packages/skills-database/src",
+    "packages/skills-protobuf/src",
+    "packages/skills-google-adk-skill-builder/src",
+    "packages/skills-a2a/src",
+    "packages/skills-a2ui/src",
+    "packages/skills-bazel/src",
+    "packages/skills-frontend/src"
+]
 
 [tool.uv]
 package = true

@@ -14,12 +14,12 @@ def find_registry_root() -> Path:
         return Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
     if "TEST_SRCDIR" in os.environ and "TEST_WORKSPACE" in os.environ:
         runfiles_root = Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"]
-        if (runfiles_root / "skills").is_dir():
+        if (runfiles_root / "packages").is_dir() or (runfiles_root / "skills").is_dir():
             return runfiles_root
 
     current: Path = Path(__file__).resolve().parent
     for parent in [current] + list(current.parents):
-        if (parent / "skills").is_dir():
+        if (parent / "packages").is_dir() or (parent / "skills").is_dir():
             return parent
     return Path(__file__).parents[3]
 

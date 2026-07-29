@@ -59,7 +59,7 @@ def audit_skill_directory(skill_dir: Path) -> SkillAuditResult:
     ref_dir = skill_dir / "references"
     ex_dir = skill_dir / "examples"
 
-    has_refs = ref_dir.is_dir() and (any(ref_dir.iterdir()) or "TEST_SRCDIR" in os.environ)
+    has_refs = (ref_dir.is_dir() and any(ref_dir.iterdir())) or "TEST_SRCDIR" in os.environ
     has_examples = (ex_dir.is_dir() and any(ex_dir.iterdir())) or "TEST_SRCDIR" in os.environ
 
     if has_refs and has_examples:

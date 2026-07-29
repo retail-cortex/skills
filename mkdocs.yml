@@ -50,6 +50,7 @@ markdown_extensions:
 nav:
   - Project Overview: index.md
   - Architecture: architecture.md
+  - Critical Analysis: analysis.md
   - Skills Registry: skills.md
   - Packages: packages.md
   - Examples: examples.md

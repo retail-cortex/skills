@@ -4,9 +4,14 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "**/coverage.svg"
   pull_request:
     branches:
       - main
+
+permissions:
+  contents: write
 
 jobs:
   build-and-test:
@@ -36,8 +41,13 @@ jobs:
       - name: Bazel Build
         run: bazel build //...
 
-      - name: Bazel Test
-        run: bazel test //... --test_tag_filters=-no-ci
+      - name: Bazel Test & Coverage
+        run: bazel coverage //... --test_tag_filters=-no-ci
 
       - name: Run SDLC Validator
         run: bazel run //:validate
+
+      - name: Generate Coverage Badge
+        uses: GoogleCloudPlatform/lcov-coverage-badge@v2.0.1
+        with:
+          file: ./bazel-out/_coverage/_coverage_report.dat

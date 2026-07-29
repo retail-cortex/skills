@@ -184,5 +184,18 @@ async def main() -> None:
     print("\n" + "-" * 88 + "\n")
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """Synchronous CLI entrypoint for example-adk."""
+    os.chdir(Path(__file__).parent)
     asyncio.run(main())
+
+
+def web() -> None:
+    """Runs the native ADK example web server control plane."""
+    os.chdir(Path(__file__).parent)
+    from skills_agent.server import start_server
+    start_server(host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    run()

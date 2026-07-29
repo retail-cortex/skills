@@ -1,0 +1,22 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "fixtures",
+    srcs = ["fixtures.py"],
+    deps = [
+        "//packages/skills-loader:skills_loader_lib",
+    ],
+)
+
+py_test(
+    name = "test_skills_e2e",
+    srcs = ["test_skills_e2e.py"],
+    data = ["//:skills_data"],
+    main = "test_skills_e2e.py",
+    deps = [
+        ":fixtures",
+        "//packages/skills-loader:skills_loader_lib",
+    ],
+)

@@ -1,7 +1,12 @@
 """Dynamic skill scanner and loader for enterprise AI agent skills compatible with Google ADK."""
 
+import importlib
+import importlib.metadata
+import importlib.resources
+import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.request
@@ -13,10 +18,10 @@ from skills_loader.types import SkillDefinition, SkillSummary
 
 
 def find_registry_root() -> Path:
-    """Discovers the root workspace directory containing the skills folder."""
+    """Discovers the root workspace directory containing enterprise skill packages."""
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
         workspace = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
-        if (workspace / "skills").exists():
+        if (workspace / "packages").exists() or (workspace / "skills").exists():
             return workspace
 
     # 1. Official rules_python Rlocation lookup
@@ -26,9 +31,12 @@ def find_registry_root() -> Path:
         if r:
             for ws in [os.environ.get("TEST_WORKSPACE", ""), "_main", "skill_builder"]:
                 if ws:
-                    p = r.Rlocation(f"{ws}/skills/python-core/SKILL.md")
+                    p = r.Rlocation(f"{ws}/packages/skills-python/src/retailcortex_skills_python/skills/python-core/SKILL.md")
                     if p and Path(p).exists():
-                        return Path(p).parent.parent.parent
+                        return Path(p).parent.parent.parent.parent.parent.parent.parent
+                    p2 = r.Rlocation(f"{ws}/skills/python-core/SKILL.md")
+                    if p2 and Path(p2).exists():
+                        return Path(p2).parent.parent.parent
     except Exception:
         pass
 
@@ -47,18 +55,19 @@ def find_registry_root() -> Path:
         ])
 
         for cand in candidates:
-            if (cand / "skills").exists() and any((cand / "skills").glob("*/SKILL.md")):
+            if (cand / "packages").exists() or (cand / "skills").exists():
                 return cand
 
-        # Search for any SKILL.md under TEST_SRCDIR to locate skills directory
+        # Search for any SKILL.md under TEST_SRCDIR
         for cand in test_srcdir.rglob("SKILL.md"):
-            if cand.parent.parent.name == "skills":
-                return cand.parent.parent.parent
+            for parent in [cand] + list(cand.parents):
+                if (parent / "packages").exists() or (parent / "skills").exists():
+                    return parent
 
     # 3. Source directory parent walk fallback
     current: Path = Path(__file__).resolve().parent
     for parent in [current] + list(current.parents):
-        if (parent / "skills").exists() and any((parent / "skills").glob("*/SKILL.md")):
+        if (parent / "packages").exists() or (parent / "skills").exists():
             return parent.resolve()
 
     # 4. PYTHON_RUNFILES environment variable fallback
@@ -66,10 +75,18 @@ def find_registry_root() -> Path:
     if runfiles_env:
         rf_path = Path(runfiles_env)
         for cand in rf_path.rglob("SKILL.md"):
-            if cand.parent.parent.name == "skills":
-                return cand.parent.parent.parent
+            for parent in [cand] + list(cand.parents):
+                if (parent / "packages").exists() or (parent / "skills").exists():
+                    return parent
 
     return Path.cwd().resolve()
+
+
+def get_loader_skills_dir() -> Path:
+    """Returns the persistent workspace directory for cached downloaded skill trees."""
+    loader_dir = find_registry_root() / ".loader_skills"
+    loader_dir.mkdir(parents=True, exist_ok=True)
+    return loader_dir
 
 
 def parse_frontmatter(content: str) -> Tuple[Dict[str, str], str]:
@@ -88,7 +105,10 @@ def parse_frontmatter(content: str) -> Tuple[Dict[str, str], str]:
         if not line or line.startswith("#") or ":" not in line:
             continue
         key, val = line.split(":", 1)
-        data[key.strip()] = val.strip().strip("'\"")
+        k = key.strip()
+        v = val.strip().strip("'\"")
+        if v or k not in data:
+            data[k] = v
 
     return data, body
 
@@ -115,16 +135,22 @@ def parse_dotenv_file(path: Union[Path, str]) -> Dict[str, str]:
 def parse_skill_root_uri(uri: str) -> Tuple[str, str, Optional[str], Optional[str]]:
     """Parses a qualified skill root URI into (scheme, target, ref, subpath).
 
-    Supported github URI formats:
-    - github://owner/repo/subpath:ref (e.g. github://google/skills/skills/cloud/gemini-api:main)
-    - github://owner/repo:ref/subpath (e.g. github://google/skills:main/skills/cloud/gemini-api)
-    - github://owner/repo@ref/subpath (e.g. github://google/skills@v1.2.0/skills/cloud)
-    - github://owner/repo/tree/ref/subpath (e.g. github://google/skills/tree/main/skills/cloud)
+    Supported URI formats:
+    - file://path/to/skills (e.g. file://. or file://packages)
+    - pkg://package_name (e.g. pkg://retailcortex_skills_python - scans 'skills/' sub-directory if present, or package root)
+    - github://owner/repo/subpath:ref (Standard format with trailing :ref, e.g. github://google/skills/skills/cloud/gemini-api:main)
+    - github://owner/repo:ref (Repo root with trailing :ref, e.g. github://owner/repo:v2.5.0)
+    - github://owner/repo/tree/ref/subpath (GitHub web URL format)
+    - Legacy formats supported for backwards compatibility: github://owner/repo:ref/subpath, github://owner/repo@ref/subpath
     """
     clean = uri.strip()
     if clean.startswith("file://"):
         target = clean[len("file://"):]
         return "file", target, None, None
+    elif clean.startswith("pkg://") or clean.startswith("package://"):
+        prefix = "pkg://" if clean.startswith("pkg://") else "package://"
+        target = clean[len(prefix):]
+        return "pkg", target, None, None
     elif clean.startswith("github://") or clean.startswith("https://github.com/"):
         prefix = "github://" if clean.startswith("github://") else "https://github.com/"
         target = clean[len(prefix):].rstrip("/")
@@ -181,12 +207,33 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
         fm_data, body = parse_frontmatter(content)
         name = fm_data.get("name", skill_dir.name)
         description = fm_data.get("description", f"Enterprise skill for {name}")
+        license_val = fm_data.get("license")
+        author_val = fm_data.get("author")
+        version_val = fm_data.get("version")
+        compatibility_val = fm_data.get("compatibility")
+        allowed_tools_val = fm_data.get("allowed-tools") or fm_data.get("allowed_tools")
+
+        known_keys = {"name", "description", "license", "author", "version", "compatibility", "allowed-tools", "allowed_tools"}
+        meta_dict = {k: v for k, v in fm_data.items() if k not in known_keys}
+
+        if not author_val and "author" in meta_dict:
+            author_val = meta_dict["author"]
+        if not version_val and "version" in meta_dict:
+            version_val = meta_dict["version"]
+
+        if author_val and "author" not in meta_dict:
+            meta_dict["author"] = author_val
+        if version_val and "version" not in meta_dict:
+            meta_dict["version"] = version_val
 
         references: Dict[str, str] = {}
         ref_dir = skill_dir / "references"
         if ref_dir.is_dir():
             for ref_file in sorted(ref_dir.glob("*.md")):
                 try:
+                    if ref_file.is_relative_to(skill_dir):
+                        references[ref_file.name] = ref_file.read_text(encoding="utf-8")
+                        continue
                     resolved_ref = ref_file.resolve()
                     resolved_base = skill_dir.resolve()
                     if resolved_ref != resolved_base and resolved_base not in resolved_ref.parents:
@@ -205,6 +252,9 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
             for ex_file in sorted(ex_dir.iterdir()):
                 if ex_file.is_file() and not ex_file.name.startswith("."):
                     try:
+                        if ex_file.is_relative_to(skill_dir):
+                            examples[ex_file.name] = ex_file.read_text(encoding="utf-8")
+                            continue
                         resolved_ex = ex_file.resolve()
                         resolved_base = skill_dir.resolve()
                         if resolved_ex != resolved_base and resolved_base not in resolved_ex.parents:
@@ -221,6 +271,12 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
             name=name,
             description=description,
             instructions=body.strip(),
+            license=license_val,
+            author=author_val,
+            version=version_val,
+            compatibility=compatibility_val,
+            allowed_tools=allowed_tools_val,
+            metadata=meta_dict,
             references=references,
             examples=examples,
             path=str(skill_dir),
@@ -233,26 +289,141 @@ def load_all_skills(
     skills_root: Optional[Path] = None,
     skill_filter: Optional[List[str]] = None,
 ) -> Dict[str, SkillDefinition]:
-    """Scans and loads skill directories in the repository, optionally filtering select skills by name."""
+    """Scans and loads skill directories in the workspace packages, entry points, and local folders."""
     root = skills_root or find_registry_root()
+    filter_set = set(skill_filter) if skill_filter else None
+    loaded: Dict[str, SkillDefinition] = {}
+
+    if root.is_dir() and (root / "SKILL.md").is_file():
+        single = load_skill_from_dir(root)
+        if single:
+            if not filter_set or single.name in filter_set:
+                return {single.name: single}
+
+    # 1. Scan workspace packages for skills
+    packages_dir = root / "packages" if not root.name == "packages" else root
+    if packages_dir.is_dir():
+        for skill_dir in sorted(packages_dir.glob("skills-*/src/*/skills/*")):
+            if skill_dir.is_dir() and not skill_dir.name.startswith("."):
+                if filter_set and skill_dir.name not in filter_set:
+                    continue
+                skill_def = load_skill_from_dir(skill_dir)
+                if skill_def:
+                    if not filter_set or skill_def.name in filter_set:
+                        loaded[skill_def.name] = skill_def
+
+    # 2. Fallback scan for standalone skills directory
     skills_dir = root / "skills" if not root.name == "skills" else root
+    if skills_dir.is_dir():
+        ignored = {".git", ".bazel", "packages", "validator", "node_modules", "scratch", "build", "dist", ".venv"}
+        for entry in sorted(skills_dir.iterdir(), key=lambda p: p.name):
+            if entry.is_dir() and entry.name not in ignored and not entry.name.startswith("."):
+                if entry.name in loaded:
+                    continue
+                if filter_set and entry.name not in filter_set:
+                    continue
+                skill_def = load_skill_from_dir(entry)
+                if skill_def:
+                    if not filter_set or skill_def.name in filter_set:
+                        loaded[skill_def.name] = skill_def
+
+    # 3. Scan standard cross-client .agents/skills directories (project-level & user-level)
+    agents_dirs = [
+        root / ".agents" / "skills",
+        Path.home() / ".agents" / "skills",
+    ]
+    for ag_dir in agents_dirs:
+        if ag_dir.is_dir():
+            for entry in sorted(ag_dir.iterdir(), key=lambda p: p.name):
+                if entry.is_dir() and not entry.name.startswith("."):
+                    if entry.name in loaded:
+                        continue
+                    if filter_set and entry.name not in filter_set:
+                        continue
+                    skill_def = load_skill_from_dir(entry)
+                    if skill_def:
+                        if not filter_set or skill_def.name in filter_set:
+                            loaded[skill_def.name] = skill_def
+
+    # 4. Load skills installed via Python entry points in site-packages (only at root workspace scan)
+    if skills_root is None:
+        ep_skills = load_skills_from_entry_points(skill_filter=skill_filter)
+        for name, sdef in ep_skills.items():
+            if name not in loaded:
+                loaded[name] = sdef
+
+    return loaded
+
+
+def load_skills_from_entry_points(
+    group: str = "retailcortex.skills",
+    skill_filter: Optional[List[str]] = None,
+) -> Dict[str, SkillDefinition]:
+    """Discovers and loads enterprise skills installed via Python entry points in site-packages."""
+    loaded: Dict[str, SkillDefinition] = {}
+    try:
+        eps = importlib.metadata.entry_points(group=group)
+        for ep in eps:
+            try:
+                mod = importlib.import_module(ep.value)
+                if hasattr(mod, "__file__") and mod.__file__:
+                    mod_path = Path(mod.__file__).parent
+                    skills_sub = mod_path / "skills"
+                    target = skills_sub if skills_sub.is_dir() else mod_path
+                    skills = load_all_skills(target, skill_filter=skill_filter)
+                    loaded.update(skills)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return loaded
+
+
+def load_skills_from_package(
+    package_name: str,
+    skill_filter: Optional[List[str]] = None,
+) -> Dict[str, SkillDefinition]:
+    """Loads enterprise skills from an installed or importable Python package.
+
+    Scans for a `skills/` sub-directory within the imported package directory first.
+    If no `skills/` sub-directory exists, it falls back to scanning the package root directory directly.
+    """
+    clean_pkg = package_name.strip()
+    if not clean_pkg:
+        return {}
 
     loaded: Dict[str, SkillDefinition] = {}
-    if not skills_dir.is_dir():
-        return loaded
 
-    ignored = {".git", ".bazel", "packages", "validator", "node_modules", "scratch", "build", "dist", ".venv"}
-    filter_set = set(skill_filter) if skill_filter else None
+    # 1. Try direct import
+    try:
+        mod = importlib.import_module(clean_pkg)
+        if hasattr(mod, "__file__") and mod.__file__:
+            mod_path = Path(mod.__file__).parent
+            skills_sub = mod_path / "skills"
+            target = skills_sub if skills_sub.is_dir() else mod_path
+            skills = load_all_skills(target, skill_filter=skill_filter)
+            if skills:
+                return skills
+    except Exception:
+        pass
 
-    for entry in sorted(skills_dir.iterdir(), key=lambda p: p.name):
-        if entry.is_dir() and entry.name not in ignored and not entry.name.startswith("."):
-            if filter_set and entry.name not in filter_set:
-                continue
-            skill_def = load_skill_from_dir(entry)
-            if skill_def:
-                if filter_set and skill_def.name not in filter_set:
-                    continue
-                loaded[skill_def.name] = skill_def
+    # 2. Try entry points lookup if package_name matches group name
+    if clean_pkg in ("retailcortex.skills", "skills"):
+        return load_skills_from_entry_points(group=clean_pkg, skill_filter=skill_filter)
+
+    # 3. Workspace package fallback discovery
+    root = find_registry_root()
+    packages_dir = root / "packages" if not root.name == "packages" else root
+    if packages_dir.is_dir():
+        for p in sorted(packages_dir.glob("skills-*")):
+            src_dir = p / "src"
+            if src_dir.is_dir():
+                for pkg_dir in src_dir.iterdir():
+                    if pkg_dir.name == clean_pkg and pkg_dir.is_dir():
+                        skills_sub = pkg_dir / "skills"
+                        target = skills_sub if skills_sub.is_dir() else pkg_dir
+                        skills = load_all_skills(target, skill_filter=skill_filter)
+                        loaded.update(skills)
 
     return loaded
 
@@ -321,6 +492,10 @@ def load_skills_from_github(
         selected_skills = None
 
     loaded_skills: Dict[str, SkillDefinition] = {}
+    loader_base = get_loader_skills_dir()
+    repo_slug = clean_repo.replace("/", "_")
+    persistent_repo_dir = loader_base / "github" / repo_slug / git_ref
+    persistent_repo_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
@@ -366,7 +541,22 @@ def load_skills_from_github(
                         repo_target_dir = item
                         break
             except Exception as e:
-                raise RuntimeError(f"Failed to load GitHub repo '{clean_repo}' at revision '{git_ref}': {e}")
+                if any(persistent_repo_dir.iterdir()):
+                    repo_target_dir = persistent_repo_dir
+                else:
+                    raise RuntimeError(f"Failed to load GitHub repo '{clean_repo}' at revision '{git_ref}': {e}")
+
+        # Mirror downloaded tree into .loader_skills directory for persistent reference
+        if repo_target_dir.is_dir() and repo_target_dir != persistent_repo_dir:
+            for item in repo_target_dir.iterdir():
+                dest = persistent_repo_dir / item.name
+                if item.is_dir():
+                    if dest.exists():
+                        shutil.rmtree(dest)
+                    shutil.copytree(item, dest)
+                else:
+                    shutil.copy2(item, dest)
+            repo_target_dir = persistent_repo_dir
 
         for root_rel in root_paths:
             candidate_dir = repo_target_dir / root_rel if root_rel != "." else repo_target_dir
@@ -388,18 +578,18 @@ def load_skills_from_roots(
     github_token: Optional[str] = None,
     dotenv_path: Optional[Union[Path, str]] = None,
 ) -> Dict[str, SkillDefinition]:
-    """Loads enterprise skills across multiple qualified `file://` and `github://` root URIs."""
+    """Loads enterprise skills across multiple qualified `file://`, `pkg://`, and `github://` root URIs."""
     env_file = Path(dotenv_path) if dotenv_path else (Path.cwd() / ".env")
     dotenv_vars = parse_dotenv_file(env_file)
 
-    if roots:
+    if roots is not None:
         root_uris = roots
     elif "SKILLS_ROOTS" in os.environ:
         root_uris = [r.strip() for r in os.environ["SKILLS_ROOTS"].split(",") if r.strip()]
     elif "SKILLS_ROOTS" in dotenv_vars:
         root_uris = [r.strip() for r in dotenv_vars["SKILLS_ROOTS"].split(",") if r.strip()]
     else:
-        root_uris = ["file://skills"]
+        root_uris = ["file://."]
 
     if skill_filter:
         selected_skills = skill_filter
@@ -428,6 +618,9 @@ def load_skills_from_roots(
                 else:
                     skills = load_all_skills(p, skill_filter=selected_skills)
                     loaded.update(skills)
+        elif scheme == "pkg":
+            skills = load_skills_from_package(target, skill_filter=selected_skills)
+            loaded.update(skills)
         elif scheme == "github":
             gh_roots = [subpath] if subpath else None
             skills = load_skills_from_github(
@@ -441,6 +634,62 @@ def load_skills_from_roots(
             loaded.update(skills)
 
     return loaded
+
+
+def build_skills_manifest(
+    skills_root: Optional[Path] = None,
+    output_path: Optional[Path] = None,
+) -> Path:
+    """Builds a pre-compiled JSON manifest of all skills for fast zero-I/O loading."""
+    skills = load_all_skills(skills_root)
+    out_file = output_path or (get_loader_skills_dir() / "skills_manifest.json")
+    manifest_data = {
+        name: {
+            "name": s.name,
+            "description": s.description,
+            "instructions": s.instructions,
+            "license": s.license,
+            "author": s.author,
+            "version": s.version,
+            "compatibility": s.compatibility,
+            "allowed_tools": s.allowed_tools,
+            "metadata": s.metadata,
+            "references": s.references,
+            "examples": s.examples,
+            "path": s.path,
+        }
+        for name, s in skills.items()
+    }
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
+    return out_file
+
+
+def load_skills_from_manifest(manifest_path: Path) -> Dict[str, SkillDefinition]:
+    """Loads skill definitions directly from a pre-compiled JSON manifest file."""
+    if not manifest_path.is_file():
+        return {}
+    try:
+        content = json.loads(manifest_path.read_text(encoding="utf-8"))
+        loaded: Dict[str, SkillDefinition] = {}
+        for name, data in content.items():
+            loaded[name] = SkillDefinition(
+                name=data["name"],
+                description=data["description"],
+                instructions=data["instructions"],
+                license=data.get("license"),
+                author=data.get("author"),
+                version=data.get("version"),
+                compatibility=data.get("compatibility"),
+                allowed_tools=data.get("allowed_tools"),
+                metadata=data.get("metadata", {}),
+                references=data.get("references", {}),
+                examples=data.get("examples", {}),
+                path=data.get("path", ""),
+            )
+        return loaded
+    except Exception:
+        return {}
 
 
 class SkillRegistry:
@@ -500,7 +749,7 @@ class SkillRegistry:
         github_token: Optional[str] = None,
         dotenv_path: Optional[Union[Path, str]] = None,
     ) -> "SkillRegistry":
-        """Instantiates a SkillRegistry populated from qualified file:// and github:// root URIs."""
+        """Instantiates a SkillRegistry populated from qualified file://, pkg://, and github:// root URIs."""
         instance = cls.__new__(cls)
         instance.root = Path.cwd().resolve()
         instance._skills = load_skills_from_roots(

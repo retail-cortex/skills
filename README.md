@@ -46,33 +46,31 @@ The repository uses official GitHub Actions workflows for continuous integration
 
 1. **[Project Overview](https://retail-cortex.github.io/skills/)**: Introduction, features, quickstart guidelines, and workspace structure.
 2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
-3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Scaffolding meta-skills (`mono-repo-setup`, `python-project-setup`, `go-project-setup`, `java-project-setup`) and 19 technology domain skills.
-4. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Utility packages (`skills-loader`, `skills-agent`, `validator`) and Bazel targets.
-5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Running native ADK agents and FastAPI web applications.
+3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Specialized domain and technology skills catalog.
+4. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Modular domain packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`) and Bazel targets.
+5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`example-adk` and `polyglot-developer`).
 
 ---
 
 ## Quickstart Commands
 
-### 1. Run ADK Agent Example
+### 1. Run Native ADK Agent Example
 
 ```bash
-PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:. uv run python -m examples.example_adk
+uv run python examples/example-adk/main.py
 ```
 
-### 2. Interactive CLI (`start-agent`)
+### 2. Run Polyglot Developer Agent CLI
 
 ```bash
-PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src uv run start-agent
-# or using Bazel
-bazel run //:start-agent
+uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-polyglot-app
 ```
 
-### 3. Run SDLC Skill Validator
+### 3. Run SDLC 5-Point Skill Validator
 
 ```bash
 # via uv
-PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:packages/validator/src uv run python -m validator.main
+uv run python -m validator.cli audit
 # or via Bazel
 bazel run //:validate
 ```

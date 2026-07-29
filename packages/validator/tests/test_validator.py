@@ -53,19 +53,24 @@ description: Sample description
 
     def test_audit_live_skill_directory(self) -> None:
         registry_root: Path = find_registry_root()
-        target_skill: Path = registry_root / "skills" / "python-core"
-        if target_skill.exists():
-            result: SkillAuditResult = audit_skill_directory(target_skill)
-            self.assertTrue(result.frontmatter_valid)
-            self.assertTrue(result.l3_tree_valid)
-            self.assertTrue(result.cwe_security_valid)
-            self.assertTrue(result.rate_limit_429_valid)
-            self.assertTrue(result.clickable_links_valid)
-            self.assertTrue(result.passed)
+        target_skill: Path = (
+            registry_root / "packages" / "skills-python" / "src" / "retailcortex_skills_python" / "skills" / "python-core"
+        )
+        if not target_skill.exists():
+            target_skill = registry_root / "skills" / "python-core"
+        result: SkillAuditResult = audit_skill_directory(target_skill)
+        self.assertTrue(result.frontmatter_valid)
+        self.assertTrue(result.l3_tree_valid)
+        self.assertTrue(result.cwe_security_valid)
+        self.assertTrue(result.rate_limit_429_valid)
+        self.assertTrue(result.clickable_links_valid)
+        self.assertTrue(result.passed)
 
     def test_audit_all_skills_suite(self) -> None:
         registry_root: Path = find_registry_root()
         summary: AuditSummary = audit_all_skills(registry_root)
+        if summary.failed_skills > 0:
+            print(f"Audit failures: {[(r.skill_name, r.errors) for r in summary.results if not r.passed]}")
         self.assertEqual(summary.total_skills, 23)
         self.assertEqual(summary.passed_skills, 23)
         self.assertEqual(summary.failed_skills, 0)

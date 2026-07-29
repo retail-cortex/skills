@@ -9,3 +9,52 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     python_version = "3.13",
 )
+
+# --- Go Language Rules ---
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_go", version = "0.61.1")
+bazel_dep(name = "gazelle", version = "0.51.3")
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.24.12")
+
+
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+use_repo(
+    go_deps,
+    "com_github_stretchr_testify",
+    "in_gopkg_yaml_v3",
+)
+
+# --- Java Language Rules & JUnit 5 ---
+bazel_dep(name = "rules_java", version = "9.1.0")
+bazel_dep(name = "rules_jvm_external", version = "6.7")
+bazel_dep(name = "contrib_rules_jvm", version = "0.27.0")
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    artifacts = [
+        "com.fasterxml.jackson.core:jackson-databind:2.17.0",
+        "com.fasterxml.jackson.core:jackson-annotations:2.17.0",
+        "com.fasterxml.jackson.core:jackson-core:2.17.0",
+        "org.yaml:snakeyaml:2.2",
+        "org.slf4j:slf4j-api:2.0.12",
+        "org.slf4j:slf4j-simple:2.0.12",
+        "org.junit.jupiter:junit-jupiter-api:5.10.2",
+        "org.junit.jupiter:junit-jupiter-engine:5.10.2",
+        "org.junit.jupiter:junit-jupiter-params:5.10.2",
+        "org.junit.platform:junit-platform-console:1.10.2",
+        "org.junit.platform:junit-platform-launcher:1.10.2",
+        "org.assertj:assertj-core:3.25.3",
+        "org.mockito:mockito-core:5.11.0",
+        "org.mockito:mockito-junit-jupiter:5.11.0",
+        "org.apache.maven:maven-plugin-api:3.9.6",
+        "org.apache.maven:maven-core:3.9.6",
+        "org.apache.maven:maven-model:3.9.6",
+        "org.apache.maven.plugin-tools:maven-plugin-annotations:3.11.0",
+    ],
+    fetch_sources = True,
+)
+use_repo(maven, "maven")

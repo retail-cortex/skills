@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retailcortex-skills-agent"
+version = "1.0.0"
+description = "Interactive ADK Programming Agent wrapped in FastAPI for enterprise skills"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.8",
+    "uvicorn>=0.34.0",
+    "pydantic>=2.13.3",
+    "google-adk>=1.16.0",
+    "google-genai>=1.0.0",
+    "tenacity>=9.0.0",
+    "retailcortex-skills-loader",
+]
+authors = [
+    { name = "Retail Cortex Engineering" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/retail-cortex/skills"
+Repository = "https://github.com/retail-cortex/skills"
+
+[project.scripts]
+start-agent = "skills_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = false

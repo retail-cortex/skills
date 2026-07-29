@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "examples_files",
+    srcs = glob(["**"]),
+)
+
+# gazelle:prefix github.com/enterprise/monorepo
+# gazelle:proto disable_global
+gazelle(name = "gazelle")

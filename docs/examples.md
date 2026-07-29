@@ -1,57 +1,87 @@
-# Examples & Demos
+# Standalone Examples & Demonstrations
 
-The `examples/` directory contains sample implementations showcasing how to integrate `skills-loader` and `skills-agent` into Google Agent Development Kit (ADK) projects.
+The `examples/` directory contains standalone, self-contained example packages demonstrating how to integrate `skills-loader` into Google Agent Development Kit (ADK) projects and build agentic CLI developer tools.
 
 ---
 
-## 1. Native ADK Python Example (`examples/example_adk.py`)
+## 1. Native ADK Agent Example (`examples/example-adk`)
 
-Demonstrates loading skills from both local workspaces (`file://skills`) and remote GitHub repositories (`github://google/adk:main`).
+Demonstrates loading skills from both local workspaces (`file://skills`) and remote GitHub repositories (`github://google/skills/skills/cloud/gemini-api:main`) using `.env` skill filtering and qualified URI resolution.
 
-### Running the Example
+### Directory Layout
+
+```text
+examples/example-adk/
+├── .env
+├── .env.example
+├── README.md
+├── main.py
+└── pyproject.toml
+```
+
+### Execution
 
 ```bash
-PYTHONPATH=packages/skills-loader/src:packages/skills-agent/src:. uv run python -m examples.example_adk
+# Direct execution via uv
+uv run python examples/example-adk/main.py
+
+# Or run within example directory
+cd examples/example-adk && uv run python main.py
 ```
 
 ### Key Highlights
 
-- Demonstrates skill loading via `SkillLoader`.
-- Registers skills as tools in an ADK runner context.
+- Demonstrates qualified URI parsing (`file://` and `github://...:branch`) via `skills-loader`.
+- Registers loaded `SkillDefinition` metadata and instructions as tools in an ADK runner context.
 - Demonstrates prompt execution with grounded skill retrieval.
 
 ---
 
-## 2. ADK FastAPI Web Runner (`examples/example-adk/`)
+## 2. Polyglot Bazel Developer Agent (`examples/polyglot-developer`)
 
-Demonstrates wrapping an ADK agent inside a FastAPI web application with `.env` configuration and environment isolation.
+Demonstrates creating a custom agentic CLI tool that uses `skills-loader` to load `skills-bazel`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-python`, and `skills-frontend` to scaffold a complete polyglot Bazel monorepo.
 
 ### Directory Layout
 
-```
-examples/example-adk/
-├── README.md           # Sub-project guide
-├── .env.example        # Environment variable template
-├── main.py             # FastAPI server entrypoint
-└── pyproject.toml      # Package definition
+```text
+examples/polyglot-developer/
+├── .env.example
+├── README.md
+├── main.py
+├── pyproject.toml
+└── tests/
+    └── test_polyglot_developer.py
 ```
 
-### Running the Web Server
+### Execution
 
 ```bash
-# Using uv script entrypoint
-uv run python examples/example-adk/main.py
+# Run CLI tool via uv
+uv run python examples/polyglot-developer/main.py --target-dir ./my-polyglot-app
 
-# Or via FastAPI CLI / uvicorn
-uv run uvicorn examples.example-adk.main:app --reload --port 8000
+# Or execute unit tests for the example
+uv run python -m unittest examples/polyglot-developer/tests/test_polyglot_developer.py
 ```
+
+### Key Highlights
+
+- Leverages `SkillRegistry` and `SkillDefinition` objects to ground generated code in loaded enterprise skill rules.
+- Scaffolds a complete 7-file polyglot monorepo structure:
+  - `MODULE.bazel` (Hermetic Bazel bzlmod resolution from `skills-bazel`).
+  - `BUILD.bazel` (Root target filegroup).
+  - `proto/user.proto` (Protobuf & gRPC contracts from `skills-protobuf`).
+  - `services/go-service/main.go` (Go microservice from `skills-go`).
+  - `services/java-service/.../Application.java` (Java enterprise service from `skills-java`).
+  - `services/python-service/main.py` (Python FastAPI service from `skills-python`).
+  - `apps/web-dashboard/src/App.tsx` (React/Vite dashboard from `skills-frontend`).
 
 ---
 
-## Adding New Examples
+## Contributing Standalone Examples
 
 When contributing new examples:
 
-1. Create a dedicated directory under `examples/` or a python script `examples/example_<name>.py`.
-2. Ensure dependencies are declared in `pyproject.toml`.
-3. Include clear inline docstrings and usage commands.
+1. Create a dedicated directory under `examples/<name>/`.
+2. Include a standalone `pyproject.toml` with `build-system` and declared dependencies.
+3. Include a `README.md` with usage instructions and example CLI options.
+4. Ensure all Python entry points directly instantiate `skills_loader` or `SkillRegistry`.

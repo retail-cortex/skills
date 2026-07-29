@@ -1,8 +1,27 @@
+load("@gazelle//:def.bzl", "gazelle")
+
+
+# gazelle:prefix github.com/retail-cortex/skills
+gazelle(name = "gazelle")
+
 package(default_visibility = ["//visibility:public"])
+
 
 filegroup(
     name = "skills_data",
-    srcs = glob(["skills/**"], allow_empty = True),
+    srcs = glob(["packages/skills-*/src/*/skills/**", "skills/**"], allow_empty = True) + [
+        "//packages/skills-a2a:skills_a2a_data",
+        "//packages/skills-a2ui:skills_a2ui_data",
+        "//packages/skills-bazel:skills_bazel_data",
+        "//packages/skills-python:skills_python_data",
+        "//packages/skills-go:skills_go_data",
+        "//packages/skills-java:skills_java_data",
+        "//packages/skills-devops:skills_devops_data",
+        "//packages/skills-database:skills_database_data",
+        "//packages/skills-protobuf:skills_protobuf_data",
+        "//packages/skills-google-adk-skill-builder:skills_google_adk_skill_builder_data",
+        "//packages/skills-frontend:skills_frontend_data",
+    ],
 )
 
 filegroup(
@@ -22,7 +41,7 @@ alias(
 
 alias(
     name = "start-agent",
-    actual = "//packages/skills-agent:start_agent",
+    actual = "//tests/adk-agent:start_agent",
 )
 
 alias(
@@ -34,3 +53,19 @@ alias(
     name = "serve-docs",
     actual = "//packages/skills-loader:docs",
 )
+
+alias(
+    name = "go-loader",
+    actual = "//clients/go/cmd/skills-loader",
+)
+
+test_suite(
+    name = "test-e2e",
+    tests = [
+        "//tests/e2e:test_skills_e2e",
+        "//clients/go/pkg/skillsloader:skillsloader_test",
+        "//clients/java:skills_loader_java_test",
+    ],
+)
+
+

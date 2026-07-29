@@ -1,5 +1,5 @@
 [project]
-name = "skill-builder"
+name = "retailcortex-skills"
 version = "1.0.0"
 description = "Enterprise Project Pattern Registry for AI Agent Skills"
 readme = "README.md"
@@ -13,8 +13,6 @@ dependencies = [
 [project.scripts]
 start-agent = "skills_agent.cli:main"
 skills-agent = "skills_agent.cli:main"
-example-adk = "examples.example_adk:main"
-example-adk-web = "examples.example_adk:web"
 docs = "skills_loader.docs:serve"
 serve-docs = "skills_loader.docs:serve"
 build-docs = "skills_loader.docs:build"
@@ -24,7 +22,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["packages/skills-loader/src", "packages/skills-agent/src", "packages/validator/src"]
+where = ["."]
 
 [tool.uv]
 package = true
@@ -36,12 +34,31 @@ default = true
 [tool.pytest.ini_options]
 pythonpath = [
     "packages/skills-loader/src",
-    "packages/skills-agent/src",
+    "tests/adk-agent/src",
     "packages/validator/src",
+    "packages/skills-python/src",
+    "packages/skills-go/src",
+    "packages/skills-java/src",
+    "packages/skills-devops/src",
+    "packages/skills-database/src",
+    "packages/skills-protobuf/src",
+    "packages/skills-google-adk-skill-builder/src",
+    "packages/skills-a2a/src",
+    "packages/skills-a2ui/src",
+    "packages/skills-bazel/src",
+    "packages/skills-frontend/src",
+    "examples/example-adk",
+    "examples/polyglot-developer",
+    "tests/e2e",
     "."
 ]
 testpaths = [
     "packages/skills-loader/tests",
-    "packages/skills-agent/tests",
-    "packages/validator/tests"
+    "tests/adk-agent/tests",
+    "packages/validator/tests",
+    "packages/skills-a2a/tests",
+    "packages/skills-a2ui/tests",
+    "packages/skills-bazel/tests",
+    "examples/polyglot-developer/tests",
+    "tests/e2e"
 ]

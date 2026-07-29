@@ -6,6 +6,9 @@ from typing import List
 class SkillFrontmatter:
     name: str
     description: str
+    license: str = "Apache-2.0"
+    author: str = "Ryan McGuinness"
+    version: str = "1.0"
 
     def __post_init__(self):
         if not self.name or len(self.name) > 64:
@@ -14,6 +17,12 @@ class SkillFrontmatter:
             raise ValueError(f"Skill name '{self.name}' must be strictly kebab-case")
         if not self.description or len(self.description) > 1024:
             raise ValueError("Description must be non-empty and <= 1024 characters")
+        if not self.license:
+            raise ValueError("License must be non-empty")
+        if not self.author:
+            raise ValueError("Metadata author must be non-empty")
+        if not self.version:
+            raise ValueError("Metadata version must be non-empty")
 
 @dataclass
 class SkillAuditResult:

@@ -111,5 +111,6 @@ terraform.rc
 # AI Agent, Scratch, and System Generated Files
 .gemini/
 .system_generated/
+.loader_skills/
 scratch/
 validator_report.json

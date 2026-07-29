@@ -1,0 +1,15 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "skills_devops_data",
+    srcs = glob(["src/retailcortex_skills_devops/skills/**"]),
+)
+
+py_library(
+    name = "skills_devops",
+    srcs = glob(["src/retailcortex_skills_devops/**/*.py"]),
+    data = [":skills_devops_data"],
+    imports = ["src"],
+)

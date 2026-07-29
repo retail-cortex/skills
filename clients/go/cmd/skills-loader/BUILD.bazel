@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "skills-loader_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/retail-cortex/skills/clients/go/cmd/skills-loader",
+    deps = ["//clients/go/pkg/skillsloader"],
+)
+
+go_binary(
+    name = "skills-loader",
+    embed = [":skills-loader_lib"],
+)

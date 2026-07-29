@@ -1,14 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "example-adk"
+name = "retailcortex-example-adk"
 version = "1.0.0"
 description = "Native Google ADK Agent Example loading local and remote GitHub skills"
+readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.13"
 dependencies = [
-    "google-adk>=1.16.0",
-    "google-genai>=1.0.0",
-    "tenacity>=9.0.0",
-    "skills-loader",
+    "retailcortex-skills-loader",
+]
+authors = [
+    { name = "Retail Cortex Engineering" }
 ]
 
+[project.scripts]
+example-adk = "main:run"
+example-adk-web = "main:web"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
 [tool.uv]
-package = false
+package = true

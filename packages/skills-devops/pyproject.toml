@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retailcortex-skills-devops"
+version = "1.0.0"
+description = "Retail Cortex Infrastructure, Terraform, Docker, Bazel & GCP AI agent skill definitions"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.13"
+dependencies = []
+authors = [
+    { name = "Retail Cortex Engineering" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/retail-cortex/skills"
+Repository = "https://github.com/retail-cortex/skills"
+
+[project.entry-points."retailcortex.skills"]
+devops = "retailcortex_skills_devops"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.*", "**/*", "**/.*"]
+
+[tool.uv]
+package = true

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retailcortex-example-polyglot-developer"
+version = "1.0.0"
+description = "Polyglot Bazel Project Developer CLI Agent using Google ADK & Retail Cortex Skills"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.13"
+dependencies = [
+    "retailcortex-skills-loader",
+    "retailcortex-skills-bazel",
+    "retailcortex-skills-go",
+    "retailcortex-skills-java",
+    "retailcortex-skills-protobuf",
+    "retailcortex-skills-python",
+    "retailcortex-skills-frontend",
+]
+authors = [
+    { name = "Retail Cortex Engineering" }
+]
+
+[project.scripts]
+polyglot-developer = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.uv]
+package = true

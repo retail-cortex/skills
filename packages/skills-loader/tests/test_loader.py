@@ -24,7 +24,7 @@ class TestSkillsLoaderPackage(unittest.TestCase):
     def test_find_registry_root(self) -> None:
         root = find_registry_root()
         self.assertTrue(root.exists())
-        self.assertTrue((root / "skills").is_dir() or root.name == "skills")
+        self.assertTrue((root / "packages").is_dir() or (root / "skills").is_dir() or root.name in ("packages", "skills"))
 
     def test_parse_frontmatter(self) -> None:
         sample = "---\nname: test-skill\ndescription: A test description\n---\n# Instructions\nFollow these rules."
@@ -185,11 +185,15 @@ class TestSkillsLoaderPackage(unittest.TestCase):
         s, t, r, sub = parse_skill_root_uri("file://skills/custom")
         self.assertEqual((s, t, r, sub), ("file", "skills/custom", None, None))
 
-        # GitHub repo URI with suffix :ref (e.g. github://google/skills/skills/cloud/gemini-api:main)
+        # Package URI
+        s, t, r, sub = parse_skill_root_uri("pkg://retailcortex_skills_python")
+        self.assertEqual((s, t, r, sub), ("pkg", "retailcortex_skills_python", None, None))
+
+        # Standard GitHub repo URI with trailing :ref (e.g. github://google/skills/skills/cloud/gemini-api:main)
         s, t, r, sub = parse_skill_root_uri("github://google/skills/skills/cloud/gemini-api:main")
         self.assertEqual((s, t, r, sub), ("github", "google/skills", "main", "skills/cloud/gemini-api"))
 
-        # GitHub repo URI with :ref/subpath (e.g. github://google/skills:main/skills/cloud/gemini-api)
+        # Legacy format: mid-string :ref (e.g. github://google/skills:main/skills/cloud/gemini-api)
         s, t, r, sub = parse_skill_root_uri("github://google/skills:main/skills/cloud/gemini-api")
         self.assertEqual((s, t, r, sub), ("github", "google/skills", "main", "skills/cloud/gemini-api"))
 
@@ -205,15 +209,81 @@ class TestSkillsLoaderPackage(unittest.TestCase):
         s, t, r, sub = parse_skill_root_uri("github://google/skills/tree/main/skills/cloud/gemini-api")
         self.assertEqual((s, t, r, sub), ("github", "google/skills", "main", "skills/cloud/gemini-api"))
 
+    def test_load_skills_from_package(self) -> None:
+        from skills_loader.loader import load_skills_from_package
+
+        skills = load_skills_from_package("retailcortex_skills_python", skill_filter=["python-core"])
+        self.assertIn("python-core", skills)
+
     def test_skill_registry_from_roots_factory(self) -> None:
         from skills_loader.loader import SkillRegistry
 
-        registry = SkillRegistry.from_roots(
-            roots=["file://skills"],
+        # 1. file:// scheme
+        reg_file = SkillRegistry.from_roots(
+            roots=["file://."],
             skill_filter=["python-core"],
         )
-        self.assertIn("python-core", registry.skills)
-        self.assertEqual(len(registry.skills), 1)
+        self.assertIn("python-core", reg_file.skills)
+
+        # 2. pkg:// scheme
+        reg_pkg = SkillRegistry.from_roots(
+            roots=["pkg://retailcortex_skills_python"],
+            skill_filter=["python-core"],
+        )
+        self.assertIn("python-core", reg_pkg.skills)
+
+    def test_frontmatter_metadata_mapping(self) -> None:
+        from skills_loader.loader import load_skill_from_dir
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            sd = Path(tmp_dir) / "test-meta-skill"
+            sd.mkdir()
+            (sd / "SKILL.md").write_text(
+                "---\nname: test-meta-skill\ndescription: Meta test\nlicense: MIT\nauthor: Jane Doe\nversion: 2.0.0\ncompatibility: ADK-v2\nallowed-tools: Bash(git:*) Read\ncustom_field: custom_val\n---\n# Instructions",
+                encoding="utf-8",
+            )
+            ref_dir = sd / "references"
+            ref_dir.mkdir()
+            (ref_dir / "ref1.md").write_text("Reference content 1", encoding="utf-8")
+
+            skill = load_skill_from_dir(sd)
+            self.assertIsNotNone(skill)
+            if skill:
+                self.assertEqual(skill.license, "MIT")
+                self.assertEqual(skill.author, "Jane Doe")
+                self.assertEqual(skill.version, "2.0.0")
+                self.assertEqual(skill.compatibility, "ADK-v2")
+                self.assertEqual(skill.allowed_tools, "Bash(git:*) Read")
+                self.assertEqual(skill.metadata.get("custom_field"), "custom_val")
+                self.assertEqual(skill.metadata.get("author"), "Jane Doe")
+                self.assertEqual(skill.to_dict()["license"], "MIT")
+                self.assertEqual(skill.to_dict()["allowed_tools"], "Bash(git:*) Read")
+                self.assertEqual(skill.get_reference_content("ref1.md"), "Reference content 1")
+                self.assertIsNone(skill.get_reference_content("nonexistent.md"))
+
+    def test_agents_skills_directory_scanning(self) -> None:
+        from skills_loader.loader import load_all_skills
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            ag_dir = root / ".agents" / "skills" / "ag-custom-skill"
+            ag_dir.mkdir(parents=True)
+            (ag_dir / "SKILL.md").write_text(
+                "---\nname: ag-custom-skill\ndescription: Cross client agent skill\n---\n# Instructions",
+                encoding="utf-8",
+            )
+            skills = load_all_skills(skills_root=root)
+            self.assertIn("ag-custom-skill", skills)
+            self.assertEqual(skills["ag-custom-skill"].description, "Cross client agent skill")
+
+    def test_build_and_load_manifest(self) -> None:
+        from skills_loader.loader import build_skills_manifest, load_skills_from_manifest
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_json = Path(tmp_dir) / "skills_manifest.json"
+            generated = build_skills_manifest(output_path=out_json)
+            self.assertTrue(generated.is_file())
+
+            loaded = load_skills_from_manifest(generated)
+            self.assertGreaterEqual(len(loaded), 20)
+            self.assertIn("python-core", loaded)
 
 
 if __name__ == "__main__":

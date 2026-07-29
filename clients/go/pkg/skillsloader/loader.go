@@ -1,0 +1,1078 @@
+package skillsloader
+
+import (
+	"archive/zip"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// FindRegistryRoot discovers the root workspace directory containing enterprise skill packages.
+func FindRegistryRoot() string {
+	if ws := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); ws != "" {
+		if isDir(filepath.Join(ws, "packages")) || isDir(filepath.Join(ws, "skills")) {
+			return ws
+		}
+	}
+
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		wsName := os.Getenv("TEST_WORKSPACE")
+		candidates := []string{}
+		if wsName != "" {
+			candidates = append(candidates, filepath.Join(testSrcDir, wsName))
+		}
+		candidates = append(candidates,
+			filepath.Join(testSrcDir, "_main"),
+			filepath.Join(testSrcDir, "skill_builder"),
+			testSrcDir,
+		)
+
+		for _, cand := range candidates {
+			if isDir(filepath.Join(cand, "packages")) || isDir(filepath.Join(cand, "skills")) {
+				return cand
+			}
+		}
+
+		// Search for any SKILL.md under TEST_SRCDIR
+		var foundRoot string
+		_ = filepath.Walk(testSrcDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			if info.Name() == "SKILL.md" {
+				dir := filepath.Dir(path)
+				for dir != "." && dir != "/" {
+					if isDir(filepath.Join(dir, "packages")) || isDir(filepath.Join(dir, "skills")) {
+						foundRoot = dir
+						return fmt.Errorf("found")
+					}
+					parent := filepath.Dir(dir)
+					if parent == dir {
+						break
+					}
+					dir = parent
+				}
+			}
+			return nil
+		})
+		if foundRoot != "" {
+			return foundRoot
+		}
+	}
+
+	// Parent walk fallback from current directory
+	cwd, err := os.Getwd()
+	if err == nil {
+		curr := cwd
+		for {
+			if isDir(filepath.Join(curr, "packages")) || isDir(filepath.Join(curr, "skills")) {
+				return curr
+			}
+			parent := filepath.Dir(curr)
+			if parent == curr {
+				break
+			}
+			curr = parent
+		}
+	}
+
+	return cwd
+}
+
+// GetLoaderSkillsDir returns the persistent workspace directory for cached downloaded skill trees.
+func GetLoaderSkillsDir() string {
+	loaderDir := filepath.Join(FindRegistryRoot(), ".loader_skills")
+	_ = os.MkdirAll(loaderDir, 0755)
+	return loaderDir
+}
+
+// ParseFrontmatter parses YAML frontmatter block from SKILL.md content.
+func ParseFrontmatter(content string) (map[string]string, string) {
+	re := regexp.MustCompile(`(?s)^---\s*\n(.*?)\n---\s*\n(.*)$`)
+	matches := re.FindStringSubmatch(content)
+	if len(matches) < 3 {
+		return map[string]string{}, content
+	}
+
+	yamlText := matches[1]
+	body := matches[2]
+
+	data := make(map[string]string)
+	var rawMap map[string]any
+	if err := yaml.Unmarshal([]byte(yamlText), &rawMap); err == nil {
+		for k, v := range rawMap {
+			data[k] = fmt.Sprintf("%v", v)
+		}
+	} else {
+		// Line-based fallback
+		lines := strings.Split(yamlText, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") || !strings.Contains(line, ":") {
+				continue
+			}
+			parts := strings.SplitN(line, ":", 2)
+			k := strings.TrimSpace(parts[0])
+			v := strings.Trim(strings.TrimSpace(parts[1]), `'"`)
+			data[k] = v
+		}
+	}
+
+	return data, body
+}
+
+// ParseDotenvFile parses key-value environment variables from a .env or dotenv configuration file.
+func ParseDotenvFile(envPath string) map[string]string {
+	envVars := make(map[string]string)
+	content, err := os.ReadFile(envPath)
+	if err != nil {
+		return envVars
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		k := strings.TrimSpace(parts[0])
+		v := strings.Trim(strings.TrimSpace(parts[1]), `'"`)
+		envVars[k] = v
+	}
+	return envVars
+}
+
+// ParseSkillRootURI parses a qualified skill root URI into (scheme, target, ref, subpath).
+func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
+	clean := strings.TrimSpace(uri)
+	if strings.HasPrefix(clean, "file://") {
+		return "file", clean[len("file://"):], "", ""
+	}
+	if strings.HasPrefix(clean, "pkg://") || strings.HasPrefix(clean, "package://") {
+		prefix := "pkg://"
+		if strings.HasPrefix(clean, "package://") {
+			prefix = "package://"
+		}
+		return "pkg", clean[len(prefix):], "", ""
+	}
+
+	if strings.HasPrefix(clean, "github://") || strings.HasPrefix(clean, "https://github.com/") {
+		prefix := "github://"
+		if strings.HasPrefix(clean, "https://github.com/") {
+			prefix = "https://github.com/"
+		}
+		target = strings.TrimSuffix(clean[len(prefix):], "/")
+
+		if strings.Contains(target, "/tree/") {
+			parts := strings.SplitN(target, "/tree/", 2)
+			target = parts[0]
+			treeBits := strings.SplitN(parts[1], "/", 2)
+			ref = treeBits[0]
+			if len(treeBits) > 1 {
+				subpath = treeBits[1]
+			}
+		} else if strings.Contains(target, ":") {
+			part1, part2 := rsplitOnce(target, ":")
+			if !strings.Contains(part2, "/") {
+				ref = part2
+				target = part1
+			} else {
+				parts := strings.SplitN(target, ":", 2)
+				target = parts[0]
+				refSub := parts[1]
+				if strings.Contains(refSub, "/") {
+					parts2 := strings.SplitN(refSub, "/", 2)
+					ref = parts2[0]
+					subpath = parts2[1]
+				} else {
+					ref = refSub
+				}
+			}
+		} else if strings.Contains(target, "@") {
+			parts := strings.SplitN(target, "@", 2)
+			target = parts[0]
+			refSub := parts[1]
+			if strings.Contains(refSub, "/") {
+				parts2 := strings.SplitN(refSub, "/", 2)
+				ref = parts2[0]
+				subpath = parts2[1]
+			} else {
+				ref = refSub
+			}
+		}
+
+		if subpath == "" {
+			parts := strings.Split(target, "/")
+			if len(parts) > 2 {
+				target = parts[0] + "/" + parts[1]
+				subpath = strings.Join(parts[2:], "/")
+			}
+		}
+
+		if ref == "" {
+			ref = "main"
+		}
+		return "github", target, ref, subpath
+	}
+
+	return "file", clean, "", ""
+}
+
+// LoadSkillFromDir loads a single skill definition from its directory, enforcing boundary checks.
+func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
+	skillMD := filepath.Join(skillDir, "SKILL.md")
+	content, err := os.ReadFile(skillMD)
+	if err != nil {
+		return nil, fmt.Errorf("SKILL.md not found in %s: %w", skillDir, err)
+	}
+
+	fmData, body := ParseFrontmatter(string(content))
+	name := fmData["name"]
+	if name == "" {
+		name = filepath.Base(skillDir)
+	}
+
+	desc := fmData["description"]
+	if desc == "" {
+		desc = fmt.Sprintf("Enterprise skill for %s", name)
+	}
+
+	allowedTools := fmData["allowed-tools"]
+	if allowedTools == "" {
+		allowedTools = fmData["allowed_tools"]
+	}
+
+	metaDict := make(map[string]string)
+	knownKeys := map[string]bool{
+		"name":          true,
+		"description":   true,
+		"license":       true,
+		"author":        true,
+		"version":       true,
+		"compatibility": true,
+		"allowed-tools": true,
+		"allowed_tools": true,
+	}
+
+	for k, v := range fmData {
+		if !knownKeys[k] {
+			metaDict[k] = v
+		}
+	}
+
+	author := fmData["author"]
+	if author == "" {
+		author = metaDict["author"]
+	} else if metaDict["author"] == "" {
+		metaDict["author"] = author
+	}
+
+	version := fmData["version"]
+	if version == "" {
+		version = metaDict["version"]
+	} else if metaDict["version"] == "" {
+		metaDict["version"] = version
+	}
+
+	references := make(map[string]string)
+	refDir := filepath.Join(skillDir, "references")
+	if isDir(refDir) {
+		entries, _ := os.ReadDir(refDir)
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+				refPath := filepath.Join(refDir, entry.Name())
+				if isWithinBaseDir(skillDir, refPath) {
+					if refContent, err := os.ReadFile(refPath); err == nil {
+						references[entry.Name()] = string(refContent)
+					}
+				}
+			}
+		}
+	}
+
+	examples := make(map[string]string)
+	exDir := filepath.Join(skillDir, "examples")
+	if isDir(exDir) {
+		entries, _ := os.ReadDir(exDir)
+		for _, entry := range entries {
+			if !entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+				exPath := filepath.Join(exDir, entry.Name())
+				if isWithinBaseDir(skillDir, exPath) {
+					if exContent, err := os.ReadFile(exPath); err == nil {
+						examples[entry.Name()] = string(exContent)
+					}
+				}
+			}
+		}
+	}
+
+	def := &SkillDefinition{
+		Name:          name,
+		Description:   desc,
+		Instructions:  strings.TrimSpace(body),
+		License:       fmData["license"],
+		Author:        author,
+		Version:       version,
+		Compatibility: fmData["compatibility"],
+		AllowedTools:  allowedTools,
+		Metadata:      metaDict,
+		References:    references,
+		Examples:      examples,
+		Path:          skillDir,
+	}
+
+	return def, nil
+}
+
+// LoadAllSkills scans and loads skill directories in the workspace packages and local folders.
+func LoadAllSkills(skillsRoot string, skillFilter []string) (map[string]*SkillDefinition, error) {
+	root := skillsRoot
+	if root == "" {
+		root = FindRegistryRoot()
+	}
+
+	filterSet := make(map[string]bool)
+	for _, f := range skillFilter {
+		filterSet[f] = true
+	}
+	hasFilter := len(filterSet) > 0
+
+	loaded := make(map[string]*SkillDefinition)
+
+	// Check if root itself is a skill dir
+	if isFile(filepath.Join(root, "SKILL.md")) {
+		single, err := LoadSkillFromDir(root)
+		if err == nil && single != nil {
+			if !hasFilter || filterSet[single.Name] {
+				return map[string]*SkillDefinition{single.Name: single}, nil
+			}
+		}
+	}
+
+	// 1. Scan workspace packages for skills
+	packagesDir := filepath.Join(root, "packages")
+	if filepath.Base(root) == "packages" {
+		packagesDir = root
+	}
+
+	if isDir(packagesDir) {
+		pattern := filepath.Join(packagesDir, "skills-*", "src", "*", "skills", "*")
+		matches, _ := filepath.Glob(pattern)
+		sort.Strings(matches)
+		for _, skillDir := range matches {
+			if isDir(skillDir) && !strings.HasPrefix(filepath.Base(skillDir), ".") {
+				skillName := filepath.Base(skillDir)
+				if hasFilter && !filterSet[skillName] {
+					continue
+				}
+				skillDef, err := LoadSkillFromDir(skillDir)
+				if err == nil && skillDef != nil {
+					if !hasFilter || filterSet[skillDef.Name] {
+						loaded[skillDef.Name] = skillDef
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Fallback scan for standalone skills directory
+	skillsDir := filepath.Join(root, "skills")
+	if filepath.Base(root) == "skills" {
+		skillsDir = root
+	}
+
+	if isDir(skillsDir) {
+		ignored := map[string]bool{
+			".git": true, ".bazel": true, "packages": true, "validator": true,
+			"node_modules": true, "scratch": true, "build": true, "dist": true, ".venv": true,
+		}
+		entries, _ := os.ReadDir(skillsDir)
+		for _, entry := range entries {
+			if entry.IsDir() && !ignored[entry.Name()] && !strings.HasPrefix(entry.Name(), ".") {
+				if _, exists := loaded[entry.Name()]; exists {
+					continue
+				}
+				if hasFilter && !filterSet[entry.Name()] {
+					continue
+				}
+				skillDir := filepath.Join(skillsDir, entry.Name())
+				skillDef, err := LoadSkillFromDir(skillDir)
+				if err == nil && skillDef != nil {
+					if !hasFilter || filterSet[skillDef.Name] {
+						loaded[skillDef.Name] = skillDef
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Scan standard cross-client .agents/skills directories (project-level & user-level)
+	var agentDirs []string
+	agentDirs = append(agentDirs, filepath.Join(root, ".agents", "skills"))
+	if homeDir, err := os.UserHomeDir(); err == nil && homeDir != "" {
+		agentDirs = append(agentDirs, filepath.Join(homeDir, ".agents", "skills"))
+	}
+
+	for _, agDir := range agentDirs {
+		if isDir(agDir) {
+			entries, _ := os.ReadDir(agDir)
+			for _, entry := range entries {
+				if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+					if _, exists := loaded[entry.Name()]; exists {
+						continue
+					}
+					if hasFilter && !filterSet[entry.Name()] {
+						continue
+					}
+					skillDir := filepath.Join(agDir, entry.Name())
+					skillDef, err := LoadSkillFromDir(skillDir)
+					if err == nil && skillDef != nil {
+						if !hasFilter || filterSet[skillDef.Name] {
+							loaded[skillDef.Name] = skillDef
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return loaded, nil
+}
+
+// LoadSkillsFromPackage loads enterprise skills from a specified package name.
+func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string]*SkillDefinition, error) {
+	cleanPkg := strings.TrimSpace(packageName)
+	if cleanPkg == "" {
+		return map[string]*SkillDefinition{}, nil
+	}
+
+	root := FindRegistryRoot()
+	packagesDir := filepath.Join(root, "packages")
+	if filepath.Base(root) == "packages" {
+		packagesDir = root
+	}
+
+	loaded := make(map[string]*SkillDefinition)
+	if isDir(packagesDir) {
+		pats, _ := filepath.Glob(filepath.Join(packagesDir, "skills-*"))
+		for _, p := range pats {
+			srcDir := filepath.Join(p, "src")
+			if isDir(srcDir) {
+				entries, _ := os.ReadDir(srcDir)
+				for _, entry := range entries {
+					if entry.IsDir() && entry.Name() == cleanPkg {
+						pkgDir := filepath.Join(srcDir, entry.Name())
+						skillsSub := filepath.Join(pkgDir, "skills")
+						target := pkgDir
+						if isDir(skillsSub) {
+							target = skillsSub
+						}
+						skills, err := LoadAllSkills(target, skillFilter)
+						if err == nil {
+							for k, v := range skills {
+								loaded[k] = v
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return loaded, nil
+}
+
+// LoadSkillsFromGitHub loads skills from a remote GitHub repository.
+func LoadSkillsFromGitHub(repo string, ref string, roots []string, filter []string, token string, dotenvPath string) (map[string]*SkillDefinition, error) {
+	envFile := dotenvPath
+	if envFile == "" {
+		cwd, _ := os.Getwd()
+		envFile = filepath.Join(cwd, ".env")
+	}
+	dotenvVars := ParseDotenvFile(envFile)
+
+	cleanRepo := strings.TrimSpace(repo)
+	if strings.HasPrefix(cleanRepo, "https://github.com/") {
+		cleanRepo = strings.TrimSuffix(cleanRepo[len("https://github.com/"):], "/")
+	}
+	if strings.HasSuffix(cleanRepo, ".git") {
+		cleanRepo = cleanRepo[:len(cleanRepo)-4]
+	}
+
+	var urlRoots []string
+	if strings.Contains(cleanRepo, "/tree/") {
+		parts := strings.SplitN(cleanRepo, "/tree/", 2)
+		cleanRepo = strings.TrimSuffix(parts[0], "/")
+		treeParts := strings.SplitN(parts[1], "/", 2)
+		parsedRef := treeParts[0]
+		if ref == "" {
+			ref = parsedRef
+		}
+		if len(treeParts) > 1 && strings.TrimSpace(treeParts[1]) != "" {
+			urlRoots = []string{strings.TrimSpace(treeParts[1])}
+		}
+	}
+
+	gitToken := token
+	if gitToken == "" {
+		gitToken = os.Getenv("GITHUB_TOKEN")
+	}
+	if gitToken == "" {
+		gitToken = os.Getenv("GH_TOKEN")
+	}
+	if gitToken == "" {
+		gitToken = dotenvVars["GITHUB_TOKEN"]
+	}
+	if gitToken == "" {
+		gitToken = dotenvVars["GH_TOKEN"]
+	}
+
+	gitRef := ref
+	if gitRef == "" {
+		gitRef = os.Getenv("GITHUB_REF")
+	}
+	if gitRef == "" {
+		gitRef = dotenvVars["GITHUB_REF"]
+	}
+	if gitRef == "" {
+		gitRef = "main"
+	}
+
+	var rootPaths []string
+	if len(roots) > 0 {
+		rootPaths = roots
+	} else if len(urlRoots) > 0 {
+		rootPaths = urlRoots
+	} else if envRoots := os.Getenv("SKILLS_ROOTS"); envRoots != "" {
+		for _, r := range strings.Split(envRoots, ",") {
+			if strings.TrimSpace(r) != "" {
+				rootPaths = append(rootPaths, strings.TrimSpace(r))
+			}
+		}
+	} else if dotRoots := dotenvVars["SKILLS_ROOTS"]; dotRoots != "" {
+		for _, r := range strings.Split(dotRoots, ",") {
+			if strings.TrimSpace(r) != "" {
+				rootPaths = append(rootPaths, strings.TrimSpace(r))
+			}
+		}
+	} else {
+		rootPaths = []string{"skills", "."}
+	}
+
+	var selectedSkills []string
+	if len(filter) > 0 {
+		selectedSkills = filter
+	} else if envFilt := os.Getenv("SKILLS_FILTER"); envFilt != "" {
+		for _, s := range strings.Split(envFilt, ",") {
+			if strings.TrimSpace(s) != "" {
+				selectedSkills = append(selectedSkills, strings.TrimSpace(s))
+			}
+		}
+	} else if dotFilt := dotenvVars["SKILLS_FILTER"]; dotFilt != "" {
+		for _, s := range strings.Split(dotFilt, ",") {
+			if strings.TrimSpace(s) != "" {
+				selectedSkills = append(selectedSkills, strings.TrimSpace(s))
+			}
+		}
+	}
+
+	repoSlug := strings.ReplaceAll(cleanRepo, "/", "_")
+	loaderBase := GetLoaderSkillsDir()
+	persistentRepoDir := filepath.Join(loaderBase, "github", repoSlug, gitRef)
+	_ = os.MkdirAll(persistentRepoDir, 0755)
+
+	tmpDir, err := os.MkdirTemp("", "skills-loader-gh-*")
+	if err == nil {
+		defer os.RemoveAll(tmpDir)
+	}
+
+	cloned := false
+	repoDir := filepath.Join(tmpDir, "repo")
+
+	cloneURL := fmt.Sprintf("https://github.com/%s.git", cleanRepo)
+	if gitToken != "" {
+		cloneURL = fmt.Sprintf("https://x-access-token:%s@github.com/%s.git", gitToken, cleanRepo)
+	}
+
+	cmdClone := exec.Command("git", "clone", "--depth", "1", "--branch", gitRef, cloneURL, repoDir)
+	if err := cmdClone.Run(); err == nil {
+		cloned = true
+	} else {
+		_ = exec.Command("git", "init", repoDir).Run()
+		_ = exec.Command("git", "-C", repoDir, "remote", "add", "origin", cloneURL).Run()
+		if errFetch := exec.Command("git", "-C", repoDir, "fetch", "--depth", "1", "origin", gitRef).Run(); errFetch == nil {
+			if errCo := exec.Command("git", "-C", repoDir, "checkout", "FETCH_HEAD").Run(); errCo == nil {
+				cloned = true
+			}
+		}
+	}
+
+	repoTargetDir := tmpDir
+	if cloned {
+		repoTargetDir = repoDir
+	} else {
+		archiveURL := fmt.Sprintf("https://api.github.com/repos/%s/zipball/%s", cleanRepo, gitRef)
+		req, _ := http.NewRequest("GET", archiveURL, nil)
+		req.Header.Set("User-Agent", "skills-loader-go/1.0.0")
+		if gitToken != "" {
+			req.Header.Set("Authorization", "token "+gitToken)
+		}
+		resp, httpErr := http.DefaultClient.Do(req)
+		if httpErr == nil && resp.StatusCode == http.StatusOK {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if zipReader, zipErr := zip.NewReader(bytes.NewReader(bodyBytes), int64(len(bodyBytes))); zipErr == nil {
+				for _, zipFile := range zipReader.File {
+					outPath := filepath.Join(tmpDir, zipFile.Name)
+					if zipFile.FileInfo().IsDir() {
+						_ = os.MkdirAll(outPath, zipFile.Mode())
+						continue
+					}
+					_ = os.MkdirAll(filepath.Dir(outPath), 0755)
+					outFile, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipFile.Mode())
+					if err == nil {
+						rc, err := zipFile.Open()
+						if err == nil {
+							_, _ = io.Copy(outFile, rc)
+							rc.Close()
+						}
+						outFile.Close()
+					}
+				}
+
+				entries, _ := os.ReadDir(tmpDir)
+				for _, entry := range entries {
+					if entry.IsDir() && entry.Name() != "repo" {
+						repoTargetDir = filepath.Join(tmpDir, entry.Name())
+						break
+					}
+				}
+			}
+		} else {
+			if isDirHasFiles(persistentRepoDir) {
+				repoTargetDir = persistentRepoDir
+			} else {
+				return nil, fmt.Errorf("failed to load GitHub repo '%s' at ref '%s'", cleanRepo, gitRef)
+			}
+		}
+	}
+
+	// Mirror downloaded tree into persistent directory
+	if repoTargetDir != persistentRepoDir && isDir(repoTargetDir) {
+		_ = copyDirContents(repoTargetDir, persistentRepoDir)
+		repoTargetDir = persistentRepoDir
+	}
+
+	loadedSkills := make(map[string]*SkillDefinition)
+	filterSet := make(map[string]bool)
+	for _, s := range selectedSkills {
+		filterSet[s] = true
+	}
+	hasFilter := len(filterSet) > 0
+
+	for _, rootRel := range rootPaths {
+		candidateDir := repoTargetDir
+		if rootRel != "." {
+			candidateDir = filepath.Join(repoTargetDir, rootRel)
+		}
+		if isDir(candidateDir) {
+			if singleSkill, err := LoadSkillFromDir(candidateDir); err == nil && singleSkill != nil {
+				if !hasFilter || filterSet[singleSkill.Name] {
+					loadedSkills[singleSkill.Name] = singleSkill
+				}
+			} else {
+				skills, err := LoadAllSkills(candidateDir, selectedSkills)
+				if err == nil {
+					for k, v := range skills {
+						loadedSkills[k] = v
+					}
+				}
+			}
+		}
+	}
+
+	return loadedSkills, nil
+}
+
+// LoadSkillsFromRoots loads enterprise skills across multiple qualified root URIs.
+func LoadSkillsFromRoots(roots []string, filter []string, token string, dotenvPath string) (map[string]*SkillDefinition, error) {
+	envFile := dotenvPath
+	if envFile == "" {
+		cwd, _ := os.Getwd()
+		envFile = filepath.Join(cwd, ".env")
+	}
+	dotenvVars := ParseDotenvFile(envFile)
+
+	rootURIs := roots
+	if len(rootURIs) == 0 {
+		if envRoots := os.Getenv("SKILLS_ROOTS"); envRoots != "" {
+			for _, r := range strings.Split(envRoots, ",") {
+				if strings.TrimSpace(r) != "" {
+					rootURIs = append(rootURIs, strings.TrimSpace(r))
+				}
+			}
+		} else if dotRoots := dotenvVars["SKILLS_ROOTS"]; dotRoots != "" {
+			for _, r := range strings.Split(dotRoots, ",") {
+				if strings.TrimSpace(r) != "" {
+					rootURIs = append(rootURIs, strings.TrimSpace(r))
+				}
+			}
+		} else {
+			rootURIs = []string{"file://."}
+		}
+	}
+
+	var selectedSkills []string
+	if len(filter) > 0 {
+		selectedSkills = filter
+	} else if envFilt := os.Getenv("SKILLS_FILTER"); envFilt != "" {
+		for _, s := range strings.Split(envFilt, ",") {
+			if strings.TrimSpace(s) != "" {
+				selectedSkills = append(selectedSkills, strings.TrimSpace(s))
+			}
+		}
+	} else if dotFilt := dotenvVars["SKILLS_FILTER"]; dotFilt != "" {
+		for _, s := range strings.Split(dotFilt, ",") {
+			if strings.TrimSpace(s) != "" {
+				selectedSkills = append(selectedSkills, strings.TrimSpace(s))
+			}
+		}
+	}
+
+	loaded := make(map[string]*SkillDefinition)
+	filterSet := make(map[string]bool)
+	for _, s := range selectedSkills {
+		filterSet[s] = true
+	}
+	hasFilter := len(filterSet) > 0
+
+	for _, uri := range rootURIs {
+		scheme, target, ref, subpath := ParseSkillRootURI(uri)
+		switch scheme {
+		case "file":
+			p := target
+			if !filepath.IsAbs(p) {
+				baseRoot := FindRegistryRoot()
+				pCand := filepath.Join(baseRoot, target)
+				if isDir(pCand) || isFile(pCand) {
+					p = pCand
+				} else {
+					absP, err := filepath.Abs(target)
+					if err == nil {
+						p = absP
+					}
+				}
+			}
+
+			if isDir(p) {
+				if single, err := LoadSkillFromDir(p); err == nil && single != nil {
+					if !hasFilter || filterSet[single.Name] {
+						loaded[single.Name] = single
+					}
+				} else {
+					skills, err := LoadAllSkills(p, selectedSkills)
+					if err == nil {
+						for k, v := range skills {
+							loaded[k] = v
+						}
+					}
+				}
+			}
+		case "pkg":
+			skills, err := LoadSkillsFromPackage(target, selectedSkills)
+			if err == nil {
+				for k, v := range skills {
+					loaded[k] = v
+				}
+			}
+		case "github":
+			var ghRoots []string
+			if subpath != "" {
+				ghRoots = []string{subpath}
+			}
+			skills, err := LoadSkillsFromGitHub(target, ref, ghRoots, selectedSkills, token, dotenvPath)
+			if err == nil {
+				for k, v := range skills {
+					loaded[k] = v
+				}
+			}
+		}
+	}
+
+	return loaded, nil
+}
+
+// BuildSkillsManifest builds a pre-compiled JSON manifest of all skills for fast loading.
+func BuildSkillsManifest(skillsRoot string, outputPath string) (string, error) {
+	skills, err := LoadAllSkills(skillsRoot, nil)
+	if err != nil {
+		return "", err
+	}
+
+	outFile := outputPath
+	if outFile == "" {
+		outFile = filepath.Join(GetLoaderSkillsDir(), "skills_manifest.json")
+	}
+
+	_ = os.MkdirAll(filepath.Dir(outFile), 0755)
+
+	manifestData := make(map[string]map[string]any)
+	for name, s := range skills {
+		manifestData[name] = s.ToMap()
+		// Overwrite references and examples in raw map with content maps for full serialization
+		manifestData[name]["references"] = s.References
+		manifestData[name]["examples"] = s.Examples
+	}
+
+	data, err := json.MarshalIndent(manifestData, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	err = os.WriteFile(outFile, data, 0644)
+	if err != nil {
+		return "", err
+	}
+	return outFile, nil
+}
+
+// LoadSkillsFromManifest loads skill definitions directly from a pre-compiled JSON manifest file.
+func LoadSkillsFromManifest(manifestPath string) (map[string]*SkillDefinition, error) {
+	content, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return map[string]*SkillDefinition{}, err
+	}
+
+	var rawMap map[string]struct {
+		Name          string            `json:"name"`
+		Description   string            `json:"description"`
+		Instructions  string            `json:"instructions"`
+		License       string            `json:"license"`
+		Author        string            `json:"author"`
+		Version       string            `json:"version"`
+		Compatibility string            `json:"compatibility"`
+		Metadata      map[string]string `json:"metadata"`
+		References    map[string]string `json:"references"`
+		Examples      map[string]string `json:"examples"`
+		Path          string            `json:"path"`
+	}
+
+	if err := json.Unmarshal(content, &rawMap); err != nil {
+		return map[string]*SkillDefinition{}, err
+	}
+
+	loaded := make(map[string]*SkillDefinition)
+	for name, data := range rawMap {
+		loaded[name] = &SkillDefinition{
+			Name:          data.Name,
+			Description:   data.Description,
+			Instructions:  data.Instructions,
+			License:       data.License,
+			Author:        data.Author,
+			Version:       data.Version,
+			Compatibility: data.Compatibility,
+			Metadata:      data.Metadata,
+			References:    data.References,
+			Examples:      data.Examples,
+			Path:          data.Path,
+		}
+	}
+	return loaded, nil
+}
+
+// SkillRegistry provides high-performance skill discovery and querying for Go agent applications.
+type SkillRegistry struct {
+	root   string
+	skills map[string]*SkillDefinition
+}
+
+// NewSkillRegistry creates a SkillRegistry from a skills root directory or qualified roots.
+func NewSkillRegistry(skillsRoot string, roots []string, filter []string, dotenvPath string) (*SkillRegistry, error) {
+	root := skillsRoot
+	if root == "" {
+		root = FindRegistryRoot()
+	}
+
+	var rootList []string
+	if len(roots) > 0 {
+		rootList = roots
+	} else if skillsRoot != "" {
+		rootList = []string{skillsRoot}
+	}
+
+	loaded, err := LoadSkillsFromRoots(rootList, filter, "", dotenvPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SkillRegistry{
+		root:   root,
+		skills: loaded,
+	}, nil
+}
+
+// NewSkillRegistryFromRoots creates a SkillRegistry from explicit root URIs.
+func NewSkillRegistryFromRoots(roots []string, filter []string, token string, dotenvPath string) (*SkillRegistry, error) {
+	loaded, err := LoadSkillsFromRoots(roots, filter, token, dotenvPath)
+	if err != nil {
+		return nil, err
+	}
+	cwd, _ := os.Getwd()
+	return &SkillRegistry{
+		root:   cwd,
+		skills: loaded,
+	}, nil
+}
+
+// NewSkillRegistryFromGitHub creates a SkillRegistry populated from a remote GitHub repository.
+func NewSkillRegistryFromGitHub(repo string, ref string, roots []string, filter []string, token string, dotenvPath string) (*SkillRegistry, error) {
+	loaded, err := LoadSkillsFromGitHub(repo, ref, roots, filter, token, dotenvPath)
+	if err != nil {
+		return nil, err
+	}
+	cwd, _ := os.Getwd()
+	return &SkillRegistry{
+		root:   cwd,
+		skills: loaded,
+	}, nil
+}
+
+// Skills returns map of loaded skill definitions.
+func (r *SkillRegistry) Skills() map[string]*SkillDefinition {
+	return r.skills
+}
+
+// Get retrieves a skill definition by name.
+func (r *SkillRegistry) Get(name string) *SkillDefinition {
+	return r.skills[name]
+}
+
+// ListSkills returns summarized metadata for all registered skills.
+func (r *SkillRegistry) ListSkills() []SkillSummary {
+	summaries := make([]SkillSummary, 0, len(r.skills))
+	for _, s := range r.skills {
+		summaries = append(summaries, SkillSummary{
+			Name:           s.Name,
+			Description:    s.Description,
+			ReferenceCount: len(s.References),
+			ExampleCount:   len(s.Examples),
+			Path:           s.Path,
+		})
+	}
+	sort.Slice(summaries, func(i, j int) bool {
+		return summaries[i].Name < summaries[j].Name
+	})
+	return summaries
+}
+
+// Search searches skills by keyword matching in name, description, instructions, or references.
+func (r *SkillRegistry) Search(query string) []*SkillDefinition {
+	q := strings.ToLower(query)
+	results := make([]*SkillDefinition, 0)
+	for _, s := range r.skills {
+		match := strings.Contains(strings.ToLower(s.Name), q) ||
+			strings.Contains(strings.ToLower(s.Description), q) ||
+			strings.Contains(strings.ToLower(s.Instructions), q)
+
+		if !match {
+			for _, refText := range s.References {
+				if strings.Contains(strings.ToLower(refText), q) {
+					match = true
+					break
+				}
+			}
+		}
+
+		if match {
+			results = append(results, s)
+		}
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Name < results[j].Name
+	})
+	return results
+}
+
+// GetDomainSkills retrieves skills matching a specific language or domain.
+func (r *SkillRegistry) GetDomainSkills(domain string) []*SkillDefinition {
+	domainNorm := strings.ToLower(domain)
+	results := make([]*SkillDefinition, 0)
+	for _, s := range r.skills {
+		if strings.Contains(strings.ToLower(s.Name), domainNorm) ||
+			strings.Contains(strings.ToLower(s.Description), domainNorm) {
+			results = append(results, s)
+		}
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Name < results[j].Name
+	})
+	return results
+}
+
+// --- Helper Functions ---
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+func isFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+func isDirHasFiles(path string) bool {
+	if !isDir(path) {
+		return false
+	}
+	entries, err := os.ReadDir(path)
+	return err == nil && len(entries) > 0
+}
+
+func isWithinBaseDir(baseDir, targetPath string) bool {
+	rel, err := filepath.Rel(baseDir, targetPath)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..")
+}
+
+func rsplitOnce(s, sep string) (string, string) {
+	idx := strings.LastIndex(s, sep)
+	if idx == -1 {
+		return s, ""
+	}
+	return s[:idx], s[idx+len(sep):]
+}
+
+func copyDirContents(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		targetPath := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(targetPath, info.Mode())
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(targetPath, data, info.Mode())
+	})
+}

@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "skillsloader",
+    actual = "//clients/go/pkg/skillsloader",
+)
+
+alias(
+    name = "skills-loader",
+    actual = "//clients/go/cmd/skills-loader",
+)

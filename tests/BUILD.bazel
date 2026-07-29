@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+test_suite(
+    name = "test_skills_e2e",
+    tests = [
+        "//tests/e2e:test_skills_e2e",
+    ],
+)
+
+test_suite(
+    name = "e2e",
+    tests = [
+        "//tests/e2e:test_skills_e2e",
+    ],
+)

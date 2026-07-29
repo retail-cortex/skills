@@ -1,0 +1,73 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
+package(default_visibility = ["//visibility:public"])
+
+java_library(
+    name = "skills_loader_java",
+    srcs = glob(["src/main/java/**/*.java"]),
+    javacopts = ["--release", "17"],
+    data = [
+        "//:skills_data",
+        "//packages/skills-a2a:skills_a2a_data",
+        "//packages/skills-a2ui:skills_a2ui_data",
+        "//packages/skills-bazel:skills_bazel_data",
+        "//packages/skills-database:skills_database_data",
+        "//packages/skills-devops:skills_devops_data",
+        "//packages/skills-frontend:skills_frontend_data",
+        "//packages/skills-go:skills_go_data",
+        "//packages/skills-google-adk-skill-builder:skills_google_adk_skill_builder_data",
+        "//packages/skills-java:skills_java_data",
+        "//packages/skills-protobuf:skills_protobuf_data",
+        "//packages/skills-python:skills_python_data",
+    ],
+    deps = [
+        "@maven//:com_fasterxml_jackson_core_jackson_annotations",
+        "@maven//:com_fasterxml_jackson_core_jackson_core",
+        "@maven//:com_fasterxml_jackson_core_jackson_databind",
+        "@maven//:org_apache_maven_maven_core",
+        "@maven//:org_apache_maven_maven_model",
+        "@maven//:org_apache_maven_maven_plugin_api",
+        "@maven//:org_apache_maven_plugin_tools_maven_plugin_annotations",
+        "@maven//:org_slf4j_slf4j_api",
+        "@maven//:org_yaml_snakeyaml",
+    ],
+)
+
+java_test(
+    name = "skills_loader_java_test",
+    srcs = glob(["src/test/java/**/*.java"]),
+    javacopts = ["--release", "17"],
+    args = ["--select-package", "com.retailcortex.skills.loader"],
+    data = [
+        "//:skills_data",
+        "//packages/skills-a2a:skills_a2a_data",
+        "//packages/skills-a2ui:skills_a2ui_data",
+        "//packages/skills-bazel:skills_bazel_data",
+        "//packages/skills-database:skills_database_data",
+        "//packages/skills-devops:skills_devops_data",
+        "//packages/skills-frontend:skills_frontend_data",
+        "//packages/skills-go:skills_go_data",
+        "//packages/skills-google-adk-skill-builder:skills_google_adk_skill_builder_data",
+        "//packages/skills-java:skills_java_data",
+        "//packages/skills-protobuf:skills_protobuf_data",
+        "//packages/skills-python:skills_python_data",
+    ],
+    main_class = "org.junit.platform.console.ConsoleLauncher",
+    tags = ["local"],
+    use_testrunner = False,
+    deps = [
+        ":skills_loader_java",
+        "@maven//:org_apache_maven_maven_core",
+        "@maven//:org_apache_maven_maven_model",
+        "@maven//:org_apache_maven_maven_plugin_api",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_junit_jupiter_junit_jupiter_api",
+        "@maven//:org_junit_jupiter_junit_jupiter_engine",
+        "@maven//:org_junit_jupiter_junit_jupiter_params",
+        "@maven//:org_junit_platform_junit_platform_console",
+        "@maven//:org_junit_platform_junit_platform_launcher",
+        "@maven//:org_mockito_mockito_core",
+        "@maven//:org_mockito_mockito_junit_jupiter",
+        "@maven//:org_slf4j_slf4j_simple",
+    ],
+)

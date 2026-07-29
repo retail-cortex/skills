@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: database
+tags:
+  - alloydb
+  - postgresql
+  - pgvector
+  - gcp
+trigger_phrases:
+  - "configure AlloyDB"
+  - "pgvector database setup"
+  - "AlloyDB migration TDD"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: true
+  environment_variables:
+    - ALLOYDB_PASSWORD
+  timeout_seconds: 300
 ---
-
 # Google Cloud AlloyDB & pgvector SDLC Skill
 
 This skill prescribes best practices for connecting to, scaling, testing, securing, and managing relational workloads and vector similarity search on **Google Cloud AlloyDB for PostgreSQL**.

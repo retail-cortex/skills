@@ -28,6 +28,7 @@ py_binary(
 
 py_test(
     name = "test_skills_loader",
+    size = "small",
     srcs = ["tests/test_skills_loader.py"],
     data = ["//:skills_data"],
     main = "tests/test_skills_loader.py",
@@ -37,6 +38,7 @@ py_test(
 
 py_test(
     name = "test_agent",
+    size = "small",
     srcs = ["tests/test_agent.py"],
     data = ["//:skills_data"],
     main = "tests/test_agent.py",
@@ -45,6 +47,7 @@ py_test(
 
 py_test(
     name = "test_server",
+    size = "small",
     srcs = ["tests/test_server.py"],
     data = ["//:skills_data"],
     main = "tests/test_server.py",
@@ -53,6 +56,7 @@ py_test(
 
 py_test(
     name = "test_cli",
+    size = "small",
     srcs = ["tests/test_cli.py"],
     data = ["//:skills_data"],
     main = "tests/test_cli.py",

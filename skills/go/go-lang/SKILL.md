@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: go
+tags:
+  - go
+  - golang
+  - microservice
+  - tdd
+trigger_phrases:
+  - "build Go microservice"
+  - "Go table-driven TDD"
+  - "Go nil safety enforcement"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - GOPATH
+  timeout_seconds: 240
 ---
-
 # Go Enterprise Service SDLC Skill
 
 This skill prescribes comprehensive standards for production **Go 1.26+** applications, microservices, and gRPC backends, incorporating **Google OAuth2 Authentication**, **HTTP 429 Rate Limiting**, **CWE Security Hardening**, and **TDD**.

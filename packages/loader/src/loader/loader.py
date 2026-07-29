@@ -242,11 +242,21 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
         description = fm_data.get("description", f"Enterprise skill for {name}")
         license_val = fm_data.get("license")
         author_val = fm_data.get("author")
+        authors_val = fm_data.get("authors") or []
         version_val = fm_data.get("version")
         compatibility_val = fm_data.get("compatibility")
         allowed_tools_val = fm_data.get("allowed-tools") or fm_data.get("allowed_tools")
+        tool_reqs_val = fm_data.get("tool_requirements") or []
+        category_val = fm_data.get("category")
+        tags_val = fm_data.get("tags") or []
+        triggers_val = fm_data.get("trigger_phrases") or []
+        execution_hints_val = fm_data.get("execution_hints") or {}
 
-        known_keys = {"name", "description", "license", "author", "version", "compatibility", "allowed-tools", "allowed_tools"}
+        known_keys = {
+            "name", "description", "license", "author", "authors", "version", "compatibility",
+            "allowed-tools", "allowed_tools", "tool_requirements", "category", "tags",
+            "trigger_phrases", "execution_hints"
+        }
         meta_dict = {k: v for k, v in fm_data.items() if k not in known_keys}
 
         if not author_val and "author" in meta_dict:
@@ -306,9 +316,15 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
             instructions=body.strip(),
             license=license_val,
             author=author_val,
+            authors=authors_val,
             version=version_val,
             compatibility=compatibility_val,
             allowed_tools=allowed_tools_val,
+            tool_requirements=tool_reqs_val,
+            category=category_val,
+            tags=tags_val,
+            trigger_phrases=triggers_val,
+            execution_hints=execution_hints_val,
             metadata=meta_dict,
             references=references,
             examples=examples,
@@ -905,6 +921,9 @@ class SkillRegistry:
                     reference_count=len(s.references),
                     example_count=len(s.examples),
                     path=s.path,
+                    category=s.category,
+                    tags=s.tags,
+                    trigger_phrases=s.trigger_phrases,
                 )
             )
         return summaries

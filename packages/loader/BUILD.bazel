@@ -7,7 +7,10 @@ py_library(
     srcs = glob(["src/loader/**/*.py"]),
     data = ["//:skills_data"],
     imports = ["src"],
-    deps = ["@rules_python//python/runfiles"],
+    deps = [
+        "//api/v1:skills_v1_py_proto",
+        "@rules_python//python/runfiles",
+    ],
 )
 
 py_binary(
@@ -23,6 +26,7 @@ py_binary(
 
 py_test(
     name = "test_loader",
+    size = "small",
     srcs = ["tests/test_loader.py"],
     data = ["//:skills_data"],
     main = "tests/test_loader.py",

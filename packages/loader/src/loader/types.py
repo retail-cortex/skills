@@ -16,6 +16,12 @@ class SkillDefinition:
     version: Optional[str] = None
     compatibility: Optional[str] = None
     allowed_tools: Optional[str] = None
+    authors: List[Dict[str, str]] = field(default_factory=list)
+    tool_requirements: List[Dict[str, object]] = field(default_factory=list)
+    category: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+    trigger_phrases: List[str] = field(default_factory=list)
+    execution_hints: Dict[str, object] = field(default_factory=dict)
     metadata: Dict[str, str] = field(default_factory=dict)
     references: Dict[str, str] = field(default_factory=dict)
     examples: Dict[str, str] = field(default_factory=dict)
@@ -41,9 +47,15 @@ class SkillDefinition:
             "instructions": self.instructions,
             "license": self.license,
             "author": self.author,
+            "authors": self.authors,
             "version": self.version,
             "compatibility": self.compatibility,
             "allowed_tools": self.allowed_tools,
+            "tool_requirements": self.tool_requirements,
+            "category": self.category,
+            "tags": self.tags,
+            "trigger_phrases": self.trigger_phrases,
+            "execution_hints": self.execution_hints,
             "metadata": self.metadata,
             "references": list(self.references.keys()),
             "examples": list(self.examples.keys()),
@@ -60,3 +72,6 @@ class SkillSummary:
     reference_count: int
     example_count: int
     path: str
+    category: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+    trigger_phrases: List[str] = field(default_factory=list)

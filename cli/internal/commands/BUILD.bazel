@@ -7,6 +7,7 @@ go_library(
     srcs = ["commands.go"],
     importpath = "github.com/retail-cortex/skills/cli/internal/commands",
     deps = [
+        "//api/v1:skills_v1_go_proto",
         "//cli/internal/installer",
         "//cli/internal/validator",
         "//clients/go/pkg/skillsloader",
@@ -15,6 +16,7 @@ go_library(
 
 go_test(
     name = "commands_test",
+    size = "small",
     srcs = ["commands_test.go"],
     embed = [":commands"],
     deps = [

@@ -13,6 +13,7 @@ go_library(
 
 go_test(
     name = "validator_test",
+    size = "small",
     srcs = ["validator_test.go"],
     embed = [":validator"],
     deps = [

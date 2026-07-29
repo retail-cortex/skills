@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: python
+tags:
+  - python
+  - fastapi
+  - rest
+  - slowapi
+trigger_phrases:
+  - "build FastAPI REST API"
+  - "FastAPI rate limiting setup"
+  - "FastAPI OAuth2 bearer"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 240
 ---
-
 # FastAPI Enterprise REST SDLC Skill
 
 This skill prescribes best practices for designing, securing, testing, and deploying enterprise-grade **FastAPI** web services in Python 3.13, incorporating **Google OAuth2 Authentication**, **HTTP 429 Rate Limiting**, and **TDD**.

@@ -468,3 +468,228 @@ func TestManifestLockAndVerification(t *testing.T) {
 	assert.Equal(t, "missing", reportMiss.Results[0].Status)
 }
 
+func TestHardenedFrontmatterFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillDir := filepath.Join(tmpDir, "hardened-skill")
+	require.NoError(t, os.MkdirAll(skillDir, 0755))
+
+	content := `---
+name: hardened-skill
+description: Hardened test skill
+license: Apache-2.0
+author: Core Team
+category: go
+tags:
+  - go
+  - microservice
+trigger_phrases:
+  - "scaffold Go microservice"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  timeout_seconds: 120
+---
+# Instructions
+`
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0644))
+
+	s, err := LoadSkillFromDir(skillDir)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	assert.Equal(t, "hardened-skill", s.Name)
+	assert.Equal(t, "go", s.Category)
+	assert.Contains(t, s.Tags, "go")
+	assert.Contains(t, s.TriggerPhrases, "scaffold Go microservice")
+	assert.NotNil(t, s.ExecutionHints)
+	assert.Equal(t, "gemini-3.1-pro", s.ExecutionHints.PreferredModel)
+	assert.Equal(t, 120, s.ExecutionHints.TimeoutSeconds)
+}
+
+func TestManifestLockErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Calculate checksum non-existent dir
+	_, err := CalculateSkillChecksum(filepath.Join(tmpDir, "nonexistent"))
+	assert.Error(t, err)
+
+	// Write nil lock
+	err = WriteManifestLock(tmpDir, nil)
+	assert.Error(t, err)
+
+	// Read corrupted JSON lock
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".manifest.lock"), []byte("{bad json"), 0644))
+	_, err = ReadManifestLock(tmpDir)
+	assert.Error(t, err)
+
+	// Unzip invalid zip file
+	badZip := filepath.Join(tmpDir, "bad.zip")
+	_ = os.WriteFile(badZip, []byte("not a zip"), 0644)
+	err = unzipFile(badZip, tmpDir)
+	assert.Error(t, err)
+}
+
+func TestLoadSkillsFromGoModule_WorkspaceFallback(t *testing.T) {
+	skills, err := LoadSkillsFromGoModule("skills-go", "", nil, []string{"go-lang"})
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "go-lang")
+}
+
+func TestLoadSkillsFromMaven_WorkspaceFallback(t *testing.T) {
+	skills, err := LoadSkillsFromMaven("com.retailcortex.skills:skills-java:1.0.0", "1.0.0", nil, []string{"java-enterprise"})
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "java-enterprise")
+}
+
+func TestSkillRegistryFromGitHub_Mock(t *testing.T) {
+	loaderBase := GetLoaderSkillsDir()
+	ghDir := filepath.Join(loaderBase, "github", "test-org_test-repo", "v1.0.0")
+	skillDir := filepath.Join(ghDir, "skills", "gh-mock-skill")
+	_ = os.MkdirAll(filepath.Join(skillDir, "references"), 0755)
+	_ = os.MkdirAll(filepath.Join(skillDir, "examples"), 0755)
+	_ = os.WriteFile(filepath.Join(skillDir, "references", "ref.md"), []byte("ref"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "examples", "ex.md"), []byte("ex"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: gh-mock-skill\n---\nBody"), 0644)
+	defer os.RemoveAll(filepath.Join(loaderBase, "github", "test-org_test-repo"))
+
+	reg, err := NewSkillRegistryFromGitHub("test-org/test-repo", "v1.0.0", nil, []string{"gh-mock-skill"}, "", "")
+	assert.NoError(t, err)
+	assert.NotNil(t, reg.Get("gh-mock-skill"))
+}
+
+func TestLoadSkillsFromRoots_EnvVars(t *testing.T) {
+	tmpDir := t.TempDir()
+	envPath := filepath.Join(tmpDir, ".env")
+	content := "SKILLS_ROOTS=file://.\nSKILLS_FILTER=python-core\n"
+	_ = os.WriteFile(envPath, []byte(content), 0644)
+
+	skills, err := LoadSkillsFromRoots(nil, nil, "", envPath)
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "python-core")
+}
+
+func TestCoverageBoost(t *testing.T) {
+	// 1. Line-based fallback parser in ParseFrontmatter
+	badYamlFM := "---\nname: fallback-skill\ninvalid: [yaml: foo\ndescription: fallback desc\n---\nBody"
+	fm, body := ParseFrontmatter(badYamlFM)
+	assert.Equal(t, "fallback-skill", fm["name"])
+	assert.NotEmpty(t, body)
+
+	// 2. LoadSkillsFromRoots with unsupported or invalid URIs
+	roots := []string{
+		"unknown://foo",
+		"file:///nonexistent_path_12345",
+		"pkg://nonexistent_pkg_12345",
+		"mod://nonexistent_mod_12345@v1.0.0",
+		"maven://nonexistent.group:artifact:1.0.0",
+	}
+	loaded, err := LoadSkillsFromRoots(roots, nil, "", "")
+	assert.NoError(t, err)
+	assert.Empty(t, loaded)
+
+	// 3. Helper functions: isDirHasFiles, copyDirContents
+	tmpDir := t.TempDir()
+	assert.False(t, isDirHasFiles(tmpDir))
+	_ = os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("data"), 0644)
+	assert.True(t, isDirHasFiles(tmpDir))
+
+	dstDir := filepath.Join(t.TempDir(), "dst")
+	err = copyDirContents(tmpDir, dstDir)
+	assert.NoError(t, err)
+	assert.FileExists(t, filepath.Join(dstDir, "file.txt"))
+
+	// 4. LoadSkillsFromGitHub with unknown repo
+	_, err = LoadSkillsFromGitHub("nonexistent-owner-12345/nonexistent-repo-67890", "main", nil, nil, "", "")
+	assert.Error(t, err)
+
+	// 5. FindRegistryRoot environment variable branches
+	_ = os.MkdirAll(filepath.Join(tmpDir, "skills"), 0755)
+	t.Setenv("BUILD_WORKSPACE_DIRECTORY", tmpDir)
+	resRoot := FindRegistryRoot()
+	assert.Equal(t, tmpDir, resRoot)
+
+
+	testSrc := t.TempDir()
+	t.Setenv("BUILD_WORKSPACE_DIRECTORY", "")
+	t.Setenv("TEST_SRCDIR", testSrc)
+	t.Setenv("TEST_WORKSPACE", "_main")
+	_ = os.MkdirAll(filepath.Join(testSrc, "_main", "skills"), 0755)
+	resRoot2 := FindRegistryRoot()
+	assert.Equal(t, filepath.Join(testSrc, "_main"), resRoot2)
+
+	// 6. rsplitOnce
+	p1, p2 := rsplitOnce("foo:bar:baz", ":")
+	assert.Equal(t, "foo:bar", p1)
+	assert.Equal(t, "baz", p2)
+	p3, p4 := rsplitOnce("no_sep", ":")
+	assert.Equal(t, "no_sep", p3)
+	assert.Equal(t, "", p4)
+
+	// 7. UpdateManifestLock auto-checksum
+	destDir := t.TempDir()
+	skillDir := filepath.Join(destDir, "auto-cs-skill")
+	_ = os.MkdirAll(skillDir, 0755)
+	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: auto-cs-skill\n---\nHello"), 0644)
+	err = UpdateManifestLock(destDir, "auto-cs-skill", "file://"+skillDir, "")
+	assert.NoError(t, err)
+
+	// 8. NewSkillRegistry default fallback
+	regDefault, err := NewSkillRegistry("", []string{"file://" + skillDir}, nil, "")
+	assert.NoError(t, err)
+	assert.NotNil(t, regDefault.Get("auto-cs-skill"))
+
+	// 9. LoadSkillsFromGitHub with tree path & https URL
+	envPath := filepath.Join(tmpDir, ".env")
+	_, _ = LoadSkillsFromGitHub("https://github.com/mock-owner/mock-repo/tree/v1.0.0/skills", "v1.0.0", nil, nil, "token123", envPath)
+	_, _ = LoadSkillsFromGitHub("mock-owner/mock-repo.git", "", []string{"skills"}, []string{"skill1"}, "", "")
+
+
+	// 10. BuildSkillsManifest error
+	_, err = BuildSkillsManifest(tmpDir, "/invalid_dir_12345/manifest.json")
+	assert.Error(t, err)
+
+	// 11. WriteManifestLock empty version
+	lockEmptyVer := &ManifestLock{Version: "", Skills: nil}
+	err = WriteManifestLock(tmpDir, lockEmptyVer)
+	assert.NoError(t, err)
+	assert.Equal(t, "1.0.0", lockEmptyVer.Version)
+
+	// 12. SkillDefinition helper methods
+	defNil := &SkillDefinition{}
+	assert.Equal(t, "", defNil.GetReferenceContent("any"))
+	assert.Equal(t, "", defNil.GetExampleContent("any"))
+
+	defFull := &SkillDefinition{
+		Name:           "full-skill",
+		Description:    "Full skill desc",
+		Category:       "devops",
+		Tags:           []string{"tag1"},
+		TriggerPhrases: []string{"phrase1"},
+		ExecutionHints: &ExecutionHints{PreferredModel: "gemini"},
+		References:     map[string]string{"ref1.md": "content1"},
+		Examples:       map[string]string{"ex1.py": "content2"},
+	}
+	mFull := defFull.ToMap()
+	assert.Equal(t, "full-skill", mFull["name"])
+
+	// 13. GoModule and Maven subpath root testing
+	t.Setenv("GOPATH", tmpDir)
+	modDir := filepath.Join(tmpDir, "pkg", "mod", "github.com", "mock-owner", "mock-sub@v1.0.0")
+	_ = os.MkdirAll(filepath.Join(modDir, "subfolder", "skills", "sub-skill"), 0755)
+	_ = os.WriteFile(filepath.Join(modDir, "subfolder", "skills", "sub-skill", "SKILL.md"), []byte("---\nname: sub-skill\n---\nBody"), 0644)
+
+	skillsSub, err := LoadSkillsFromGoModule("github.com/mock-owner/mock-sub", "v1.0.0", []string{"subfolder"}, nil)
+	assert.NoError(t, err)
+	assert.Contains(t, skillsSub, "sub-skill")
+}
+
+
+
+
+
+
+
+
+
+
+

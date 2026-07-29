@@ -2,7 +2,7 @@
 
 [![Coverage](coverage.svg)](https://github.com/retail-cortex/skills)
 
-This registry provides a comprehensive, standardized suite of 23 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
+This registry provides a comprehensive, standardized suite of 33 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
 
 ---
 

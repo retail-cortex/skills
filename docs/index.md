@@ -1,6 +1,6 @@
 # Project Overview: Agent Skill Builder
 
-Welcome to the **Agent Skill Builder** documentation. This registry provides a comprehensive, standardized suite of 23 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
+Welcome to the **Agent Skill Builder** documentation. This registry provides a comprehensive, standardized suite of 33 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
 
 ---
 
@@ -48,7 +48,9 @@ uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-poly
 This documentation site is organized into logical sections:
 
 - [Project Overview](index.md): Introduction, quickstart commands, repository layout, and licensing.
+- [Specification](specification.md): Enterprise AI Agent Skills Specification (v1.0.0), frontmatter schema, 5-point SDLC compliance, `.manifest.lock` cryptographic integrity, and polyglot URI resolution.
 - [Architecture](architecture.md): Engineering standards, Google OAuth2 integration, HTTP 429 rate limit resilience, and multi-language defensive safety.
+- [Critical Analysis](analysis.md): Comparative analysis against agentskills.io specification and ecosystem showcase clients.
 - [Skills Registry](skills.md): Specialized domain and technology skills catalog.
 - [Packages](packages.md): Modular Python workspace packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`) and Bazel targets.
 - [Examples](examples.md): Standalone integration packages, web servers, and setup guides.

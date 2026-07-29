@@ -13,9 +13,12 @@ java_library(
         "//packages/skills-python:skills_python_data",
     ],
     deps = [
+        "//api/v1:skills_v1_java_proto",
         "@maven//:com_fasterxml_jackson_core_jackson_annotations",
         "@maven//:com_fasterxml_jackson_core_jackson_core",
         "@maven//:com_fasterxml_jackson_core_jackson_databind",
+        "@maven//:com_google_protobuf_protobuf_java",
+        "@maven//:javax_annotation_javax_annotation_api",
         "@maven//:org_apache_maven_maven_core",
         "@maven//:org_apache_maven_maven_model",
         "@maven//:org_apache_maven_maven_plugin_api",
@@ -27,6 +30,7 @@ java_library(
 
 java_test(
     name = "skills_loader_java_test",
+    size = "small",
     srcs = glob(["src/test/java/**/*.java"]),
     javacopts = ["--release", "17"],
     args = ["--select-package", "com.retailcortex.skills.loader"],

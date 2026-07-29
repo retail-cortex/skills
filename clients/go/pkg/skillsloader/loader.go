@@ -312,14 +312,20 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 
 	metaDict := make(map[string]string)
 	knownKeys := map[string]bool{
-		"name":          true,
-		"description":   true,
-		"license":       true,
-		"author":        true,
-		"version":       true,
-		"compatibility": true,
-		"allowed-tools": true,
-		"allowed_tools": true,
+		"name":            true,
+		"description":     true,
+		"license":         true,
+		"author":          true,
+		"version":         true,
+		"compatibility":   true,
+		"allowed-tools":   true,
+		"allowed_tools":   true,
+		"category":        true,
+		"tags":            true,
+		"trigger_phrases": true,
+		"execution_hints": true,
+		"authors":         true,
+		"tool_requirements": true,
 	}
 
 	for k, v := range fmData {
@@ -340,6 +346,36 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 		version = metaDict["version"]
 	} else if metaDict["version"] == "" {
 		metaDict["version"] = version
+	}
+
+	// Parse structured YAML frontmatter for complex fields
+	var structFm struct {
+		Category       string   `yaml:"category"`
+		Tags           []string `yaml:"tags"`
+		TriggerPhrases []string `yaml:"trigger_phrases"`
+		ExecutionHints *struct {
+			PreferredModel        string            `yaml:"preferred_model"`
+			RequiresHumanApproval bool              `yaml:"requires_human_approval"`
+			EnvironmentVariables  []string          `yaml:"environment_variables"`
+			TimeoutSeconds        int               `yaml:"timeout_seconds"`
+			CustomHints           map[string]string `yaml:"custom_hints"`
+		} `yaml:"execution_hints"`
+	}
+
+	re := regexp.MustCompile(`(?s)^---\s*\n(.*?)\n---\s*\n`)
+	if m := re.FindStringSubmatch(string(content)); len(m) > 1 {
+		_ = yaml.Unmarshal([]byte(m[1]), &structFm)
+	}
+
+	var execHints *ExecutionHints
+	if structFm.ExecutionHints != nil {
+		execHints = &ExecutionHints{
+			PreferredModel:        structFm.ExecutionHints.PreferredModel,
+			RequiresHumanApproval: structFm.ExecutionHints.RequiresHumanApproval,
+			EnvironmentVariables:  structFm.ExecutionHints.EnvironmentVariables,
+			TimeoutSeconds:        structFm.ExecutionHints.TimeoutSeconds,
+			CustomHints:           structFm.ExecutionHints.CustomHints,
+		}
 	}
 
 	references := make(map[string]string)
@@ -375,18 +411,22 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 	}
 
 	def := &SkillDefinition{
-		Name:          name,
-		Description:   desc,
-		Instructions:  strings.TrimSpace(body),
-		License:       fmData["license"],
-		Author:        author,
-		Version:       version,
-		Compatibility: fmData["compatibility"],
-		AllowedTools:  allowedTools,
-		Metadata:      metaDict,
-		References:    references,
-		Examples:      examples,
-		Path:          skillDir,
+		Name:           name,
+		Description:    desc,
+		Instructions:   strings.TrimSpace(body),
+		License:        fmData["license"],
+		Author:         author,
+		Version:        version,
+		Compatibility:  fmData["compatibility"],
+		AllowedTools:   allowedTools,
+		Category:       structFm.Category,
+		Tags:           structFm.Tags,
+		TriggerPhrases: structFm.TriggerPhrases,
+		ExecutionHints: execHints,
+		Metadata:       metaDict,
+		References:     references,
+		Examples:       examples,
+		Path:           skillDir,
 	}
 
 	return def, nil
@@ -1271,6 +1311,9 @@ func (r *SkillRegistry) ListSkills() []SkillSummary {
 			ReferenceCount: len(s.References),
 			ExampleCount:   len(s.Examples),
 			Path:           s.Path,
+			Category:       s.Category,
+			Tags:           s.Tags,
+			TriggerPhrases: s.TriggerPhrases,
 		})
 	}
 	sort.Slice(summaries, func(i, j int) bool {

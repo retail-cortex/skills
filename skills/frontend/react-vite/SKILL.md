@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: frontend
+tags:
+  - react
+  - vite
+  - oauth2
+  - typescript
+trigger_phrases:
+  - "scaffold React Vite app"
+  - "Google OAuth2 GIS integration"
+  - "React 19 Vite setup"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - VITE_GOOGLE_CLIENT_ID
+  timeout_seconds: 240
 ---
-
 # React 19 & Vite 6 Frontend Architecture & SDLC Skill
 
 This skill prescribes comprehensive standards for frontend single-page applications and micro-frontends with **React 19**, **Vite 6**, **TypeScript**, and **Tailwind CSS v4**, emphasizing **Google OAuth2 Integration**, **HTTP 429 Resilience**, **TDD**, **Null Safety**, and **Secure Coding**.

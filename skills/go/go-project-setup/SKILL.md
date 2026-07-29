@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: go
+tags:
+  - go
+  - scaffolding
+  - bazel
+  - cmd-internal
+trigger_phrases:
+  - "scaffold Go project"
+  - "Go project layout setup"
+  - "cmd internal Go structure"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - GOPATH
+  timeout_seconds: 240
 ---
-
 # Go Project Setup Meta-Skill (Enterprise Layout Standard)
 
 This meta-skill provides automated scaffolding instructions and templates for initializing enterprise **Go** microservices adhering to compiler-enforced package boundaries, **Bazel** hermetic builds, and dedicated `configs/` manifests.

@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: devops
+tags:
+  - nx
+  - monorepo
+  - typescript
+  - micro-frontend
+trigger_phrases:
+  - "configure NX monorepo"
+  - "NX affected build setup"
+  - "Module federation shell"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 300
 ---
-
 # NX Polyglot Monorepo SDLC Skill
 
 This skill prescribes best practices for managing enterprise polyglot repositories using **NX** orchestration alongside Python **uv** workspaces, TypeScript/React applications, Go microservices, and Bazel integration.

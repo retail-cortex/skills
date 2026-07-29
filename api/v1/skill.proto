@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package retailcortex.skills.v1;
+
+option go_package = "github.com/retail-cortex/skills/api/v1;skillsv1";
+option java_package = "com.retailcortex.skills.api.v1";
+option java_multiple_files = true;
+
+// AuthorDetails represents structured attribution for a skill contributor.
+message AuthorDetails {
+  string name = 1;
+  string email = 2;
+  string url = 3;
+}
+
+// ToolRequirement represents a structured permission contract for agent tool execution.
+message ToolRequirement {
+  string name = 1;           // e.g. "Bash", "Read", "WebSearch"
+  repeated string scopes = 2; // e.g. ["git:*", "uv:*"]
+  string description = 3;     // Rationale for requesting tool execution
+}
+
+// ExecutionHints provides operational parameters for LLM agents, routers, and orchestrators.
+message ExecutionHints {
+  string preferred_model = 1;              // e.g. "gemini-3.1-pro", "gemini-2.0-flash"
+  bool requires_human_approval = 2;         // True if the skill performs high-risk or destructive actions
+  repeated string environment_variables = 3; // Required env vars (e.g. ["GITHUB_TOKEN", "GOPATH"])
+  int32 timeout_seconds = 4;                // Max recommended execution duration in seconds
+  map<string, string> custom_hints = 5;      // Arbitrary key-value execution directives
+}
+
+// SkillDefinition defines the core structural model for an enterprise AI agent skill.
+message SkillDefinition {
+  string name = 1;
+  string description = 2;
+  string instructions = 3;
+  string license = 4;
+  
+  // Attribution
+  string author = 5;                     // Legacy single-string author for backward compatibility
+  repeated AuthorDetails authors = 13;   // Strongly-typed list of contributors
+
+  string version = 6;
+  string compatibility = 7;
+  
+  // Tool Permissions & Security Contracts
+  string allowed_tools = 8;              // Legacy flat string for backward compatibility
+  repeated ToolRequirement tool_requirements = 14; // Strongly-typed tool permissions
+
+  map<string, string> metadata = 9;
+  map<string, string> references = 10;
+  map<string, string> examples = 11;
+  string path = 12;
+
+  // Categorization & Intent Triggers
+  string category = 15;                  // Domain category (e.g. "devops", "database", "python")
+  repeated string tags = 16;             // Search tags for fast registry discovery
+  repeated string trigger_phrases = 17;   // Explicit phrases or intent triggers (e.g. "scaffold Go microservice")
+
+  // Agent Execution Guidelines
+  ExecutionHints execution_hints = 18;    // Operational hints for LLM orchestrators
+}
+
+// SkillSummary provides a lightweight summary of a skill definition for listing and discovery.
+message SkillSummary {
+  string name = 1;
+  string description = 2;
+  int32 reference_count = 3;
+  int32 example_count = 4;
+  string path = 5;
+  string category = 6;
+  repeated string tags = 7;
+  repeated string trigger_phrases = 8;
+}

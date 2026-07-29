@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: python
+tags:
+  - python
+  - uv
+  - pyproject
+  - scaffolding
+trigger_phrases:
+  - "scaffold Python project"
+  - "uv pyproject.toml setup"
+  - "Python package layout"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 180
 ---
-
 # Python Project Setup Meta-Skill (uv & Bazel Standard)
 
 This meta-skill provides automated scaffolding instructions and templates for initializing enterprise **Python 3.13** projects powered by **uv**, wrapped in **Bazel**, and configured with dedicated infrastructure manifests in `configs/`.

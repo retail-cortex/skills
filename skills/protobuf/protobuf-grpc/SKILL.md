@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: protobuf
+tags:
+  - protobuf
+  - grpc
+  - schema
+  - bazel
+trigger_phrases:
+  - "define Protobuf gRPC service"
+  - "Buf breaking change check"
+  - "gRPC proto3 schema"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 240
 ---
-
 # Protocol Buffers & gRPC SDLC Skill
 
 This skill prescribes best practices for designing schema-first API contracts with **Protocol Buffers**, generating strongly typed gRPC stubs across Go, Python, TypeScript, and Java, and enforcing complete SDLC verification.

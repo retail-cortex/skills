@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: meta-skill
+tags:
+  - adk
+  - skill-builder
+  - generator
+  - meta-skill
+trigger_phrases:
+  - "build new AI agent skill"
+  - "generate ADK skill definition"
+  - "scaffold enterprise skill"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 300
 ---
-
 # ADK Meta-Skill Factory SDLC Skill
 
 This skill follows the **Skill Factory Pattern** from the Google ADK Progressive Disclosure architecture, enforcing full SDLC rigor (TDD with ADK evaluators, CI/CD validation, Human-in-the-loop security, HTTP 429 resilience, and SemVer).

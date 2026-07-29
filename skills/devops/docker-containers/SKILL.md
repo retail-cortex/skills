@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: devops
+tags:
+  - docker
+  - container
+  - multi-stage
+  - trivy
+trigger_phrases:
+  - "build Docker container"
+  - "multi-stage Dockerfile setup"
+  - "Trivy container scan"
+execution_hints:
+  preferred_model: "gemini-2.0-flash"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 240
 ---
-
 # Docker Multi-Stage Containerization SDLC Skill
 
 This skill prescribes best practices for creating secure, minimal, reproducible, and verifiable **Docker container images** for enterprise microservices and AI agent backends.

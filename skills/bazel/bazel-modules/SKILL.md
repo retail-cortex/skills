@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: bazel
+tags:
+  - bazel
+  - bzlmod
+  - monorepo
+  - hermetic
+trigger_phrases:
+  - "configure Bazel bzlmod"
+  - "setup Bazel build"
+  - "hermetic Bazel TDD"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - BAZEL_CXXOPTS
+  timeout_seconds: 300
 ---
-
 # Bazel Modules & Bzlmod Dependency SDLC Skill
 
 This skill prescribes best practices for designing, managing, securing, and testing enterprise polyglot repositories using **Bazel 8/9** and the **Bzlmod** dependency system.

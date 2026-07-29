@@ -17,6 +17,7 @@ py_binary(
 
 py_test(
     name = "test_validator",
+    size = "small",
     srcs = ["tests/test_validator.py"],
     data = ["//:skills_data"],
     main = "tests/test_validator.py",

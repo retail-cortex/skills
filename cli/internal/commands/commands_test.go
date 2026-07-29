@@ -388,3 +388,46 @@ func TestExecute_InitFlags(t *testing.T) {
 	assert.Contains(t, string(skillMD), "author: Jane Doe")
 	assert.Contains(t, string(skillMD), "version: 2.0.0")
 }
+
+func TestExecute_Verify(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillDir := filepath.Join(tmpDir, "verify-skill")
+	_ = os.MkdirAll(skillDir, 0755)
+	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: verify-skill\n---\nBody"), 0644)
+
+	// Create .manifest.lock
+	lockContent := `{
+  "version": "1.0.0",
+  "skills": {
+    "verify-skill": {
+      "skill_name": "verify-skill",
+      "uri": "file://` + filepath.ToSlash(skillDir) + `",
+      "sha256": "4a7c8e9b01d2e3f4a5b6c7d8e9f01a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f"
+    }
+  }
+}`
+	_ = os.WriteFile(filepath.Join(tmpDir, ".manifest.lock"), []byte(lockContent), 0644)
+
+	// Verify text
+	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
+	code := Execute([]string{"verify", "-d", tmpDir}, out, errOut)
+	assert.Equal(t, 1, code) // Status is modified because sha256 doesn't match dummy
+	assert.Contains(t, out.String(), "SKM Skill Integrity Verification Report")
+
+	// Verify JSON
+	out2 := &bytes.Buffer{}
+	errOut2 := &bytes.Buffer{}
+	code = Execute([]string{"verify", "--dir=" + tmpDir, "--json"}, out2, errOut2)
+	assert.Equal(t, 1, code)
+	assert.Contains(t, out2.String(), "\"target_dir\"")
+
+	// Verify missing lockfile
+	emptyDir := t.TempDir()
+	out3 := &bytes.Buffer{}
+	errOut3 := &bytes.Buffer{}
+	code = Execute([]string{"verify", "-d=" + emptyDir}, out3, errOut3)
+	assert.Equal(t, 1, code)
+	assert.Contains(t, errOut3.String(), "Error verifying skills integrity")
+}
+

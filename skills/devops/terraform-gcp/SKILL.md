@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: devops
+tags:
+  - terraform
+  - gcp
+  - iac
+  - gcs
+trigger_phrases:
+  - "provision Terraform GCP infrastructure"
+  - "Terraform GCS remote state"
+  - "tflint CI validation"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: true
+  environment_variables:
+    - GOOGLE_CREDENTIALS
+  timeout_seconds: 300
 ---
-
 # GCP Infrastructure as Code & Terraform SDLC Skill
 
 This skill prescribes best practices for provisioning and managing **Google Cloud Platform (GCP)** enterprise infrastructure using **Terraform**, hermetic Bazel `rules_tf` toolchains, and complete SDLC rigor.

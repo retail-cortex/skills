@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: go
+tags:
+  - go
+  - modenv
+  - configuration
+  - toml
+trigger_phrases:
+  - "load modenv configuration"
+  - "cascading TOML setup"
+  - "XOR cipher memory decryption"
+execution_hints:
+  preferred_model: "gemini-2.0-flash"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 180
 ---
-
 # Hierarchical TOML Configuration SDLC Skill (modenv)
 
 This skill prescribes best practices for application configuration across all programming languages using **hierarchical TOML cascading configuration** and the **modenv** architecture.

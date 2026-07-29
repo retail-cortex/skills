@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: java
+tags:
+  - java
+  - maven
+  - scaffolding
+  - pom
+trigger_phrases:
+  - "scaffold Java project"
+  - "Maven Java project setup"
+  - "Java Maven POM layout"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - JAVA_HOME
+  timeout_seconds: 240
 ---
-
 # Java 25 (LTS) Project Setup Meta-Skill (Maven & Bazel Standard)
 
 This meta-skill provides automated scaffolding instructions and templates for initializing enterprise **Java 25 (LTS)** microservices using **Maven** (`pom.xml`), **Bazel** (`rules_java`), **Javalin 6+**, and a dedicated `configs/` directory.

@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: a2ui
+tags:
+  - a2ui
+  - ui
+  - iframe
+  - gemini
+trigger_phrases:
+  - "render agent UI"
+  - "A2UI iframe security"
+  - "postMessage origin checks"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 180
 ---
-
 # A2UI Sandboxing & Gemini Enterprise Integration SDLC Skill
 
 This skill prescribes best practices, design guidelines, and schema constraints for converting model card responses into **A2UI v0.8 stable** message payloads and rendering dynamic, branded, interactive UI components inside sandboxed iframes in Gemini Enterprise.

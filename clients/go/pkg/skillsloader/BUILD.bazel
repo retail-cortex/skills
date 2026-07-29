@@ -12,12 +12,14 @@ go_library(
     ],
     importpath = "github.com/retail-cortex/skills/clients/go/pkg/skillsloader",
     deps = [
+        "//api/v1:skills_v1_go_proto",
         "@in_gopkg_yaml_v3//:yaml_v3",
     ],
 )
 
 go_test(
     name = "skillsloader_test",
+    size = "small",
     srcs = [
         "loader_test.go",
         "types_test.go",

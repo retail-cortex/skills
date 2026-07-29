@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: devops
+tags:
+  - opentelemetry
+  - tracing
+  - gcp
+  - otel
+trigger_phrases:
+  - "configure OpenTelemetry"
+  - "setup GCP tracing"
+  - "OTel span exporter TDD"
+execution_hints:
+  preferred_model: "gemini-2.0-flash"
+  requires_human_approval: false
+  environment_variables:
+    - OTEL_EXPORTER_OTLP_ENDPOINT
+  timeout_seconds: 180
 ---
-
 # OpenTelemetry & Google Cloud Trace SDLC Skill
 
 This skill prescribes best practices for instrumenting enterprise Python applications, FastAPI services, and Google ADK agents with **OpenTelemetry**, exporting traces to **Google Cloud Trace**, and applying strict SDLC standards.

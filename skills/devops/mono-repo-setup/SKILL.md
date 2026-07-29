@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: devops
+tags:
+  - monorepo
+  - bazel
+  - polyglot
+  - scaffolding
+trigger_phrases:
+  - "scaffold Bazel monorepo"
+  - "setup polyglot monorepo"
+  - "Bzlmod root setup"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 300
 ---
-
 # Monorepo Setup Meta-Skill (Bazel Bzlmod Standard)
 
 This meta-skill provides automated, security-hardened scaffolding instructions and templates for establishing an enterprise **Polyglot Monorepo** powered by **Bazel 8/9 (Bzlmod)**.

@@ -5,8 +5,25 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: python
+tags:
+  - python
+  - uv
+  - typing
+  - pytest
+trigger_phrases:
+  - "write Python core code"
+  - "uv Python project setup"
+  - "Python strict type hints"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables: []
+  timeout_seconds: 180
 ---
-
 # Python Core & Ecosystem SDLC Skill
 
 This skill enforces enterprise Python engineering standards leveraging **Python 3.13**, **uv**, **Pydantic v2**, **SQLModel**, **Google GenAI SDK** (`google-genai`), **Test-Driven Development (TDD)**, **90% Code Coverage**, **HTTP 429 Rate Limit Resilience**, and **Null/None Safety**.

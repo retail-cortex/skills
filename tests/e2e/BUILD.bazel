@@ -12,6 +12,7 @@ py_library(
 
 py_test(
     name = "test_skills_e2e",
+    size = "small",
     srcs = ["test_skills_e2e.py"],
     data = ["//:skills_data"],
     main = "test_skills_e2e.py",

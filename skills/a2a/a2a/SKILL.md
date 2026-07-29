@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: a2a
+tags:
+  - a2a
+  - protocol
+  - agent
+  - hmac
+trigger_phrases:
+  - "setup A2A protocol"
+  - "agent to agent communication"
+  - "A2A message authorization"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - A2A_AUTH_TOKEN
+  timeout_seconds: 180
 ---
-
 # Agent-to-Agent (A2A) Protocol & Multi-Agent Orchestration SDLC Skill
 
 This skill prescribes best practices for building distributed multi-agent systems using the **Agent-to-Agent (A2A)** communication protocol, message dispatchers, and autonomous agent orchestration.

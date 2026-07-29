@@ -13,6 +13,7 @@ go_library(
 
 go_test(
     name = "installer_test",
+    size = "small",
     srcs = ["installer_test.go"],
     embed = [":installer"],
     deps = [

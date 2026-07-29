@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: database
+tags:
+  - bigquery
+  - sql
+  - data-lake
+  - gcp
+trigger_phrases:
+  - "run BigQuery dry-run query"
+  - "BigQuery dataset setup"
+  - "SQLFluff linting"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - GOOGLE_CLOUD_PROJECT
+  timeout_seconds: 300
 ---
-
 # Google Cloud BigQuery & CAPI SDLC Skill
 
 This skill prescribes best practices for querying enterprise data warehouses using the **BigQuery Python SDK** (`google-cloud-bigquery`), integrating **BigQuery Conversational Analytics (CAPI)** via `geminidataanalytics`, and enforcing complete SDLC rigor.

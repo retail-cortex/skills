@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: python
+tags:
+  - python
+  - adk
+  - fastapi
+  - gemini
+trigger_phrases:
+  - "build FastAPI ADK agent"
+  - "wrap ADK in FastAPI"
+  - "create ADK agent service"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - GITHUB_TOKEN
+  timeout_seconds: 300
 ---
-
 # ADK FastAPI Agent Integration & SDLC Skill (Superior Pattern)
 
 This skill prescribes the **superior enterprise pattern** for deploying **Google Agent Development Kit (ADK)** agents: wrapping the agent execution runner inside a **FastAPI** web service, executing it on **Uvicorn**, and enforcing **Google OAuth2 End-User Token Delegation** alongside HTTP 429 resilience.

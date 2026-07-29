@@ -5,8 +5,26 @@ license: Apache-2.0
 metadata:
   author: Ryan McGuinness
   version: "1.0"
+authors:
+  - name: Retail Cortex Engineering
+    url: https://github.com/retail-cortex/skills
+category: java
+tags:
+  - java
+  - javalin
+  - maven
+  - enterprise
+trigger_phrases:
+  - "build Java enterprise service"
+  - "Javalin REST setup"
+  - "Java JUnit 5 TDD"
+execution_hints:
+  preferred_model: "gemini-3.1-pro"
+  requires_human_approval: false
+  environment_variables:
+    - JAVA_HOME
+  timeout_seconds: 240
 ---
-
 # Java 25 (LTS) Enterprise Microservices SDLC Skill
 
 This skill prescribes best practices for designing, testing, securing, and deploying modern **Java 25 (LTS)** enterprise microservices using **Javalin 6+**, **Google OAuth2 Authentication**, **Resilience4j HTTP 429 Rate Limiting**, and **Bazel** (`rules_java`).

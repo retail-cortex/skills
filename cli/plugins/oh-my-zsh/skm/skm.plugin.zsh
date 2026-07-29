@@ -7,6 +7,7 @@ fi
 
 # Handy skm Command Aliases
 alias skma="skm add"
+alias skmver="skm verify"
 alias skmv="skm validate"
 alias skml="skm list"
 alias skms="skm search"

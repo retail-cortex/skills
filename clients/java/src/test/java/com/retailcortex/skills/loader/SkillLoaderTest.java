@@ -9,8 +9,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -218,4 +220,54 @@ class SkillLoaderTest {
         assertThat(summary.getExampleCount()).isEqualTo(4);
         assertThat(summary.getPath()).isEqualTo("/path2");
     }
+
+    @Test
+    @DisplayName("Should create .manifest.lock and verify skill integrity")
+    void testManifestLockAndVerification(@TempDir Path tempDir) throws IOException {
+        Path skillDir = tempDir.resolve("test-lock-skill");
+        Files.createDirectories(skillDir.resolve("references"));
+        Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: test-lock-skill\n---\nHello World");
+        Files.writeString(skillDir.resolve("references/guide.md"), "# Guide");
+
+        String checksum = SkillLoader.calculateSkillChecksum(skillDir);
+        assertThat(checksum).isNotEmpty();
+
+        String uri = "file://" + skillDir;
+        SkillLoader.updateManifestLock(tempDir, "test-lock-skill", uri, checksum);
+
+        SkillLoader.VerificationReport report = SkillLoader.verifyManifestLock(tempDir);
+        assertThat(report.totalSkills()).isEqualTo(1);
+        assertThat(report.verifiedCount()).isEqualTo(1);
+        assertThat(report.modifiedCount()).isEqualTo(0);
+        assertThat(report.missingCount()).isEqualTo(0);
+
+        // Modify skill file
+        Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: test-lock-skill\n---\nModified Content");
+        SkillLoader.VerificationReport reportMod = SkillLoader.verifyManifestLock(tempDir);
+        assertThat(reportMod.totalSkills()).isEqualTo(1);
+        assertThat(reportMod.verifiedCount()).isEqualTo(0);
+        assertThat(reportMod.modifiedCount()).isEqualTo(1);
+        assertThat(reportMod.results().get(0).status()).isEqualTo("modified");
+
+        // Delete skill directory
+        SkillLoaderTestUtils.deleteDir(skillDir);
+        SkillLoader.VerificationReport reportMiss = SkillLoader.verifyManifestLock(tempDir);
+        assertThat(reportMiss.totalSkills()).isEqualTo(1);
+        assertThat(reportMiss.missingCount()).isEqualTo(1);
+        assertThat(reportMiss.results().get(0).status()).isEqualTo("missing");
+    }
 }
+
+class SkillLoaderTestUtils {
+    static void deleteDir(Path dir) throws IOException {
+        if (!Files.exists(dir)) return;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.delete(p);
+                } catch (IOException ignored) {}
+            });
+        }
+    }
+}
+

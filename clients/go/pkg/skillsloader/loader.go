@@ -3,6 +3,7 @@ package skillsloader
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1378,3 +1379,229 @@ func copyDirContents(src, dst string) error {
 		return os.WriteFile(targetPath, data, info.Mode())
 	})
 }
+
+// ManifestLockEntry holds recorded checksum and source URI for an installed skill.
+type ManifestLockEntry struct {
+	SkillName string `json:"skill_name"`
+	URI       string `json:"uri"`
+	SHA256    string `json:"sha256"`
+}
+
+// ManifestLock represents the .manifest.lock file contents.
+type ManifestLock struct {
+	Version string                       `json:"version"`
+	Skills  map[string]ManifestLockEntry `json:"skills"`
+}
+
+// VerificationResult details the checksum verification status for a skill.
+type VerificationResult struct {
+	SkillName string `json:"skill_name"`
+	URI       string `json:"uri"`
+	Status    string `json:"status"` // "verified", "modified", "missing"
+	Expected  string `json:"expected_sha256,omitempty"`
+	Actual    string `json:"actual_sha256,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+// VerificationReport encapsulates overall integrity audit results.
+type VerificationReport struct {
+	TargetDir     string               `json:"target_dir"`
+	TotalSkills   int                  `json:"total_skills"`
+	VerifiedCount int                  `json:"verified_count"`
+	ModifiedCount int                  `json:"modified_count"`
+	MissingCount  int                  `json:"missing_count"`
+	Results       []VerificationResult `json:"results"`
+}
+
+// CalculateSkillChecksum computes a deterministic SHA256 checksum of a skill directory's contents.
+func CalculateSkillChecksum(skillDir string) (string, error) {
+	absDir, err := filepath.Abs(skillDir)
+	if err != nil {
+		absDir = skillDir
+	}
+
+	if !isDir(absDir) {
+		return "", fmt.Errorf("skill directory does not exist: %s", absDir)
+	}
+
+	hasher := sha256.New()
+	var files []string
+
+	err = filepath.Walk(absDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			name := info.Name()
+			if name == ".DS_Store" || name == ".manifest.lock" {
+				return nil
+			}
+			rel, err := filepath.Rel(absDir, path)
+			if err == nil {
+				files = append(files, rel)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	sort.Strings(files)
+	for _, rel := range files {
+		normRel := filepath.ToSlash(rel)
+		hasher.Write([]byte(normRel))
+		content, err := os.ReadFile(filepath.Join(absDir, rel))
+		if err != nil {
+			return "", fmt.Errorf("failed reading file %s for checksum: %w", rel, err)
+		}
+		hasher.Write(content)
+	}
+
+	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+// ReadManifestLock loads the .manifest.lock file from a target destination directory.
+func ReadManifestLock(destDir string) (*ManifestLock, error) {
+	lockFile := filepath.Join(destDir, ".manifest.lock")
+	content, err := os.ReadFile(lockFile)
+	if err != nil {
+		return nil, fmt.Errorf(".manifest.lock file not found in %s: %w", destDir, err)
+	}
+
+	var lock ManifestLock
+	if err := json.Unmarshal(content, &lock); err != nil {
+		return nil, fmt.Errorf("failed to parse .manifest.lock: %w", err)
+	}
+	if lock.Skills == nil {
+		lock.Skills = make(map[string]ManifestLockEntry)
+	}
+	return &lock, nil
+}
+
+// WriteManifestLock writes the .manifest.lock file to a target destination directory.
+func WriteManifestLock(destDir string, lock *ManifestLock) error {
+	if lock == nil {
+		return fmt.Errorf("lock cannot be nil")
+	}
+	if lock.Version == "" {
+		lock.Version = "1.0.0"
+	}
+	if lock.Skills == nil {
+		lock.Skills = make(map[string]ManifestLockEntry)
+	}
+
+	lockFile := filepath.Join(destDir, ".manifest.lock")
+	data, err := json.MarshalIndent(lock, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal .manifest.lock: %w", err)
+	}
+
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target dir %s: %w", destDir, err)
+	}
+
+	return os.WriteFile(lockFile, data, 0644)
+}
+
+// UpdateManifestLock updates or adds a skill entry in the destination directory's .manifest.lock file.
+func UpdateManifestLock(destDir string, skillName string, uri string, checksum string) error {
+	lock, err := ReadManifestLock(destDir)
+	if err != nil {
+		lock = &ManifestLock{
+			Version: "1.0.0",
+			Skills:  make(map[string]ManifestLockEntry),
+		}
+	}
+
+	if checksum == "" {
+		skillDir := filepath.Join(destDir, skillName)
+		cs, err := CalculateSkillChecksum(skillDir)
+		if err != nil {
+			return err
+		}
+		checksum = cs
+	}
+
+	lock.Skills[skillName] = ManifestLockEntry{
+		SkillName: skillName,
+		URI:       uri,
+		SHA256:    checksum,
+	}
+
+	return WriteManifestLock(destDir, lock)
+}
+
+// VerifyManifestLock validates that skills present in .manifest.lock match their original recorded checksums.
+func VerifyManifestLock(destDir string) (*VerificationReport, error) {
+	lock, err := ReadManifestLock(destDir)
+	if err != nil {
+		return nil, err
+	}
+
+	report := &VerificationReport{
+		TargetDir:   destDir,
+		TotalSkills: len(lock.Skills),
+		Results:     make([]VerificationResult, 0, len(lock.Skills)),
+	}
+
+	var names []string
+	for k := range lock.Skills {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		entry := lock.Skills[name]
+		skillDir := filepath.Join(destDir, name)
+
+		if !isDir(skillDir) {
+			report.MissingCount++
+			report.Results = append(report.Results, VerificationResult{
+				SkillName: name,
+				URI:       entry.URI,
+				Status:    "missing",
+				Expected:  entry.SHA256,
+				Error:     "skill directory missing",
+			})
+			continue
+		}
+
+		currentCS, err := CalculateSkillChecksum(skillDir)
+		if err != nil {
+			report.ModifiedCount++
+			report.Results = append(report.Results, VerificationResult{
+				SkillName: name,
+				URI:       entry.URI,
+				Status:    "modified",
+				Expected:  entry.SHA256,
+				Error:     fmt.Sprintf("failed to compute checksum: %v", err),
+			})
+			continue
+		}
+
+		if currentCS == entry.SHA256 {
+			report.VerifiedCount++
+			report.Results = append(report.Results, VerificationResult{
+				SkillName: name,
+				URI:       entry.URI,
+				Status:    "verified",
+				Expected:  entry.SHA256,
+				Actual:    currentCS,
+			})
+		} else {
+			report.ModifiedCount++
+			report.Results = append(report.Results, VerificationResult{
+				SkillName: name,
+				URI:       entry.URI,
+				Status:    "modified",
+				Expected:  entry.SHA256,
+				Actual:    currentCS,
+				Error:     "checksum mismatch (skill files modified)",
+			})
+		}
+	}
+
+	return report, nil
+}
+

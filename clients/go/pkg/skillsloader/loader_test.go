@@ -422,3 +422,49 @@ func TestLoadSkillsFromRoots_MultipleSchemes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, skills, "root-skill")
 }
+
+func TestManifestLockAndVerification(t *testing.T) {
+	destDir := t.TempDir()
+
+	// 1. Create a mock skill directory
+	skillDir := filepath.Join(destDir, "test-lock-skill")
+	require.NoError(t, os.MkdirAll(filepath.Join(skillDir, "references"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: test-lock-skill\n---\nHello World"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "references", "guide.md"), []byte("# Guide"), 0644))
+
+	// 2. Compute checksum
+	checksum, err := CalculateSkillChecksum(skillDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, checksum)
+
+	// 3. Update manifest lock
+	uri := "file://" + skillDir
+	err = UpdateManifestLock(destDir, "test-lock-skill", uri, checksum)
+	require.NoError(t, err)
+
+	// 4. Verify manifest lock (Pass)
+	report, err := VerifyManifestLock(destDir)
+	require.NoError(t, err)
+	assert.Equal(t, 1, report.TotalSkills)
+	assert.Equal(t, 1, report.VerifiedCount)
+	assert.Equal(t, 0, report.ModifiedCount)
+	assert.Equal(t, 0, report.MissingCount)
+
+	// 5. Modify a skill file and verify (Modified Fail)
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: test-lock-skill\n---\nModified Content"), 0644))
+	reportMod, err := VerifyManifestLock(destDir)
+	require.NoError(t, err)
+	assert.Equal(t, 1, reportMod.TotalSkills)
+	assert.Equal(t, 0, reportMod.VerifiedCount)
+	assert.Equal(t, 1, reportMod.ModifiedCount)
+	assert.Equal(t, "modified", reportMod.Results[0].Status)
+
+	// 6. Delete skill directory and verify (Missing Fail)
+	require.NoError(t, os.RemoveAll(skillDir))
+	reportMiss, err := VerifyManifestLock(destDir)
+	require.NoError(t, err)
+	assert.Equal(t, 1, reportMiss.TotalSkills)
+	assert.Equal(t, 1, reportMiss.MissingCount)
+	assert.Equal(t, "missing", reportMiss.Results[0].Status)
+}
+

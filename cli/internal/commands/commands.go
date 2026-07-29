@@ -33,6 +33,8 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	switch subcommand {
 	case "add":
 		return runAdd(subArgs, stdout, stderr)
+	case "verify":
+		return runVerify(subArgs, stdout, stderr)
 	case "validate":
 		return runValidate(subArgs, stdout, stderr)
 	case "list":
@@ -436,6 +438,81 @@ Implements HTTP 429 rate limit exponential backoff and retryablehttp strategies.
 	return 0
 }
 
+func runVerify(args []string, stdout, stderr io.Writer) int {
+	var targetDir = ""
+	var jsonOutput = false
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "-d" || arg == "--dir":
+			if i+1 < len(args) {
+				targetDir = args[i+1]
+				i++
+			}
+		case strings.HasPrefix(arg, "-d="):
+			targetDir = strings.TrimPrefix(arg, "-d=")
+		case strings.HasPrefix(arg, "--dir="):
+			targetDir = strings.TrimPrefix(arg, "--dir=")
+		case arg == "--json":
+			jsonOutput = true
+		case strings.HasPrefix(arg, "-"):
+			fmt.Fprintf(stderr, "Unknown flag: %s\n", arg)
+			return 1
+		default:
+			if targetDir == "" {
+				targetDir = arg
+			}
+		}
+	}
+
+	if targetDir == "" {
+		if isDir(".skills") {
+			targetDir = ".skills"
+		} else {
+			targetDir = "."
+		}
+	}
+
+	report, err := skillsloader.VerifyManifestLock(targetDir)
+	if err != nil {
+		fmt.Fprintf(stderr, "Error verifying skills integrity: %v\n", err)
+		return 1
+	}
+
+	if jsonOutput {
+		bytes, err := json.MarshalIndent(report, "", "  ")
+		if err != nil {
+			fmt.Fprintf(stderr, "Failed to format JSON output: %v\n", err)
+			return 1
+		}
+		fmt.Fprintln(stdout, string(bytes))
+	} else {
+		fmt.Fprintf(stdout, "\nSKM Skill Integrity Verification Report\n")
+		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 70))
+		fmt.Fprintf(stdout, "Audited Path: %s\n", report.TargetDir)
+		fmt.Fprintf(stdout, "Total Skills: %d | Verified: %d | Modified: %d | Missing: %d\n\n",
+			report.TotalSkills, report.VerifiedCount, report.ModifiedCount, report.MissingCount)
+
+		for _, res := range report.Results {
+			statusStr := "[PASS]"
+			if res.Status != "verified" {
+				statusStr = "[FAIL]"
+			}
+			fmt.Fprintf(stdout, "%s %-25s status:%-8s uri:%s\n", statusStr, res.SkillName, res.Status, res.URI)
+			if res.Error != "" {
+				fmt.Fprintf(stdout, "     - %s\n", res.Error)
+			}
+		}
+		fmt.Fprintln(stdout)
+	}
+
+	if report.ModifiedCount > 0 || report.MissingCount > 0 || report.TotalSkills == 0 {
+		return 1
+	}
+	return 0
+}
+
 func runCompletion(args []string, stdout, stderr io.Writer) int {
 	shell := "bash"
 	if len(args) > 0 {
@@ -448,7 +525,7 @@ func runCompletion(args []string, stdout, stderr io.Writer) int {
 _skm_completions() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local prev="${COMP_WORDS[COMP_CWORD-1]}"
-    local commands="add validate list search compile init completion version help"
+    local commands="add verify validate list search compile init completion version help"
     if [ $COMP_CWORD -eq 1 ]; then
         COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
     fi
@@ -460,6 +537,7 @@ _skm() {
     local -a commands
     commands=(
         'add:Add skills from URI'
+        'verify:Verify installed skills against .manifest.lock'
         'validate:Validate skills against 5-point audit'
         'list:List registered skills'
         'search:Search skills by keyword'
@@ -474,7 +552,7 @@ _skm() {
 _skm "$@"`)
 	case "fish":
 		fmt.Fprintln(stdout, `# skm fish completion
-complete -c skm -n "__fish_use_subcommand" -a "add validate list search compile init completion version help"`)
+complete -c skm -n "__fish_use_subcommand" -a "add verify validate list search compile init completion version help"`)
 	default:
 		fmt.Fprintf(stderr, "Unsupported shell '%s'. Supported: bash, zsh, fish\n", shell)
 		return 1
@@ -564,6 +642,7 @@ Usage:
 
 Commands:
   add <uri>...            Add skills from github://, mod://, maven://, pkg://, or file:// to .skills (or -d directory)
+  verify [path]           Verify downloaded skills against recorded SHA-256 checksums in .manifest.lock
   validate <path>         Validate frontmatter, tree, CWE, 429 resilience, and file links in a skill directory
   list                    List skills in .skills, current directory, or specified registry
   search <query>          Search skills by query term in name, description, or instructions
@@ -576,6 +655,10 @@ Options for 'add':
   -d, --dir <path>        Target destination directory (default: ".skills")
   -f, --force             Overwrite existing skill directories
   --filter <names>        Comma-separated skill names to select
+
+Options for 'verify':
+  -d, --dir <path>        Target directory containing .manifest.lock (default: ".skills")
+  --json                  Output verification report as structured JSON
 
 Options for 'validate':
   -r, --recursive         Recursively validate all skills in target path
@@ -594,6 +677,7 @@ Examples:
   skm add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
   skm add maven://com.retailcortex.skills:skills-java:1.0.0
   skm add file:///path/to/my-skill -d ./skills
+  skm verify -d ./skills
   skm validate ./skills/my-skill
   skm validate -r ./packages
   skm list -d .skills

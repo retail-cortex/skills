@@ -14,8 +14,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.*;
 
@@ -910,4 +913,137 @@ public class SkillLoader {
             });
         } catch (IOException ignored) {}
     }
+
+    public record ManifestLockEntry(String skill_name, String uri, String sha256) {}
+
+    public record VerificationResult(String skillName, String uri, String status, String expectedSha256, String actualSha256, String error) {}
+
+    public record VerificationReport(String targetDir, int totalSkills, int verifiedCount, int modifiedCount, int missingCount, List<VerificationResult> results) {}
+
+    public static String calculateSkillChecksum(Path skillDir) throws IOException {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not found", e);
+        }
+        Path absDir = skillDir.toAbsolutePath().normalize();
+        if (!Files.isDirectory(absDir)) {
+            throw new IllegalArgumentException("Skill directory does not exist: " + absDir);
+        }
+
+        List<Path> filePaths = new ArrayList<>();
+        try (Stream<Path> stream = Files.walk(absDir)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> !p.getFileName().toString().equals(".DS_Store") && !p.getFileName().toString().equals(".manifest.lock"))
+                    .forEach(filePaths::add);
+        }
+
+        filePaths.sort(Comparator.comparing(p -> absDir.relativize(p).toString().replace('\\', '/')));
+        for (Path p : filePaths) {
+            String relPath = absDir.relativize(p).toString().replace('\\', '/');
+            digest.update(relPath.getBytes(StandardCharsets.UTF_8));
+            digest.update(Files.readAllBytes(p));
+        }
+
+        byte[] hash = digest.digest();
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
+    public static Map<String, Object> readManifestLock(Path destDir) throws IOException {
+        Path lockFile = destDir.resolve(".manifest.lock");
+        if (!Files.isRegularFile(lockFile)) {
+            throw new NoSuchFileException(".manifest.lock file not found in " + destDir);
+        }
+        return objectMapper.readValue(lockFile.toFile(), new TypeReference<Map<String, Object>>() {});
+    }
+
+    public static Path writeManifestLock(Path destDir, Map<String, Object> lockData) throws IOException {
+        Files.createDirectories(destDir);
+        Path lockFile = destDir.resolve(".manifest.lock");
+        if (!lockData.containsKey("version")) {
+            lockData.put("version", "1.0.0");
+        }
+        if (!lockData.containsKey("skills")) {
+            lockData.put("skills", new HashMap<String, Object>());
+        }
+        objectMapper.writeValue(lockFile.toFile(), lockData);
+        return lockFile;
+    }
+
+    public static Path updateManifestLock(Path destDir, String skillName, String uri, String checksum) throws IOException {
+        Map<String, Object> lockData;
+        try {
+            lockData = readManifestLock(destDir);
+        } catch (Exception e) {
+            lockData = new HashMap<>();
+            lockData.put("version", "1.0.0");
+            lockData.put("skills", new HashMap<String, Object>());
+        }
+
+        if (checksum == null || checksum.isBlank()) {
+            checksum = calculateSkillChecksum(destDir.resolve(skillName));
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> skills = (Map<String, Object>) lockData.computeIfAbsent("skills", k -> new HashMap<String, Object>());
+
+        Map<String, String> entry = new HashMap<>();
+        entry.put("skill_name", skillName);
+        entry.put("uri", uri);
+        entry.put("sha256", checksum);
+        skills.put(skillName, entry);
+
+        return writeManifestLock(destDir, lockData);
+    }
+
+    public static VerificationReport verifyManifestLock(Path destDir) throws IOException {
+        Map<String, Object> lockData = readManifestLock(destDir);
+        @SuppressWarnings("unchecked")
+        Map<String, Map<String, Object>> skills = (Map<String, Map<String, Object>>) lockData.getOrDefault("skills", Collections.emptyMap());
+
+        List<VerificationResult> results = new ArrayList<>();
+        int verifiedCount = 0;
+        int modifiedCount = 0;
+        int missingCount = 0;
+
+        List<String> sortedNames = new ArrayList<>(skills.keySet());
+        Collections.sort(sortedNames);
+
+        for (String name : sortedNames) {
+            Map<String, Object> entry = skills.get(name);
+            String uri = String.valueOf(entry.getOrDefault("uri", ""));
+            String expectedSha = String.valueOf(entry.getOrDefault("sha256", ""));
+
+            Path skillDir = destDir.resolve(name);
+            if (!Files.isDirectory(skillDir)) {
+                missingCount++;
+                results.add(new VerificationResult(name, uri, "missing", expectedSha, null, "skill directory missing"));
+                continue;
+            }
+
+            try {
+                String currentSha = calculateSkillChecksum(skillDir);
+                if (currentSha.equalsIgnoreCase(expectedSha)) {
+                    verifiedCount++;
+                    results.add(new VerificationResult(name, uri, "verified", expectedSha, currentSha, null));
+                } else {
+                    modifiedCount++;
+                    results.add(new VerificationResult(name, uri, "modified", expectedSha, currentSha, "checksum mismatch (skill files modified)"));
+                }
+            } catch (Exception e) {
+                modifiedCount++;
+                results.add(new VerificationResult(name, uri, "modified", expectedSha, null, "failed to compute checksum: " + e.getMessage()));
+            }
+        }
+
+        return new VerificationReport(destDir.toAbsolutePath().toString(), skills.size(), verifiedCount, modifiedCount, missingCount, results);
+    }
 }
+

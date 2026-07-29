@@ -1,5 +1,6 @@
 """Dynamic skill scanner and loader for enterprise AI agent skills compatible with Google ADK."""
 
+import hashlib
 import importlib
 import importlib.metadata
 import importlib.resources
@@ -12,7 +13,7 @@ import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from loader.types import SkillDefinition, SkillSummary
 
@@ -938,3 +939,153 @@ class SkillRegistry:
         ]
         self._domain_cache[domain_norm] = res
         return res
+
+
+def calculate_skill_checksum(skill_dir: Union[Path, str]) -> str:
+    """Calculates a deterministic SHA256 checksum of a skill directory's contents."""
+    s_dir = Path(skill_dir).resolve()
+    if not s_dir.is_dir():
+        raise ValueError(f"Skill directory does not exist: {s_dir}")
+
+    hasher = hashlib.sha256()
+    files: List[Tuple[str, Path]] = []
+    for p in s_dir.rglob("*"):
+        if p.is_file() and p.name not in (".DS_Store", ".manifest.lock"):
+            rel = p.relative_to(s_dir).as_posix()
+            files.append((rel, p))
+
+    files.sort(key=lambda x: x[0])
+    for rel, p in files:
+        hasher.update(rel.encode("utf-8"))
+        hasher.update(p.read_bytes())
+
+    return hasher.hexdigest()
+
+
+def read_manifest_lock(dest_dir: Union[Path, str]) -> Dict[str, Any]:
+    """Reads the .manifest.lock file from a target destination directory."""
+    d_dir = Path(dest_dir).resolve()
+    lock_file = d_dir / ".manifest.lock"
+    if not lock_file.is_file():
+        raise FileNotFoundError(f".manifest.lock file not found in {d_dir}")
+
+    try:
+        content = json.loads(lock_file.read_text(encoding="utf-8"))
+        if not isinstance(content, dict):
+            return {"version": "1.0.0", "skills": {}}
+        if "skills" not in content or not isinstance(content["skills"], dict):
+            content["skills"] = {}
+        return content
+    except Exception as e:
+        raise ValueError(f"Failed to parse .manifest.lock in {d_dir}: {e}")
+
+
+def write_manifest_lock(dest_dir: Union[Path, str], lock_data: Dict[str, Any]) -> Path:
+    """Writes the .manifest.lock file to a target destination directory."""
+    d_dir = Path(dest_dir).resolve()
+    d_dir.mkdir(parents=True, exist_ok=True)
+    lock_file = d_dir / ".manifest.lock"
+
+    if "version" not in lock_data:
+        lock_data["version"] = "1.0.0"
+    if "skills" not in lock_data or not isinstance(lock_data["skills"], dict):
+        lock_data["skills"] = {}
+
+    lock_file.write_text(json.dumps(lock_data, indent=2), encoding="utf-8")
+    return lock_file
+
+
+def update_manifest_lock(
+    dest_dir: Union[Path, str],
+    skill_name: str,
+    uri: str,
+    checksum: Optional[str] = None,
+) -> Path:
+    """Updates or adds a skill entry in the destination directory's .manifest.lock file."""
+    d_dir = Path(dest_dir).resolve()
+    try:
+        lock_data = read_manifest_lock(d_dir)
+    except Exception:
+        lock_data = {"version": "1.0.0", "skills": {}}
+
+    if not checksum:
+        skill_dir = d_dir / skill_name
+        checksum = calculate_skill_checksum(skill_dir)
+
+    lock_data["skills"][skill_name] = {
+        "skill_name": skill_name,
+        "uri": uri,
+        "sha256": checksum,
+    }
+
+    return write_manifest_lock(d_dir, lock_data)
+
+
+def verify_manifest_lock(dest_dir: Union[Path, str]) -> Dict[str, Any]:
+    """Validates that skills present in .manifest.lock match their original recorded checksums."""
+    d_dir = Path(dest_dir).resolve()
+    lock_data = read_manifest_lock(d_dir)
+
+    skills_map: Dict[str, Dict[str, Any]] = lock_data.get("skills", {})
+    results: List[Dict[str, Any]] = []
+    verified_count = 0
+    modified_count = 0
+    missing_count = 0
+
+    for name in sorted(skills_map.keys()):
+        entry = skills_map[name]
+        skill_dir = d_dir / name
+        expected_sha = entry.get("sha256", "")
+        uri = entry.get("uri", "")
+
+        if not skill_dir.is_dir():
+            missing_count += 1
+            results.append({
+                "skill_name": name,
+                "uri": uri,
+                "status": "missing",
+                "expected_sha256": expected_sha,
+                "error": "skill directory missing",
+            })
+            continue
+
+        try:
+            current_sha = calculate_skill_checksum(skill_dir)
+            if current_sha == expected_sha:
+                verified_count += 1
+                results.append({
+                    "skill_name": name,
+                    "uri": uri,
+                    "status": "verified",
+                    "expected_sha256": expected_sha,
+                    "actual_sha256": current_sha,
+                })
+            else:
+                modified_count += 1
+                results.append({
+                    "skill_name": name,
+                    "uri": uri,
+                    "status": "modified",
+                    "expected_sha256": expected_sha,
+                    "actual_sha256": current_sha,
+                    "error": "checksum mismatch (skill files modified)",
+                })
+        except Exception as e:
+            modified_count += 1
+            results.append({
+                "skill_name": name,
+                "uri": uri,
+                "status": "modified",
+                "expected_sha256": expected_sha,
+                "error": f"failed to compute checksum: {e}",
+            })
+
+    return {
+        "target_dir": str(d_dir),
+        "total_skills": len(skills_map),
+        "verified_count": verified_count,
+        "modified_count": modified_count,
+        "missing_count": missing_count,
+        "results": results,
+    }
+

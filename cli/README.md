@@ -67,6 +67,30 @@ Copy skills from remote URIs or local directories into `.skills/` (or `-d <path>
 - `-f, --force`: Overwrite existing destination skill directories
 - `--filter <names>`: Comma-separated list of skill names to select
 
+> [!NOTE]
+> `skm add` automatically generates and updates a `.manifest.lock` file in the destination directory containing the `skill_name`, source `uri`, and deterministic `sha256` checksum of the skill directory.
+
+---
+
+### 2. Verify Skill Integrity (`skm verify`)
+
+Verify downloaded skills in `.skills/` (or `-d <path>`) against recorded SHA-256 checksums in `.manifest.lock`:
+
+```bash
+# Verify skills integrity in default .skills/ directory
+./bin/skm verify
+
+# Verify skills integrity in custom directory
+./bin/skm verify -d ./skills
+
+# Output verification report as structured JSON
+./bin/skm verify -d ./skills --json
+```
+
+**Options for `verify`:**
+- `-d, --dir <path>`: Target directory containing `.manifest.lock` (default: `.skills`)
+- `--json`: Output verification summary as structured JSON
+
 ---
 
 ### 2. Audit & Validate Skills (`skm validate`)
@@ -164,6 +188,7 @@ source ~/.zshrc
 
 ##### Included Aliases:
 - `skma` -> `skm add`
+- `skmver` -> `skm verify`
 - `skmv` -> `skm validate`
 - `skml` -> `skm list`
 - `skms` -> `skm search`

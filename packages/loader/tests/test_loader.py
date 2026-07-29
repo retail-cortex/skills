@@ -1,6 +1,7 @@
 """Unit tests for standalone skills-loader package including GitHub & dotenv loading."""
 
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -404,6 +405,49 @@ class TestSkillsLoaderPackage(unittest.TestCase):
         env_vars = parse_dotenv_file("nonexistent.env")
         self.assertEqual(env_vars, {})
 
+    def test_manifest_lock_and_verification(self) -> None:
+        from loader.loader import (
+            calculate_skill_checksum,
+            update_manifest_lock,
+            verify_manifest_lock,
+        )
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_dir = Path(tmp_dir)
+            skill_dir = dest_dir / "test-lock-skill"
+            (skill_dir / "references").mkdir(parents=True, exist_ok=True)
+            (skill_dir / "SKILL.md").write_text("---\nname: test-lock-skill\n---\nHello World")
+            (skill_dir / "references" / "guide.md").write_text("# Guide")
+
+            checksum = calculate_skill_checksum(skill_dir)
+            self.assertTrue(len(checksum) > 0)
+
+            uri = f"file://{skill_dir}"
+            update_manifest_lock(dest_dir, "test-lock-skill", uri, checksum)
+
+            report = verify_manifest_lock(dest_dir)
+            self.assertEqual(report["total_skills"], 1)
+            self.assertEqual(report["verified_count"], 1)
+            self.assertEqual(report["modified_count"], 0)
+            self.assertEqual(report["missing_count"], 0)
+
+            # Modify skill file
+            (skill_dir / "SKILL.md").write_text("---\nname: test-lock-skill\n---\nModified Content")
+            report_mod = verify_manifest_lock(dest_dir)
+            self.assertEqual(report_mod["total_skills"], 1)
+            self.assertEqual(report_mod["verified_count"], 0)
+            self.assertEqual(report_mod["modified_count"], 1)
+            self.assertEqual(report_mod["results"][0]["status"], "modified")
+
+            # Remove skill directory
+            shutil.rmtree(skill_dir)
+            report_miss = verify_manifest_lock(dest_dir)
+            self.assertEqual(report_miss["total_skills"], 1)
+            self.assertEqual(report_miss["missing_count"], 1)
+            self.assertEqual(report_miss["results"][0]["status"], "missing")
+
 
 if __name__ == "__main__":
     unittest.main()
+

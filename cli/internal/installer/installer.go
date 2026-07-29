@@ -125,6 +125,12 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 				continue
 			}
 
+			// Update .manifest.lock with skill_name, uri, and sha256 checksum
+			if lockErr := skillsloader.UpdateManifestLock(absDest, skillName, uri, ""); lockErr != nil {
+				// Non-fatal warning if manifest lock update encounters issue
+				_ = lockErr
+			}
+
 			status := "added"
 			if exists && force {
 				status = "overwritten"

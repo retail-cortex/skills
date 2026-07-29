@@ -45,9 +45,10 @@ Instruction text
 	assert.Equal(t, "my-skill", results[0].SkillName)
 	assert.Equal(t, "added", results[0].Status)
 
-	// Verify files were copied
+	// Verify files were copied and .manifest.lock created
 	copiedSKILL := filepath.Join(destDir, "my-skill", "SKILL.md")
 	assert.True(t, isFile(copiedSKILL))
+	assert.True(t, isFile(filepath.Join(destDir, ".manifest.lock")))
 
 	// Re-adding without force should skip
 	results2, err := AddSkills([]string{fileURI}, destDir, nil, false)

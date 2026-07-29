@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 # Add project packages to sys.path for direct execution
 project_root = Path(__file__).resolve().parents[2]
-loader_src = project_root / "packages/skills-loader/src"
+loader_src = project_root / "packages/loader/src"
 bazel_src = project_root / "packages/skills-bazel/src"
 go_src = project_root / "packages/skills-go/src"
 java_src = project_root / "packages/skills-java/src"
@@ -20,7 +20,7 @@ for src_path in [loader_src, bazel_src, go_src, java_src, proto_src, py_src, fro
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
 
-from skills_loader import (
+from loader import (
     SkillDefinition,
     SkillRegistry,
     load_skills_from_roots,

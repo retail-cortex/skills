@@ -4,9 +4,9 @@ The Agent Skill Builder repository includes three core Python utility packages i
 
 ---
 
-## 1. `packages/skills-loader`
+## 1. `packages/loader`
 
-The `skills-loader` package provides dynamic loading, parsing, and filtering for AI agent skills across local file systems and remote Git repositories.
+The `loader` package provides dynamic loading, parsing, and filtering for AI agent skills across local file systems and remote Git repositories.
 
 ### Key Capabilities
 
@@ -17,11 +17,11 @@ The `skills-loader` package provides dynamic loading, parsing, and filtering for
 ### Python API Usage
 
 ```python
-from skills_loader import SkillLoader
+from loader import SkillRegistry
 
-loader = SkillLoader()
-skills = loader.load_from_uri("file://skills")
-for skill in skills:
+registry = SkillRegistry()
+skills = registry.skills
+for name, skill in skills.items():
     print(f"Loaded: {skill.name} - {skill.description}")
 ```
 
@@ -70,13 +70,52 @@ bazel run //:validate
 
 ---
 
+## 4. `cli/cmd/skm` (SKM Skill Manager CLI)
+
+`skm` is a standalone Go CLI tool built with Bazel for fetching, resolving, validating, and scaffolding AI Agent Skills across local and remote ecosystems.
+
+### Polyglot URI Schemes Supported
+
+- **`github://`**: Remote Git repositories (e.g. `github://retail-cortex/skills@main/packages/skills-python`)
+- **`mod://` / `go://`**: Go modules via GOPATH cache or `go mod download` (e.g. `mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go`)
+- **`maven://` / `mvn://`**: Java Maven artifacts via `~/.m2` or `mvn dependency:get` (e.g. `maven://com.retailcortex.skills:skills-java:1.0.0`)
+- **`pkg://`**: Workspace packages (e.g. `pkg://skills-go`)
+- **`file://`**: Local filesystem paths (e.g. `file:///path/to/my-skill`)
+
+### Commands
+
+```bash
+# Add skills to .skills directory
+bazel run //:skm -- add github://retail-cortex/skills@main/packages/skills-python
+bazel run //:skm -- add mod://github.com/retail-cortex/skills@v1.0.0
+bazel run //:skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
+
+# Pre-compile manifest for zero-I/O loading
+bazel run //:skm -- compile -o ./skills_manifest.json
+
+# Audit skill compliance
+bazel run //:skm -- validate -r ./skills
+
+# List and search skills
+bazel run //:skm -- list -d .skills
+bazel run //:skm -- search python -d .skills
+
+# Scaffold new skill
+bazel run //:skm -- init my-new-skill -d ./skills
+```
+
+---
+
 ## Bazel 9.2 Build & Test Targets
 
 Root Bazel convenience targets defined in [BUILD.bazel]({{ config.repo_url }}/blob/main/BUILD.bazel):
 
 | Command | Bazel Target | Description |
 | :--- | :--- | :--- |
+| `bazel run //:skm` | `//cli/cmd/skm` | Executes standalone `skm` (*Skill Manager*) Go CLI binary on host system. |
+| `bazel build //:skm-binaries` | `//cli/cmd/skm:skm_binaries` | Native cross-compilation of `skm` executables for Windows (x64), Linux (x64/arm64), and macOS (x64/arm64). |
 | `bazel run //:start-agent` | `//packages/skills-agent:start_agent` | Launches interactive ADK programming agent CLI REPL. |
 | `bazel run //:validate` | `//packages/validator:validate_skills` | Executes 5-point SDLC validator on all skills in `skills/`. |
 | `bazel run //:docs` | `//packages/skills-loader:docs` | Launches local MkDocs development documentation server. |
-| `bazel test //...` | `//...` | Runs all hermetic test targets across packages. |
+| `bazel test //...` | `//...` | Runs all hermetic test targets across Go, Java, Python, and CLI packages. |
+

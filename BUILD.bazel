@@ -9,18 +9,10 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "skills_data",
-    srcs = glob(["packages/skills-*/src/*/skills/**", "skills/**"], allow_empty = True) + [
-        "//packages/skills-a2a:skills_a2a_data",
-        "//packages/skills-a2ui:skills_a2ui_data",
-        "//packages/skills-bazel:skills_bazel_data",
+    srcs = glob(["skills/**", "packages/skills-*/src/*/skills/**"], allow_empty = True) + [
         "//packages/skills-python:skills_python_data",
         "//packages/skills-go:skills_go_data",
         "//packages/skills-java:skills_java_data",
-        "//packages/skills-devops:skills_devops_data",
-        "//packages/skills-database:skills_database_data",
-        "//packages/skills-protobuf:skills_protobuf_data",
-        "//packages/skills-google-adk-skill-builder:skills_google_adk_skill_builder_data",
-        "//packages/skills-frontend:skills_frontend_data",
     ],
 )
 
@@ -46,17 +38,27 @@ alias(
 
 alias(
     name = "docs",
-    actual = "//packages/skills-loader:docs",
+    actual = "//packages/loader:docs",
 )
 
 alias(
     name = "serve-docs",
-    actual = "//packages/skills-loader:docs",
+    actual = "//packages/loader:docs",
 )
 
 alias(
     name = "go-loader",
     actual = "//clients/go/cmd/skills-loader",
+)
+
+alias(
+    name = "skm",
+    actual = "//cli/cmd/skm",
+)
+
+alias(
+    name = "skm-binaries",
+    actual = "//cli/cmd/skm:skm_binaries",
 )
 
 test_suite(
@@ -65,7 +67,11 @@ test_suite(
         "//tests/e2e:test_skills_e2e",
         "//clients/go/pkg/skillsloader:skillsloader_test",
         "//clients/java:skills_loader_java_test",
+        "//cli/internal/validator:validator_test",
+        "//cli/internal/installer:installer_test",
+        "//cli/internal/commands:commands_test",
     ],
 )
+
 
 

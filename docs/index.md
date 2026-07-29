@@ -63,28 +63,39 @@ The project is governed by a root [MODULE.bazel]({{ config.repo_url }}/blob/main
 skill-builder/
 ├── MODULE.bazel               # Bazel 9.2 Bzlmod module definition
 ├── BUILD.bazel                # Root Bazel aliases and filegroups
+├── Makefile                   # Root automation Makefile
 ├── pyproject.toml             # Root uv workspace configuration
 ├── mkdocs.yml                 # MkDocs documentation site configuration
 ├── docs/                      # Documentation site source files
 ├── LICENSE                    # Apache 2.0 License
 ├── NOTICE                     # Legal attribution notices
 ├── validator_report.json      # Persisted 5-point SDLC audit results
+├── cli/                       # SKM (Skill Manager) Go CLI package
+│   ├── cmd/skm/               # Minimal main.go entry point
+│   ├── internal/installer/    # Polyglot URI skill resolver (github, mod, maven, pkg, file)
+│   ├── internal/validator/    # 5-point skill audit & validation engine
+│   └── internal/commands/     # Subcommand execution router
+├── skills/                    # Root skills directory categorized by domain
+│   ├── a2a/                   # Agent-to-Agent protocol skills
+│   ├── a2ui/                  # Agent-to-User Interface skills
+│   ├── bazel/                 # Hermetic Bazel 9.2 module skills
+│   ├── database/              # BigQuery and AlloyDB skills
+│   ├── devops/                # Docker, Terraform GCP, NX, and OTel skills
+│   ├── frontend/              # React and Vite frontend skills
+│   ├── go/                    # Go microservice & project setup skills
+│   ├── google-adk-skill-builder/ # ADK skill generator meta-skill
+│   ├── java/                  # Java enterprise & Maven skills
+│   ├── protobuf/              # Protocol Buffers & gRPC contract skills
+│   └── python/                # Python core, FastAPI, ADK & MCP skills
 ├── examples/                  # Standalone example packages
 │   ├── example-adk/           # Native ADK agent example package
 │   └── polyglot-developer/    # Polyglot Bazel monorepo developer agent CLI package
-└── packages/                  # Domain skill packages and utilities
-    ├── skills-loader/         # Dynamic skill loader package
-    ├── skills-a2a/            # Agent-to-Agent protocol skills
-    ├── skills-a2ui/           # Agent-to-User Interface skills
-    ├── skills-bazel/          # Hermetic Bazel 9.2 module skills
-    ├── skills-database/       # BigQuery and AlloyDB skills
-    ├── skills-devops/         # Docker, Terraform GCP, NX, and OTel skills
-    ├── skills-frontend/       # React and Vite frontend skills
-    ├── skills-go/             # Go microservice & project setup skills
-    ├── skills-java/           # Java enterprise & Maven skills
-    ├── skills-protobuf/       # Protocol Buffers & gRPC contract skills
-    ├── skills-python/         # Python core, FastAPI, ADK & MCP skills
-    └── validator/             # 5-point SDLC validator package
+└── packages/                  # SDK packages & language test packages
+    ├── loader/                # Dynamic skill loader Python package
+    ├── validator/             # 5-point SDLC validator Python package
+    ├── skills-go/             # Go language test skill package
+    ├── skills-java/           # Java language test skill package
+    └── skills-python/         # Python language test skill package
 ```
 
 ---

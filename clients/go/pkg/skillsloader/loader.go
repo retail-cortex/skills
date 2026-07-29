@@ -167,7 +167,63 @@ func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 		return "pkg", clean[len(prefix):], "", ""
 	}
 
+	if strings.HasPrefix(clean, "mod://") || strings.HasPrefix(clean, "go://") {
+		prefix := "mod://"
+		if strings.HasPrefix(clean, "go://") {
+			prefix = "go://"
+		}
+		raw := clean[len(prefix):]
+		var target, ref, subpath string
+		if strings.Contains(raw, "@") {
+			parts := strings.SplitN(raw, "@", 2)
+			target = parts[0]
+			refSub := parts[1]
+			if strings.Contains(refSub, "/") {
+				subParts := strings.SplitN(refSub, "/", 2)
+				ref = subParts[0]
+				subpath = subParts[1]
+			} else {
+				ref = refSub
+			}
+		} else if strings.Contains(raw, "/") {
+			parts := strings.Split(raw, "/")
+			if len(parts) >= 3 {
+				target = strings.Join(parts[:3], "/")
+				if len(parts) > 3 {
+					subpath = strings.Join(parts[3:], "/")
+				}
+			} else {
+				target = raw
+			}
+		} else {
+			target = raw
+		}
+		return "mod", target, ref, subpath
+	}
+
+	if strings.HasPrefix(clean, "maven://") || strings.HasPrefix(clean, "mvn://") {
+		prefix := "maven://"
+		if strings.HasPrefix(clean, "mvn://") {
+			prefix = "mvn://"
+		}
+		raw := clean[len(prefix):]
+		if idx := strings.Index(raw, "/"); idx != -1 {
+			target = raw[:idx]
+			subpath = raw[idx+1:]
+		} else {
+			target = raw
+		}
+		if strings.Contains(target, ":") {
+			parts := strings.Split(target, ":")
+			if len(parts) >= 3 {
+				ref = parts[2]
+			}
+		}
+		return "maven", target, ref, subpath
+	}
+
 	if strings.HasPrefix(clean, "github://") || strings.HasPrefix(clean, "https://github.com/") {
+
 		prefix := "github://"
 		if strings.HasPrefix(clean, "https://github.com/") {
 			prefix = "https://github.com/"
@@ -386,35 +442,27 @@ func LoadAllSkills(skillsRoot string, skillFilter []string) (map[string]*SkillDe
 		}
 	}
 
-	// 2. Fallback scan for standalone skills directory
+	// 2. Fallback scan for standalone skills directory (and subcategory folders)
 	skillsDir := filepath.Join(root, "skills")
 	if filepath.Base(root) == "skills" {
 		skillsDir = root
 	}
 
 	if isDir(skillsDir) {
-		ignored := map[string]bool{
-			".git": true, ".bazel": true, "packages": true, "validator": true,
-			"node_modules": true, "scratch": true, "build": true, "dist": true, ".venv": true,
-		}
-		entries, _ := os.ReadDir(skillsDir)
-		for _, entry := range entries {
-			if entry.IsDir() && !ignored[entry.Name()] && !strings.HasPrefix(entry.Name(), ".") {
-				if _, exists := loaded[entry.Name()]; exists {
-					continue
-				}
-				if hasFilter && !filterSet[entry.Name()] {
-					continue
-				}
-				skillDir := filepath.Join(skillsDir, entry.Name())
-				skillDef, err := LoadSkillFromDir(skillDir)
-				if err == nil && skillDef != nil {
-					if !hasFilter || filterSet[skillDef.Name] {
-						loaded[skillDef.Name] = skillDef
+		_ = filepath.Walk(skillsDir, func(path string, info os.FileInfo, err error) error {
+			if err == nil && !info.IsDir() && info.Name() == "SKILL.md" {
+				dir := filepath.Dir(path)
+				dirName := filepath.Base(dir)
+				if _, exists := loaded[dirName]; !exists {
+					if !hasFilter || filterSet[dirName] {
+						if skillDef, err := LoadSkillFromDir(dir); err == nil && skillDef != nil {
+							loaded[skillDef.Name] = skillDef
+						}
 					}
 				}
 			}
-		}
+			return nil
+		})
 	}
 
 	// 3. Scan standard cross-client .agents/skills directories (project-level & user-level)
@@ -493,7 +541,239 @@ func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string
 	return loaded, nil
 }
 
+// LoadSkillsFromGoModule resolves a Go module URI and loads contained skill definitions.
+func LoadSkillsFromGoModule(target, ref string, roots, filter []string) (map[string]*SkillDefinition, error) {
+	cleanMod := strings.TrimSpace(target)
+	if cleanMod == "" {
+		return map[string]*SkillDefinition{}, nil
+	}
+
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			gopath = filepath.Join(home, "go")
+		}
+	}
+
+	var modDir string
+	if ref != "" && gopath != "" {
+		cand := filepath.Join(gopath, "pkg", "mod", fmt.Sprintf("%s@%s", strings.ToLower(cleanMod), ref))
+		if isDir(cand) {
+			modDir = cand
+		}
+	}
+
+	if modDir == "" && ref != "" {
+		if _, err := exec.LookPath("go"); err == nil {
+			modSpec := fmt.Sprintf("%s@%s", cleanMod, ref)
+			cmd := exec.Command("go", "mod", "download", "-json", modSpec)
+			var out bytes.Buffer
+			cmd.Stdout = &out
+			if err := cmd.Run(); err == nil {
+				var result struct {
+					Dir string `json:"Dir"`
+				}
+				if err := json.Unmarshal(out.Bytes(), &result); err == nil && result.Dir != "" && isDir(result.Dir) {
+					modDir = result.Dir
+				}
+			}
+		}
+	}
+
+	if modDir == "" && gopath != "" {
+		modParent := filepath.Join(gopath, "pkg", "mod", filepath.Dir(cleanMod))
+		baseName := filepath.Base(cleanMod)
+		if isDir(modParent) {
+			entries, _ := os.ReadDir(modParent)
+			for _, entry := range entries {
+				if entry.IsDir() && strings.HasPrefix(entry.Name(), baseName+"@") {
+					modDir = filepath.Join(modParent, entry.Name())
+					break
+				}
+			}
+		}
+	}
+
+	if modDir != "" {
+		candidateDir := modDir
+		if len(roots) > 0 && roots[0] != "" {
+			sub := filepath.Join(modDir, roots[0])
+			if isDir(sub) {
+				candidateDir = sub
+			}
+		}
+		return LoadAllSkills(candidateDir, filter)
+	}
+
+	root := FindRegistryRoot()
+	artName := filepath.Base(cleanMod)
+	candidates := []string{
+		filepath.Join(root, "packages", "skills-"+artName),
+		filepath.Join(root, "packages", artName),
+		filepath.Join(root, "clients", "go"),
+	}
+	for _, cand := range candidates {
+		if isDir(cand) {
+			skills, err := LoadAllSkills(cand, filter)
+			if err == nil && len(skills) > 0 {
+				return skills, nil
+			}
+			matches, _ := filepath.Glob(filepath.Join(cand, "src", "*", "skills", "*"))
+			if len(matches) > 0 {
+				found := make(map[string]*SkillDefinition)
+				for _, m := range matches {
+					if isDir(m) {
+						if s, err := LoadSkillFromDir(m); err == nil && s != nil {
+							found[s.Name] = s
+						}
+					}
+				}
+				if len(found) > 0 {
+					return found, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("go module %s (ref: %s) not found in GOPATH module cache or workspace", cleanMod, ref)
+}
+
+// LoadSkillsFromMaven locates/downloads a Java Maven artifact and loads contained skill definitions.
+func LoadSkillsFromMaven(target string, ref string, roots []string, filter []string) (map[string]*SkillDefinition, error) {
+	parts := strings.Split(target, ":")
+	var groupId, artifactId, version string
+	if len(parts) >= 3 {
+		groupId = parts[0]
+		artifactId = parts[1]
+		version = parts[2]
+	} else if len(parts) == 2 {
+		groupId = parts[0]
+		artifactId = parts[1]
+		version = ref
+	} else {
+		artifactId = target
+		version = ref
+	}
+
+	homeDir, _ := os.UserHomeDir()
+	var jarPath string
+	if groupId != "" && artifactId != "" && version != "" {
+		groupPath := strings.ReplaceAll(groupId, ".", "/")
+		cand := filepath.Join(homeDir, ".m2", "repository", groupPath, artifactId, version, fmt.Sprintf("%s-%s.jar", artifactId, version))
+		if isFile(cand) {
+			jarPath = cand
+		}
+	}
+
+	if jarPath == "" && groupId != "" && artifactId != "" && version != "" {
+		if _, err := exec.LookPath("mvn"); err == nil {
+			artifactSpec := fmt.Sprintf("%s:%s:%s", groupId, artifactId, version)
+			cmd := exec.Command("mvn", "dependency:get", fmt.Sprintf("-Dartifact=%s", artifactSpec))
+			_ = cmd.Run()
+
+			groupPath := strings.ReplaceAll(groupId, ".", "/")
+			cand := filepath.Join(homeDir, ".m2", "repository", groupPath, artifactId, version, fmt.Sprintf("%s-%s.jar", artifactId, version))
+			if isFile(cand) {
+				jarPath = cand
+			}
+		}
+	}
+
+	if jarPath != "" {
+		cacheKey := fmt.Sprintf("%s-%s-%s", groupId, artifactId, version)
+		extractedDir := filepath.Join(GetLoaderSkillsDir(), "maven", cacheKey)
+		if !isDir(extractedDir) {
+			if err := unzipFile(jarPath, extractedDir); err != nil {
+				return nil, fmt.Errorf("failed to extract maven jar %s: %w", jarPath, err)
+			}
+		}
+
+		if len(roots) > 0 && roots[0] != "" {
+			sub := filepath.Join(extractedDir, roots[0])
+			if isDir(sub) {
+				extractedDir = sub
+			}
+		}
+		return LoadAllSkills(extractedDir, filter)
+	}
+
+	root := FindRegistryRoot()
+	candidates := []string{
+		filepath.Join(root, "packages", "skills-"+artifactId),
+		filepath.Join(root, "packages", artifactId),
+		filepath.Join(root, "clients", "java"),
+	}
+	for _, cand := range candidates {
+		if isDir(cand) {
+			skills, err := LoadAllSkills(cand, filter)
+			if err == nil && len(skills) > 0 {
+				return skills, nil
+			}
+			matches, _ := filepath.Glob(filepath.Join(cand, "src", "*", "skills", "*"))
+			if len(matches) > 0 {
+				found := make(map[string]*SkillDefinition)
+				for _, m := range matches {
+					if isDir(m) {
+						if s, err := LoadSkillFromDir(m); err == nil && s != nil {
+							found[s.Name] = s
+						}
+					}
+				}
+				if len(found) > 0 {
+					return found, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("maven artifact %s (version: %s) not found in local m2 cache or workspace", target, version)
+}
+
+func unzipFile(zipPath, dst string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		fpath := filepath.Join(dst, f.Name)
+		if !isWithinBaseDir(dst, fpath) {
+			continue
+		}
+
+		if f.FileInfo().IsDir() {
+			_ = os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+		rc.Close()
+		outFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // LoadSkillsFromGitHub loads skills from a remote GitHub repository.
+
 func LoadSkillsFromGitHub(repo string, ref string, roots []string, filter []string, token string, dotenvPath string) (map[string]*SkillDefinition, error) {
 	envFile := dotenvPath
 	if envFile == "" {
@@ -791,6 +1071,28 @@ func LoadSkillsFromRoots(roots []string, filter []string, token string, dotenvPa
 			}
 		case "pkg":
 			skills, err := LoadSkillsFromPackage(target, selectedSkills)
+			if err == nil {
+				for k, v := range skills {
+					loaded[k] = v
+				}
+			}
+		case "mod", "go":
+			var modRoots []string
+			if subpath != "" {
+				modRoots = []string{subpath}
+			}
+			skills, err := LoadSkillsFromGoModule(target, ref, modRoots, selectedSkills)
+			if err == nil {
+				for k, v := range skills {
+					loaded[k] = v
+				}
+			}
+		case "maven", "mvn":
+			var mavenRoots []string
+			if subpath != "" {
+				mavenRoots = []string{subpath}
+			}
+			skills, err := LoadSkillsFromMaven(target, ref, mavenRoots, selectedSkills)
 			if err == nil {
 				for k, v := range skills {
 					loaded[k] = v

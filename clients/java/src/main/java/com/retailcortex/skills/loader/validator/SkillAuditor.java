@@ -136,43 +136,31 @@ public class SkillAuditor {
         Path root = registryRoot != null ? registryRoot : SkillLoader.findRegistryRoot();
         AuditSummary summary = new AuditSummary();
 
-        List<Path> skillDirs = new ArrayList<>();
-        Path packagesDir = root.getFileName() != null && root.getFileName().toString().equals("packages")
-                ? root : root.resolve("packages");
+        Set<Path> skillDirsSet = new HashSet<>();
 
-        if (Files.isDirectory(packagesDir)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(packagesDir, "skills-*")) {
-                for (Path p : stream) {
-                    Path srcDir = p.resolve("src");
-                    if (Files.isDirectory(srcDir)) {
-                        try (Stream<Path> walk = Files.walk(srcDir, 4)) {
-                            walk.filter(Files::isDirectory)
-                                    .filter(dir -> dir.getFileName().toString().equals("skills"))
-                                    .flatMap(folder -> {
-                                        try { return Files.list(folder); } catch (IOException e) { return Stream.empty(); }
-                                    })
-                                    .filter(Files::isDirectory)
-                                    .forEach(skillDirs::add);
-                        } catch (IOException ignored) {}
-                    }
-                }
+        Path skillsDir = root.getFileName() != null && root.getFileName().toString().equals("skills")
+                ? root : root.resolve("skills");
+        if (Files.isDirectory(skillsDir)) {
+            try (Stream<Path> stream = Files.walk(skillsDir, FileVisitOption.FOLLOW_LINKS)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .map(Path::getParent)
+                        .forEach(skillDirsSet::add);
             } catch (IOException ignored) {}
         }
 
-        if (skillDirs.isEmpty()) {
-            Path skillsDir = root.getFileName() != null && root.getFileName().toString().equals("skills")
-                    ? root : root.resolve("skills");
-            if (Files.isDirectory(skillsDir)) {
-                Set<String> ignoredDirs = Set.of(".git", ".bazel", "packages", "validator", "node_modules", "scratch", "build", "dist", ".venv");
-                try (Stream<Path> stream = Files.list(skillsDir)) {
-                    stream.filter(Files::isDirectory)
-                            .filter(p -> !ignoredDirs.contains(p.getFileName().toString()))
-                            .filter(p -> !p.getFileName().toString().startsWith("."))
-                            .forEach(skillDirs::add);
-                } catch (IOException ignored) {}
-            }
+        Path packagesDir = root.getFileName() != null && root.getFileName().toString().equals("packages")
+                ? root : root.resolve("packages");
+        if (Files.isDirectory(packagesDir)) {
+            try (Stream<Path> stream = Files.walk(packagesDir, FileVisitOption.FOLLOW_LINKS)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .map(Path::getParent)
+                        .forEach(skillDirsSet::add);
+            } catch (IOException ignored) {}
         }
 
+        List<Path> skillDirs = new ArrayList<>(skillDirsSet);
         skillDirs.sort(Comparator.comparing(Path::toString));
 
         for (Path d : skillDirs) {

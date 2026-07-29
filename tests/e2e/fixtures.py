@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Generator, List, Set, Tuple
 from unittest.mock import MagicMock, patch
 
-from skills_loader.loader import find_registry_root
+from loader.loader import find_registry_root
 
 
 def get_workspace_root() -> Path:
@@ -17,9 +17,9 @@ def get_workspace_root() -> Path:
 def get_multi_skill_file_roots(root: Path | None = None) -> List[str]:
     """Returns file:// URIs pointing to distinct skills across python, go, and bazel packages."""
     ws_root = root or get_workspace_root()
-    python_skill_path = ws_root / "packages/skills-python/src/retailcortex_skills_python/skills/python-core"
-    go_skill_path = ws_root / "packages/skills-go/src/retailcortex_skills_go/skills/go-lang"
-    bazel_skill_path = ws_root / "packages/skills-bazel/src/retailcortex_skills_bazel/skills/bazel-modules"
+    python_skill_path = ws_root / "skills/python/python-core"
+    go_skill_path = ws_root / "skills/go/go-lang"
+    bazel_skill_path = ws_root / "skills/bazel/bazel-modules"
 
     return [
         f"file://{python_skill_path}",

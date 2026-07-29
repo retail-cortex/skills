@@ -1,6 +1,8 @@
 package skillsloader
 
 import (
+	"archive/zip"
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -89,6 +91,30 @@ func TestParseSkillRootURI(t *testing.T) {
 			reqTarget:  "retailcortex_skills_python",
 			reqRef:     "",
 			reqSubpath: "",
+		},
+		{
+			name:       "maven URI",
+			uri:        "maven://com.retailcortex.skills:skills-java:1.0.0",
+			reqScheme:  "maven",
+			reqTarget:  "com.retailcortex.skills:skills-java:1.0.0",
+			reqRef:     "1.0.0",
+			reqSubpath: "",
+		},
+		{
+			name:       "mvn URI with subpath",
+			uri:        "mvn://com.retailcortex.skills:skills-java:1.0.0/java-enterprise",
+			reqScheme:  "maven",
+			reqTarget:  "com.retailcortex.skills:skills-java:1.0.0",
+			reqRef:     "1.0.0",
+			reqSubpath: "java-enterprise",
+		},
+		{
+			name:       "mod URI with version and subpath",
+			uri:        "mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go",
+			reqScheme:  "mod",
+			reqTarget:  "github.com/retail-cortex/skills",
+			reqRef:     "v1.0.0",
+			reqSubpath: "packages/skills-go",
 		},
 		{
 			name:       "github URI with trailing ref",
@@ -239,4 +265,160 @@ func TestSkillRegistryFromRootsFactory(t *testing.T) {
 
 func SkillRegistryFromRoots(roots []string, filter []string, token string, dotenvPath string) (*SkillRegistry, error) {
 	return NewSkillRegistryFromRoots(roots, filter, token, dotenvPath)
+}
+
+func TestSkillDefinitionToMap_Extra(t *testing.T) {
+	def := &SkillDefinition{
+		Name:          "test-skill",
+		Description:   "Description",
+		Instructions:  "Instructions",
+		License:       "Apache-2.0",
+		Author:        "Author",
+		Version:       "1.0",
+		Compatibility: "ADK-v1",
+		AllowedTools:  "Read",
+		Path:          "/path/to/skill",
+		Metadata:      map[string]string{"foo": "bar"},
+		References:    map[string]string{"ref.md": "ref content"},
+		Examples:      map[string]string{"ex.py": "ex content"},
+	}
+	m := def.ToMap()
+	assert.Equal(t, "test-skill", m["name"])
+	assert.Equal(t, "Description", m["description"])
+	assert.Equal(t, "Instructions", m["instructions"])
+	assert.Equal(t, "Apache-2.0", m["license"])
+}
+
+func TestLoadSkillsFromPackage(t *testing.T) {
+	skills, err := LoadSkillsFromPackage("retailcortex_skills_python", []string{"python-core"})
+	require.NoError(t, err)
+	assert.Contains(t, skills, "python-core")
+
+	emptySkills, err := LoadSkillsFromPackage("", nil)
+	require.NoError(t, err)
+	assert.Empty(t, emptySkills)
+}
+
+func TestLoadSkillsFromGoModule_LocalCache(t *testing.T) {
+	skills, err := LoadSkillsFromGoModule("github.com/retail-cortex/skills", "v1.0.0", nil, []string{"python-core"})
+	if err == nil && len(skills) > 0 {
+		assert.Contains(t, skills, "python-core")
+	}
+
+	empty, err := LoadSkillsFromGoModule("", "", nil, nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+}
+
+func TestLoadSkillsFromMaven_LocalCache(t *testing.T) {
+	tmpDir := t.TempDir()
+	m2Dir := filepath.Join(tmpDir, ".m2", "repository", "com", "test", "my-artifact", "1.0.0")
+	_ = os.MkdirAll(m2Dir, 0755)
+	jarFile := filepath.Join(m2Dir, "my-artifact-1.0.0.jar")
+
+	buf := new(bytes.Buffer)
+	zw := zip.NewWriter(buf)
+	f, _ := zw.Create("skills/maven-skill/SKILL.md")
+	_, _ = f.Write([]byte("---\nname: maven-skill\n---\nBody"))
+	_ = zw.Close()
+	_ = os.WriteFile(jarFile, buf.Bytes(), 0644)
+
+	t.Setenv("HOME", tmpDir)
+
+	skills, err := LoadSkillsFromMaven("com.test:my-artifact:1.0.0", "", nil, nil)
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "maven-skill")
+}
+
+func TestLoadSkillsFromManifest_Errors(t *testing.T) {
+	tmpDir := t.TempDir()
+	badJSON := filepath.Join(tmpDir, "bad.json")
+	_ = os.WriteFile(badJSON, []byte("{invalid json"), 0644)
+
+	_, err := LoadSkillsFromManifest(badJSON)
+	assert.Error(t, err)
+
+	_, err = LoadSkillsFromManifest(filepath.Join(tmpDir, "nonexistent.json"))
+	assert.Error(t, err)
+}
+
+func TestLoadSkillFromDir_EdgeCases(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Dir without SKILL.md
+	nonSkillDir := filepath.Join(tmpDir, "no-skill")
+	_ = os.MkdirAll(nonSkillDir, 0755)
+	s, err := LoadSkillFromDir(nonSkillDir)
+	assert.Error(t, err)
+	assert.Nil(t, s)
+
+	// Skill with examples directory
+	exSkillDir := filepath.Join(tmpDir, "ex-skill")
+	_ = os.MkdirAll(filepath.Join(exSkillDir, "examples"), 0755)
+	_ = os.WriteFile(filepath.Join(exSkillDir, "examples", "code.py"), []byte("print('hello')"), 0644)
+	_ = os.WriteFile(filepath.Join(exSkillDir, "SKILL.md"), []byte("---\nname: ex-skill\n---\nBody"), 0644)
+
+	skill, err := LoadSkillFromDir(exSkillDir)
+	require.NoError(t, err)
+	assert.Equal(t, "print('hello')", skill.GetExampleContent("code.py"))
+	assert.Equal(t, "", skill.GetExampleContent("nonexistent.py"))
+}
+
+func TestLoadSkillsFromGoModule_GOPATH(t *testing.T) {
+	tmpDir := t.TempDir()
+	modDir := filepath.Join(tmpDir, "pkg", "mod", "github.com", "mock-owner", "mock-mod@v1.0.0")
+	skillDir := filepath.Join(modDir, "skills", "mod-skill")
+	_ = os.MkdirAll(filepath.Join(skillDir, "references"), 0755)
+	_ = os.MkdirAll(filepath.Join(skillDir, "examples"), 0755)
+	_ = os.WriteFile(filepath.Join(skillDir, "references", "ref.md"), []byte("ref"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "examples", "ex.md"), []byte("ex"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: mod-skill\n---\nBody"), 0644)
+
+	t.Setenv("GOPATH", tmpDir)
+
+	skills, err := LoadSkillsFromGoModule("github.com/mock-owner/mock-mod", "v1.0.0", nil, nil)
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "mod-skill")
+}
+
+func TestLoadSkillsFromGitHub_Cached(t *testing.T) {
+	loaderBase := GetLoaderSkillsDir()
+	ghDir := filepath.Join(loaderBase, "github", "mock-owner_mock-repo", "main")
+	_ = os.MkdirAll(ghDir, 0755)
+	defer os.RemoveAll(filepath.Join(loaderBase, "github", "mock-owner_mock-repo"))
+
+	_ = os.WriteFile(filepath.Join(ghDir, "dummy_file.txt"), []byte("data"), 0644)
+
+	skillDir := filepath.Join(ghDir, "skills", "gh-skill")
+	_ = os.MkdirAll(filepath.Join(skillDir, "references"), 0755)
+	_ = os.MkdirAll(filepath.Join(skillDir, "examples"), 0755)
+	_ = os.WriteFile(filepath.Join(skillDir, "references", "ref.md"), []byte("ref"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "examples", "ex.md"), []byte("ex"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: gh-skill\n---\nBody"), 0644)
+
+	skills, err := LoadSkillsFromGitHub("mock-owner/mock-repo", "main", nil, nil, "", "")
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "gh-skill")
+}
+
+func TestLoadSkillsFromRoots_MultipleSchemes(t *testing.T) {
+	tmpDir := t.TempDir()
+	skillDir := filepath.Join(tmpDir, "root-skill")
+	_ = os.MkdirAll(filepath.Join(skillDir, "references"), 0755)
+	_ = os.MkdirAll(filepath.Join(skillDir, "examples"), 0755)
+	_ = os.WriteFile(filepath.Join(skillDir, "references", "ref.md"), []byte("ref"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "examples", "ex.md"), []byte("ex"), 0644)
+	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: root-skill\n---\nBody"), 0644)
+
+	roots := []string{
+		"file://" + skillDir,
+		"pkg://retailcortex_skills_python",
+		"mod://github.com/mock-owner/mock-mod@v1.0.0",
+		"maven://com.test:my-artifact:1.0.0",
+		"github://mock-owner/mock-repo@main",
+	}
+
+	skills, err := LoadSkillsFromRoots(roots, nil, "", "")
+	assert.NoError(t, err)
+	assert.Contains(t, skills, "root-skill")
 }

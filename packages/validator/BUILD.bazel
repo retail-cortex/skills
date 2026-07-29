@@ -22,6 +22,6 @@ py_test(
     main = "tests/test_validator.py",
     deps = [
         ":validator_lib",
-        "//packages/skills-loader:skills_loader_lib",
+        "//packages/loader:loader_lib",
     ],
 )

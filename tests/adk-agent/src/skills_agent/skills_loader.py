@@ -1,6 +1,6 @@
 """Backward-compatible re-export module delegating to the standalone skills-loader package."""
 
-from skills_loader import (
+from loader import (
     SkillDefinition,
     SkillRegistry,
     SkillSummary,

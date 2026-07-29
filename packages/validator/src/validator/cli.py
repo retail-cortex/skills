@@ -48,10 +48,13 @@ def main() -> None:
     print(f"\nTotal Skills: {summary.total_skills} | Passed: {summary.passed_skills} | Failed: {summary.failed_skills}\n")
 
     # Export report JSON
-    report_file: Path = registry_root / "validator_report.json"
-    with open(report_file, "w", encoding="utf-8") as f:
-        json.dump(summary.to_dict(), f, indent=2)
-    print(f"Saved audit report artifact to: {report_file}\n")
+    try:
+        report_file: Path = registry_root / "validator_report.json"
+        with open(report_file, "w", encoding="utf-8") as f:
+            json.dump(summary.to_dict(), f, indent=2)
+        print(f"Saved audit report artifact to: {report_file}\n")
+    except Exception:
+        pass
 
     if summary.failed_skills > 0:
         print("ERROR: One or more skills failed the 5-point SDLC audit. Exiting with code 1.\n")

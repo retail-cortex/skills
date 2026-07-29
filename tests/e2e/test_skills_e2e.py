@@ -27,7 +27,7 @@ except ImportError:
         get_workspace_root,
         mock_github_skill_environment,
     )
-from skills_loader.loader import (
+from loader.loader import (
     SkillRegistry,
     build_skills_manifest,
     get_loader_skills_dir,

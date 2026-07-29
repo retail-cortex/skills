@@ -8,14 +8,14 @@ from typing import AsyncGenerator, Dict, List, Optional
 
 # Add project packages to sys.path for direct execution
 project_root = Path(__file__).resolve().parents[2]
-skills_loader_src = project_root / "packages/skills-loader/src"
+skills_loader_src = project_root / "packages/loader/src"
 skills_agent_src = project_root / "packages/skills-agent/src"
 if str(skills_loader_src) not in sys.path:
     sys.path.insert(0, str(skills_loader_src))
 if str(skills_agent_src) not in sys.path:
     sys.path.insert(0, str(skills_agent_src))
 
-from skills_loader import SkillDefinition, SkillRegistry, parse_dotenv_file, parse_skill_root_uri
+from loader import SkillDefinition, SkillRegistry, parse_dotenv_file, parse_skill_root_uri
 
 
 class ToolContext:

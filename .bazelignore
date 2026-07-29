@@ -3,9 +3,5 @@ scratch
 node_modules
 dist
 build
-packages/skills-devops/src/retailcortex_skills_devops/skills/mono-repo-setup/examples
-packages/skills-bazel/src/retailcortex_skills_bazel/skills/bazel-modules/examples
-packages/skills-devops/src/retailcortex_skills_devops/skills/bazel-modules/examples
-packages/skills-go/src/retailcortex_skills_go/skills/go-project-setup/examples
-packages/skills-python/src/retailcortex_skills_python/skills/python-project-setup/examples
-packages/skills-java/src/retailcortex_skills_java/skills/java-project-setup/examples
+.loader_skills
+

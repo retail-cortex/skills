@@ -184,6 +184,60 @@ public class SkillLoader {
             return new ParsedUri("pkg", clean.substring(prefix.length()), null, null);
         }
 
+        if (clean.startsWith("maven://") || clean.startsWith("mvn://")) {
+            String prefix = clean.startsWith("maven://") ? "maven://" : "mvn://";
+            String raw = clean.substring(prefix.length());
+            String target = raw;
+            String subpath = null;
+            String ref = null;
+            int slashIdx = raw.indexOf('/');
+            if (slashIdx != -1) {
+                target = raw.substring(0, slashIdx);
+                subpath = raw.substring(slashIdx + 1);
+            }
+            if (target.contains(":")) {
+                String[] parts = target.split(":");
+                if (parts.length >= 3) {
+                    ref = parts[2];
+                }
+            }
+            return new ParsedUri("maven", target, ref, subpath);
+        }
+
+        if (clean.startsWith("mod://") || clean.startsWith("go://")) {
+            String prefix = clean.startsWith("mod://") ? "mod://" : "go://";
+            String raw = clean.substring(prefix.length());
+            String target = raw;
+            String ref = null;
+            String subpath = null;
+            if (raw.contains("@")) {
+                String[] parts = raw.split("@", 2);
+                target = parts[0];
+                String refSub = parts[1];
+                if (refSub.contains("/")) {
+                    String[] bits = refSub.split("/", 2);
+                    ref = bits[0];
+                    subpath = bits[1];
+                } else {
+                    ref = refSub;
+                }
+            } else if (raw.contains("/")) {
+                String[] bits = raw.split("/");
+                if (bits.length >= 3) {
+                    target = bits[0] + "/" + bits[1] + "/" + bits[2];
+                    if (bits.length > 3) {
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 3; i < bits.length; i++) {
+                            if (i > 3) sb.append("/");
+                            sb.append(bits[i]);
+                        }
+                        subpath = sb.toString();
+                    }
+                }
+            }
+            return new ParsedUri("mod", target, ref, subpath);
+        }
+
         if (clean.startsWith("github://") || clean.startsWith("https://github.com/")) {
             String prefix = clean.startsWith("github://") ? "github://" : "https://github.com/";
             String target = clean.substring(prefix.length());
@@ -402,15 +456,14 @@ public class SkillLoader {
             }
         }
 
-        // 2. Scan skills directory
+        // 2. Scan skills directory (and subcategory folders)
         Path skillsDir = root.getFileName() != null && root.getFileName().toString().equals("skills")
                 ? root : root.resolve("skills");
         if (Files.isDirectory(skillsDir)) {
-            Set<String> ignored = Set.of(".git", ".bazel", "packages", "validator", "node_modules", "scratch", "build", "dist", ".venv");
-            try (Stream<Path> stream = Files.list(skillsDir)) {
-                stream.filter(Files::isDirectory)
-                        .filter(p -> !ignored.contains(p.getFileName().toString()))
-                        .filter(p -> !p.getFileName().toString().startsWith("."))
+            try (Stream<Path> stream = Files.walk(skillsDir, FileVisitOption.FOLLOW_LINKS)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .map(Path::getParent)
                         .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                         .forEach(skillDir -> {
                             String skillName = skillDir.getFileName().toString();
@@ -491,6 +544,114 @@ public class SkillLoader {
             }
         }
         return loaded;
+    }
+
+    /**
+     * Loads skills from a Maven artifact coordinates or classpath.
+     */
+    public static Map<String, SkillDefinition> loadSkillsFromMaven(String target, String ref, List<String> roots, List<String> filter) {
+        if (target == null || target.isBlank()) {
+            return Collections.emptyMap();
+        }
+        String[] parts = target.split(":");
+        String groupId = parts.length >= 1 ? parts[0] : "";
+        String artifactId = parts.length >= 2 ? parts[1] : target;
+        String version = parts.length >= 3 ? parts[2] : (ref != null ? ref : "");
+
+        String homeDir = System.getProperty("user.home");
+        Path jarPath = null;
+        if (!groupId.isBlank() && !artifactId.isBlank() && !version.isBlank()) {
+            String groupPath = groupId.replace('.', '/');
+            Path cand = Paths.get(homeDir, ".m2", "repository", groupPath, artifactId, version, artifactId + "-" + version + ".jar");
+            if (Files.isRegularFile(cand)) {
+                jarPath = cand;
+            }
+        }
+
+        if (jarPath != null) {
+            String cacheKey = groupId + "-" + artifactId + "-" + version;
+            Path extractedDir = getLoaderSkillsDir().resolve("maven").resolve(cacheKey);
+            if (!Files.isDirectory(extractedDir)) {
+                try {
+                    unzip(jarPath, extractedDir);
+                } catch (IOException e) {
+                    logger.warn("Failed to extract maven jar {}: {}", jarPath, e.getMessage());
+                }
+            }
+            if (roots != null && !roots.isEmpty() && roots.get(0) != null) {
+                Path sub = extractedDir.resolve(roots.get(0));
+                if (Files.isDirectory(sub)) {
+                    extractedDir = sub;
+                }
+            }
+            return loadAllSkills(extractedDir, filter);
+        }
+
+        Path root = findRegistryRoot();
+        List<Path> candidates = List.of(
+            root.resolve("packages").resolve("skills-" + artifactId),
+            root.resolve("packages").resolve(artifactId),
+            root.resolve("clients").resolve("java")
+        );
+        for (Path cand : candidates) {
+            if (Files.isDirectory(cand)) {
+                Map<String, SkillDefinition> skills = loadAllSkills(cand, filter);
+                if (!skills.isEmpty()) {
+                    return skills;
+                }
+            }
+        }
+        return Collections.emptyMap();
+    }
+
+    /**
+     * Loads skills from a Go module URI or GOPATH cache.
+     */
+    public static Map<String, SkillDefinition> loadSkillsFromGoModule(String target, String ref, List<String> roots, List<String> filter) {
+        if (target == null || target.isBlank()) {
+            return Collections.emptyMap();
+        }
+        String cleanMod = target.trim();
+        String gopath = System.getenv("GOPATH");
+        if (gopath == null || gopath.isBlank()) {
+            gopath = Paths.get(System.getProperty("user.home"), "go").toString();
+        }
+
+        Path modDir = null;
+        if (ref != null && !ref.isBlank() && !gopath.isBlank()) {
+            Path cand = Paths.get(gopath, "pkg", "mod", cleanMod.toLowerCase() + "@" + ref);
+            if (Files.isDirectory(cand)) {
+                modDir = cand;
+            }
+        }
+
+        if (modDir != null) {
+            Path candidateDir = modDir;
+            if (roots != null && !roots.isEmpty() && roots.get(0) != null) {
+                Path sub = modDir.resolve(roots.get(0));
+                if (Files.isDirectory(sub)) {
+                    candidateDir = sub;
+                }
+            }
+            return loadAllSkills(candidateDir, filter);
+        }
+
+        Path root = findRegistryRoot();
+        String artName = Paths.get(cleanMod).getFileName().toString();
+        List<Path> candidates = List.of(
+            root.resolve("packages").resolve("skills-" + artName),
+            root.resolve("packages").resolve(artName),
+            root.resolve("clients").resolve("go")
+        );
+        for (Path cand : candidates) {
+            if (Files.isDirectory(cand)) {
+                Map<String, SkillDefinition> skills = loadAllSkills(cand, filter);
+                if (!skills.isEmpty()) {
+                    return skills;
+                }
+            }
+        }
+        return Collections.emptyMap();
     }
 
     /**
@@ -651,6 +812,14 @@ public class SkillLoader {
                     }
                 }
                 case "pkg" -> loaded.putAll(loadSkillsFromPackage(parsed.target(), filter));
+                case "maven", "mvn" -> {
+                    List<String> mavenRoots = parsed.subpath() != null ? List.of(parsed.subpath()) : null;
+                    loaded.putAll(loadSkillsFromMaven(parsed.target(), parsed.ref(), mavenRoots, filter));
+                }
+                case "mod", "go" -> {
+                    List<String> modRoots = parsed.subpath() != null ? List.of(parsed.subpath()) : null;
+                    loaded.putAll(loadSkillsFromGoModule(parsed.target(), parsed.ref(), modRoots, filter));
+                }
                 case "github" -> {
                     List<String> ghRoots = parsed.subpath() != null ? List.of(parsed.subpath()) : null;
                     loaded.putAll(loadSkillsFromGithub(parsed.target(), parsed.ref(), ghRoots, filter, token, dotenvPath));

@@ -104,26 +104,20 @@ def audit_skill_directory(skill_dir: Path) -> SkillAuditResult:
 def audit_all_skills(registry_root: Path) -> AuditSummary:
     summary = AuditSummary()
 
-    # Discover all skill directories inside packages
-    skill_dirs: List[Path] = []
+    # Discover all skill directories containing SKILL.md under skills/ or packages/
+    skill_dirs_set: set[Path] = set()
+
+    skills_dir = registry_root / "skills" if not registry_root.name == "skills" else registry_root
+    if skills_dir.is_dir():
+        for skill_md in skills_dir.rglob("SKILL.md"):
+            skill_dirs_set.add(skill_md.parent)
+
     packages_dir = registry_root / "packages" if not registry_root.name == "packages" else registry_root
     if packages_dir.is_dir():
-        skill_dirs = [
-            d for d in sorted(packages_dir.glob("skills-*/src/*/skills/*"))
-            if d.is_dir() and not d.name.startswith(".")
-        ]
+        for skill_md in packages_dir.rglob("SKILL.md"):
+            skill_dirs_set.add(skill_md.parent)
 
-    # Fallback to skills directory if present
-    if not skill_dirs:
-        skills_dir = registry_root / "skills"
-        if skills_dir.is_dir():
-            ignored_dirs = {".git", ".bazel", "packages", "validator", "node_modules", "scratch", "build", "dist", ".venv"}
-            skill_dirs = [
-                d for d in skills_dir.iterdir()
-                if d.is_dir() and d.name not in ignored_dirs and not d.name.startswith(".")
-            ]
-
-    for d in sorted(skill_dirs, key=lambda x: x.name):
+    for d in sorted(skill_dirs_set, key=lambda x: x.name):
         res = audit_skill_directory(d)
         summary.results.append(res)
         summary.total_skills += 1

@@ -181,4 +181,41 @@ class SkillLoaderTest {
         assertThat(loaded).hasSizeGreaterThanOrEqualTo(20);
         assertThat(loaded).containsKey("python-core");
     }
+
+    @Test
+    @DisplayName("Should load skills from package")
+    void testLoadSkillsFromPackage() {
+        Map<String, SkillDefinition> skills = SkillLoader.loadSkillsFromPackage("retailcortex_skills_python", List.of("python-core"));
+        assertThat(skills).containsKey("python-core");
+    }
+
+    @Test
+    @DisplayName("Should load skills from roots with file and pkg schemes")
+    void testLoadSkillsFromRoots() {
+        Map<String, SkillDefinition> skills = SkillLoader.loadSkillsFromRoots(List.of("file://.", "pkg://retailcortex_skills_python"), List.of("python-core"), null, null);
+        assertThat(skills).containsKey("python-core");
+    }
+
+    @Test
+    @DisplayName("Should test SkillSummary records and getters")
+    void testSkillSummary() {
+        SkillSummary summary = new SkillSummary("name", "desc", 1, 2, "/path");
+        assertThat(summary.getName()).isEqualTo("name");
+        assertThat(summary.getDescription()).isEqualTo("desc");
+        assertThat(summary.getReferenceCount()).isEqualTo(1);
+        assertThat(summary.getExampleCount()).isEqualTo(2);
+        assertThat(summary.getPath()).isEqualTo("/path");
+
+        summary.setName("name2");
+        summary.setDescription("desc2");
+        summary.setReferenceCount(3);
+        summary.setExampleCount(4);
+        summary.setPath("/path2");
+
+        assertThat(summary.getName()).isEqualTo("name2");
+        assertThat(summary.getDescription()).isEqualTo("desc2");
+        assertThat(summary.getReferenceCount()).isEqualTo(3);
+        assertThat(summary.getExampleCount()).isEqualTo(4);
+        assertThat(summary.getPath()).isEqualTo("/path2");
+    }
 }

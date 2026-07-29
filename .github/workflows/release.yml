@@ -1,0 +1,105 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Bazelisk / Bazel
+        uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Build Cross-Platform SKM CLI Binaries via Bazel
+        run: |
+          bazel build //:skm-binaries
+
+      - name: Build Java Client Library JAR via Bazel
+        run: |
+          bazel build //clients/java:skills_loader_java
+
+      - name: Build Python Package Distributions via uv
+        run: |
+          uv sync
+          uv build
+
+      - name: Stage Independent Download Artifacts
+        run: |
+          mkdir -p release_assets
+          TAG_NAME="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_NAME="${{ inputs.version }}"
+          fi
+
+          # 1. Copy SKM CLI Binaries (Independent Downloads)
+          cp bazel-bin/cli/cmd/skm/skm_linux_amd64_/skm_linux_amd64 release_assets/skm-${TAG_NAME}-linux-amd64
+          cp bazel-bin/cli/cmd/skm/skm_linux_arm64_/skm_linux_arm64 release_assets/skm-${TAG_NAME}-linux-arm64
+          cp bazel-bin/cli/cmd/skm/skm_darwin_amd64_/skm_darwin_amd64 release_assets/skm-${TAG_NAME}-darwin-amd64
+          cp bazel-bin/cli/cmd/skm/skm_darwin_arm64_/skm_darwin_arm64 release_assets/skm-${TAG_NAME}-darwin-arm64
+          cp bazel-bin/cli/cmd/skm/skm_windows_amd64_/skm_windows_amd64.exe release_assets/skm-${TAG_NAME}-windows-amd64.exe
+
+          # 2. Copy Java Client JAR
+          cp bazel-bin/clients/java/libskills_loader_java.jar release_assets/skills-loader-java-${TAG_NAME}.jar
+
+          # 3. Copy Python Wheel and Source Distributions
+          cp dist/*.whl release_assets/
+          cp dist/*.tar.gz release_assets/
+
+          # 4. Generate SHA-256 Checksums
+          cd release_assets
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+
+          echo "Prepared release assets:"
+          ls -lh release_assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            release_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

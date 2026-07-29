@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "validator",
+    srcs = ["validator.go"],
+    importpath = "github.com/retail-cortex/skills/cli/internal/validator",
+    deps = [
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_test(
+    name = "validator_test",
+    srcs = ["validator_test.go"],
+    embed = [":validator"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+    ],
+)

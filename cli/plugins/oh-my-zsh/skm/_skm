@@ -1,0 +1,69 @@
+#compdef skm
+
+_skm() {
+    local -a commands
+    commands=(
+        'add:Add skills from URI (github://, mod://, maven://, pkg://, file://)'
+        'validate:Validate skills against 5-point SDLC audit'
+        'list:List registered skills in registry or directory'
+        'search:Search skills by keyword query'
+        'compile:Pre-compile skills manifest JSON for zero-I/O loading'
+        'init:Scaffold a new skill directory with SKILL.md'
+        'completion:Generate shell autocompletion script (bash, zsh, fish)'
+        'version:Show version information'
+        'help:Show help information'
+    )
+
+    _arguments -C \
+        '1: :->command' \
+        '*:: :->args'
+
+    case $state in
+        command)
+            _describe -t commands 'skm command' commands
+            ;;
+        args)
+            case $words[1] in
+                add)
+                    _arguments \
+                        '(-d --dir)'{-d,--dir}'[Destination directory]:directory:_files -/' \
+                        '(-f --force)'{-f,--force}'[Force overwrite existing skills]' \
+                        '--filter=[Comma-separated list of skill names to filter]'
+                    ;;
+                validate)
+                    _arguments \
+                        '(-r --recursive)'{-r,--recursive}'[Recursively validate subdirectories]' \
+                        '--json[Output summary in JSON format]'
+                    ;;
+                list)
+                    _arguments \
+                        '(-d --dir)'{-d,--dir}'[Scan directory]:directory:_files -/' \
+                        '--json[Output list in JSON format]'
+                    ;;
+                search)
+                    _arguments \
+                        '(-d --dir)'{-d,--dir}'[Scan directory]:directory:_files -/'
+                    ;;
+                compile)
+                    _arguments \
+                        '(-d --dir)'{-d,--dir}'[Source directory]:directory:_files -/' \
+                        '(-o --output)'{-o,--output}'[Output manifest file]:file:_files'
+                    ;;
+                init)
+                    _arguments \
+                        '(-d --dir)'{-d,--dir}'[Base target directory]:directory:_files -/' \
+                        '--description=[Skill description]' \
+                        '--license=[License identifier]:(Apache-2.0 MIT BSD-3-Clause)' \
+                        '--author=[Skill author]' \
+                        '--version=[Skill version]'
+                    ;;
+                completion)
+                    _arguments \
+                        '1:shell:(bash zsh fish)'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_skm "$@"

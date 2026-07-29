@@ -1,0 +1,31 @@
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "skm",
+    actual = "//cli/cmd/skm",
+)
+
+alias(
+    name = "cli",
+    actual = "//cli/cmd/skm",
+)
+
+alias(
+    name = "binaries",
+    actual = "//cli/cmd/skm:skm_binaries",
+)
+
+alias(
+    name = "skm_linux_amd64",
+    actual = "//cli/cmd/skm:skm_linux_amd64",
+)
+
+alias(
+    name = "skm_darwin_arm64",
+    actual = "//cli/cmd/skm:skm_darwin_arm64",
+)
+
+alias(
+    name = "skm_windows_amd64",
+    actual = "//cli/cmd/skm:skm_windows_amd64",
+)

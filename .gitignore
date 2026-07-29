@@ -112,5 +112,6 @@ terraform.rc
 .gemini/
 .system_generated/
 .loader_skills/
+.skills/
 scratch/
 validator_report.json

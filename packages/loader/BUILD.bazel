@@ -1,0 +1,31 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "loader_lib",
+    srcs = glob(["src/loader/**/*.py"]),
+    data = ["//:skills_data"],
+    imports = ["src"],
+    deps = ["@rules_python//python/runfiles"],
+)
+
+py_binary(
+    name = "docs",
+    srcs = ["src/loader/docs.py"],
+    data = [
+        "//:docs_data",
+        "//:skills_data",
+    ],
+    main = "src/loader/docs.py",
+    deps = [":loader_lib"],
+)
+
+py_test(
+    name = "test_loader",
+    srcs = ["tests/test_loader.py"],
+    data = ["//:skills_data"],
+    main = "tests/test_loader.py",
+    tags = ["no-ci"],
+    deps = [":loader_lib"],
+)

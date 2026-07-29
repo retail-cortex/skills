@@ -1,0 +1,36 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "examples_files",
+    srcs = glob(["**"]),
+)
+
+py_library(
+    name = "service_lib",
+    srcs = glob(["src/**/*.py"]),
+    imports = ["src"],
+    deps = [
+        requirement("fastapi"),
+        requirement("uvicorn"),
+        requirement("pydantic"),
+        requirement("google-adk"),
+        requirement("google-genai"),
+    ],
+)
+
+py_binary(
+    name = "server",
+    srcs = ["src/enterprise_service/main.py"],
+    main = "src/enterprise_service/main.py",
+    deps = [":service_lib"],
+)
+
+py_test(
+    name = "unit_tests",
+    srcs = glob(["tests/**/*.py"]),
+    deps = [
+        ":service_lib",
+        requirement("pytest"),
+        requirement("pytest-asyncio"),
+    ],
+)

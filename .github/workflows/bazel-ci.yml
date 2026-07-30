@@ -51,3 +51,5 @@ jobs:
         uses: GoogleCloudPlatform/lcov-coverage-badge@v2.0.1
         with:
           file: ./bazel-out/_coverage/_coverage_report.dat
+          access_token: ${{ secrets.COVERAGE_TOKEN }}
+          style: flat

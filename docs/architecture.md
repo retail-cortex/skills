@@ -70,3 +70,110 @@ Google ADK agents standardly wrap agent execution runners inside **FastAPI** web
 ## 8. Hierarchical TOML Configuration & Security
 
 Standardized multi-tier cascading TOML configurations (`.env.toml`, `.env.local.toml`, `.env.${RUNTIME}.toml`) using `modenv` and in-memory XOR secret encryption (`xor:...`).
+
+---
+
+## 9. Protocol Buffer Architecture Diagrams (`api/v1/`)
+
+The core domain model (`SkillDefinition`, `AuthorDetails`, `ToolRequirement`, `ExecutionHints`, `SkillSummary`, `ManifestLock`) is formally defined in Protocol Buffers (`api/v1/*.proto`) and visualized via auto-generated Mermaid class diagrams ([`GoogleCloudPlatform/proto-gen-md-diagrams`](https://github.com/GoogleCloudPlatform/proto-gen-md-diagrams)):
+
+### SkillDefinition & Execution Model Class Diagram
+
+```mermaid
+classDiagram
+direction LR
+
+class AuthorDetails {
+  + string name
+  + string email
+  + string url
+}
+
+class ToolRequirement {
+  + string name
+  + List~string~ scopes
+  + string description
+}
+
+class ExecutionHints {
+  + string preferred_model
+  + bool requires_human_approval
+  + List~string~ environment_variables
+  + int32 timeout_seconds
+  + Map~string,  string~ custom_hints
+}
+
+class SkillDefinition {
+  + string name
+  + string description
+  + string instructions
+  + string license
+  + string author
+  + List~AuthorDetails~ authors
+  + string version
+  + string compatibility
+  + string allowed_tools
+  + List~ToolRequirement~ tool_requirements
+  + Map~string,  string~ metadata
+  + Map~string,  string~ references
+  + Map~string,  string~ examples
+  + string path
+  + string category
+  + List~string~ tags
+  + List~string~ trigger_phrases
+  + ExecutionHints execution_hints
+}
+SkillDefinition --> AuthorDetails
+SkillDefinition --> ToolRequirement
+SkillDefinition --> ExecutionHints
+
+class SkillSummary {
+  + string name
+  + string description
+  + int32 reference_count
+  + int32 example_count
+  + string path
+  + string category
+  + List~string~ tags
+  + List~string~ trigger_phrases
+}
+```
+
+### Cryptographic Manifest Lock Diagram (`manifest.proto`)
+
+```mermaid
+classDiagram
+direction LR
+
+class ManifestLockEntry {
+  + string skill_name
+  + string uri
+  + string sha256
+}
+
+class ManifestLock {
+  + string version
+  + Map~string, ManifestLockEntry~ skills
+}
+ManifestLock --> ManifestLockEntry
+
+class VerificationResult {
+  + string skill_name
+  + string uri
+  + string status
+  + string expected_sha256
+  + string actual_sha256
+  + string error
+}
+
+class VerificationReport {
+  + string target_dir
+  + int32 total_skills
+  + int32 verified_count
+  + int32 modified_count
+  + int32 missing_count
+  + List~VerificationResult~ results
+}
+VerificationReport --> VerificationResult
+```
+

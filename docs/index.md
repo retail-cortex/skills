@@ -67,8 +67,8 @@ The project is governed by a root [MODULE.bazel]({{ config.repo_url }}/blob/main
 skill-builder/
 ├── MODULE.bazel               # Bazel 9.2 Bzlmod module definition
 ├── BUILD.bazel                # Root Bazel aliases and filegroups
-├── Makefile                   # Root automation Makefile
 ├── pyproject.toml             # Root uv workspace configuration
+
 ├── mkdocs.yml                 # MkDocs documentation site configuration
 ├── docs/                      # Documentation site source files
 ├── LICENSE                    # Apache 2.0 License

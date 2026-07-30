@@ -61,6 +61,13 @@ alias(
     actual = "//cli/cmd/skm:skm_binaries",
 )
 
+alias(
+    name = "diagrams",
+    actual = "//tools/proto_diagrams",
+)
+
+
+
 test_suite(
     name = "test-e2e",
     tests = [

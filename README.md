@@ -4,6 +4,31 @@
 
 This registry provides a comprehensive, standardized suite of 33 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
 
+```mermaid
+classDiagram
+direction LR
+
+class SkillDefinition {
+  + string name
+  + string description
+  + string instructions
+  + string license
+  + string version
+  + string allowed_tools
+  + List~AuthorDetails~ authors
+  + List~ToolRequirement~ tool_requirements
+  + string category
+  + List~string~ tags
+  + List~string~ trigger_phrases
+  + ExecutionHints execution_hints
+}
+
+class ManifestLock {
+  + string version
+  + Map~string, ManifestLockEntry~ skills
+}
+```
+
 ---
 
 ## Documentation Site (MkDocs)

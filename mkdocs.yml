@@ -50,10 +50,14 @@ markdown_extensions:
 nav:
   - Project Overview: index.md
   - Specification: specification.md
-  - Architecture: architecture.md
+  - Architecture:
+      - System Standards: architecture.md
+      - Skill Schema Diagram: architecture/skill.proto.md
+      - Manifest Lock Diagram: architecture/manifest.proto.md
   - Critical Analysis: analysis.md
   - Skills Registry: skills.md
   - CLI Client (skm): cli.md
   - Packages: packages.md
   - Examples: examples.md
+
 

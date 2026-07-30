@@ -114,4 +114,6 @@ terraform.rc
 .loader_skills/
 .skills/
 scratch/
+.tmp_proto_diagrams/
 validator_report.json
+

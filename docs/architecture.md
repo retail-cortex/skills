@@ -73,7 +73,23 @@ Standardized multi-tier cascading TOML configurations (`.env.toml`, `.env.local.
 
 ---
 
-## 9. Protocol Buffer Architecture Diagrams (`api/v1/`)
+## 9. Advanced Discovery & Context Optimization (JIT Loading)
+
+To prevent LLM context bloat and optimize token utilization, the architecture implements **Just-in-Time (JIT) Discovery** using semantic retrieval:
+- **Semantic Tool Retrieval**: Offloads tool discovery to the `SkillDiscoveryEngine` (a lightweight RAG-MCP equivalent). Using a `TFIDFVectorIndex`, it semantically matches a user's intent to the registry's catalog, injecting only the necessary tools into the LLM context.
+- **Compiled References**: Skills are "compiled" by the `SkillCompiler`, stripping verbose natural language and returning lightweight, cryptographically secure hashes and strict JSON Schema constraints (`additionalProperties: false`). This drastically reduces a 500-token prompt into a ~50-token strict schema, preventing hallucinated parameters.
+
+---
+
+## 10. Safe Storage, Cryptographic Integrity & HITL Execution
+
+Execution safety and prompt-injection defense are critical for enterprise agents:
+- **Manifest Locking (`.manifest.lock`)**: Every compiled skill is cryptographically hashed (inputs, outputs, execution logic). The orchestrator rejects any payload that attempts to alter the execution parameters outside the compiled schema, guaranteeing immutable execution.
+- **Human-in-the-Loop (HITL)**: Purely automated systems introduce severe Agent-Human Interaction (AHI) security risks. The `HITLEngine` provides tiered intervention gates and explicit compliance validation components to guarantee strategic human oversight for high-risk operations (Read vs. Write isolation).
+
+---
+
+## 11. Protocol Buffer Architecture Diagrams (`api/v1/`)
 
 The core domain model (`SkillDefinition`, `AuthorDetails`, `ToolRequirement`, `ExecutionHints`, `SkillSummary`, `ManifestLock`) is formally defined in Protocol Buffers (`api/v1/*.proto`) and visualized via auto-generated Mermaid class diagrams ([`GoogleCloudPlatform/proto-gen-md-diagrams`](https://github.com/GoogleCloudPlatform/proto-gen-md-diagrams)):
 

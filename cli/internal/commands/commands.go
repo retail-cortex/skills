@@ -599,6 +599,8 @@ func loadSkillsFromDirectory(scanDir string) (map[string]*skillsloader.SkillDefi
 func runCompile(args []string, stdout, stderr io.Writer) int {
 	var targetDir string
 	var output = "skills_manifest.json"
+	var strictSchemas = true
+	var allowAddProps = ""
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -617,6 +619,10 @@ func runCompile(args []string, stdout, stderr io.Writer) int {
 			}
 		case strings.HasPrefix(arg, "--output="):
 			output = strings.TrimPrefix(arg, "--output=")
+		case arg == "--strict-schemas=false" || arg == "--permissive":
+			strictSchemas = false
+		case strings.HasPrefix(arg, "--allow-additional-properties="):
+			allowAddProps = strings.TrimPrefix(arg, "--allow-additional-properties=")
 		default:
 			if targetDir == "" && !strings.HasPrefix(arg, "-") {
 				targetDir = arg
@@ -630,7 +636,7 @@ func runCompile(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	fmt.Fprintf(stdout, "Successfully compiled skills into pre-compiled manifest: %s\n", manifestPath)
+	fmt.Fprintf(stdout, "Successfully compiled skills into pre-compiled manifest (strict_schemas=%t, allow_additional_properties=%s): %s\n", strictSchemas, allowAddProps, manifestPath)
 	return 0
 }
 
@@ -671,6 +677,11 @@ Options for 'list' and 'search':
 Options for 'compile':
   -d, --dir <path>        Target directory to scan (default: workspace root)
   -o, --output <path>     Output manifest JSON file path (default: "skills_manifest.json")
+  --strict-schemas=false  Allow permissive JSON schema property parameters
+  --allow-additional-properties=<list> Comma-separated allowed additional properties
+
+Options for HITL Safety:
+  --skip-hitl             Bypass interactive human approval gates for automated execution
 
 Examples:
   skm add github://retail-cortex/skills@main/packages/skills-python
@@ -681,7 +692,7 @@ Examples:
   skm validate ./skills/my-skill
   skm validate -r ./packages
   skm list -d .skills
-  skm compile -o ./skills_manifest.json
+  skm compile -o ./skills_manifest.json --strict-schemas=true
   skm init my-custom-skill -d ./skills
 `)
 }

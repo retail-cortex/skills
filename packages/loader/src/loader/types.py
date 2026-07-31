@@ -1,7 +1,66 @@
 """Type definitions and data structures for enterprise skill definitions."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+
+class HITLPolicyTier(str, Enum):
+    """HITL intervention policy tiers for agent execution safety."""
+
+    TIER_0_BYPASS_ALL = "TIER_0_BYPASS_ALL"
+    TIER_1_AUTO_READ = "TIER_1_AUTO_READ"
+    TIER_2_AUDITED_WRITE = "TIER_2_AUDITED_WRITE"
+    TIER_3_MANDATORY_APPROVAL = "TIER_3_MANDATORY_APPROVAL"
+
+
+@dataclass
+class CompiledSkillReference:
+    """Minimized, cryptographically locked pointer to a compiled skill definition."""
+
+    skill_id: str
+    name: str
+    description: str
+    sha256_hash: str
+    json_schema: Dict[str, Any]
+    strict_schema: bool = True
+    allowed_properties: List[str] = field(default_factory=list)
+    estimated_tokens: int = 50
+    hitl_tier: HITLPolicyTier = HITLPolicyTier.TIER_1_AUTO_READ
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "name": self.name,
+            "description": self.description,
+            "sha256_hash": self.sha256_hash,
+            "json_schema": self.json_schema,
+            "strict_schema": self.strict_schema,
+            "allowed_properties": self.allowed_properties,
+            "estimated_tokens": self.estimated_tokens,
+            "hitl_tier": self.hitl_tier.value if isinstance(self.hitl_tier, HITLPolicyTier) else str(self.hitl_tier),
+        }
+
+
+@dataclass
+class HITLGateResult:
+    """Result of a Human-in-the-Loop policy gate evaluation."""
+
+    approved: bool
+    tier: HITLPolicyTier
+    reason: str
+    bypassed: bool = False
+    requires_user_input: bool = False
+    audit_event_id: str = ""
+
+
+@dataclass
+class SkillDirectorySearchResult:
+    """Structured result returned by the skill_directory_search meta-tool."""
+
+    query_intent: str
+    matches: List[CompiledSkillReference] = field(default_factory=list)
+    total_found: int = 0
 
 
 @dataclass
@@ -26,6 +85,8 @@ class SkillDefinition:
     references: Dict[str, str] = field(default_factory=dict)
     examples: Dict[str, str] = field(default_factory=dict)
     path: str = ""
+    compiled_reference: Optional[CompiledSkillReference] = None
+    sha256_hash: str = ""
 
     def get_reference_content(self, name: str) -> Optional[str]:
         """Lazy / on-demand retriever for reference file content."""
@@ -60,6 +121,8 @@ class SkillDefinition:
             "references": list(self.references.keys()),
             "examples": list(self.examples.keys()),
             "path": self.path,
+            "compiled_reference": self.compiled_reference.to_dict() if self.compiled_reference else None,
+            "sha256_hash": self.sha256_hash,
         }
 
 
@@ -75,3 +138,6 @@ class SkillSummary:
     category: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     trigger_phrases: List[str] = field(default_factory=list)
+    sha256_hash: str = ""
+    hitl_tier: HITLPolicyTier = HITLPolicyTier.TIER_1_AUTO_READ
+

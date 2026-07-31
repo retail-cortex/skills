@@ -75,7 +75,7 @@ The repository uses official GitHub Actions workflows for continuous integration
 1. **[Project Overview](https://retail-cortex.github.io/skills/)**: Introduction, features, quickstart guidelines, and workspace structure.
 2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
 3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Specialized domain and technology skills catalog.
-5. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Standalone **`skm`** CLI, modular packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`), and Bazel targets.
+5. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Standalone **`skm`** CLI, modular packages (`skills-loader` with its new PEP 517 build-lifecycle plugin, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`), and Bazel targets.
 6. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`example-adk` and `polyglot-developer`).
 
 ---

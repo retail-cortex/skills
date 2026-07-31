@@ -52,6 +52,7 @@ nav:
   - Specification: specification.md
   - Architecture:
       - System Standards: architecture.md
+      - Semantic Discovery & HITL Safety: architecture/semantic_discovery_and_hitl.md
       - Skill Schema Diagram: architecture/skill.proto.md
       - Manifest Lock Diagram: architecture/manifest.proto.md
   - Critical Analysis: analysis.md

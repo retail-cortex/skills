@@ -15,7 +15,17 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from loader.types import SkillDefinition, SkillSummary
+from loader.compiler import SkillCompiler
+from loader.discovery import SkillDiscoveryEngine
+from loader.hitl import HITLEngine
+from loader.types import (
+    CompiledSkillReference,
+    HITLGateResult,
+    HITLPolicyTier,
+    SkillDefinition,
+    SkillDirectorySearchResult,
+    SkillSummary,
+)
 
 
 def find_registry_root() -> Path:
@@ -852,8 +862,14 @@ class SkillRegistry:
             skill_filter=skill_filter,
             dotenv_path=dotenv_path,
         )
-        self._search_cache: Dict[str, List[SkillDefinition]] = {}
-        self._domain_cache: Dict[str, List[SkillDefinition]] = {}
+        self.compiler = SkillCompiler()
+        self.discovery_engine = SkillDiscoveryEngine(compiler=self.compiler)
+        self.hitl_engine = HITLEngine()
+
+        # Automatically index loaded skills
+        for s in self._skills.values():
+            self.discovery_engine.register_skill(s)
+        self.discovery_engine.build_index()
 
     @classmethod
     def from_github(
@@ -878,6 +894,13 @@ class SkillRegistry:
         )
         instance._search_cache = {}
         instance._domain_cache = {}
+        instance.compiler = SkillCompiler()
+        instance.discovery_engine = SkillDiscoveryEngine(compiler=instance.compiler)
+        instance.hitl_engine = HITLEngine()
+
+        for s in instance._skills.values():
+            instance.discovery_engine.register_skill(s)
+        instance.discovery_engine.build_index()
         return instance
 
     @classmethod
@@ -899,6 +922,13 @@ class SkillRegistry:
         )
         instance._search_cache = {}
         instance._domain_cache = {}
+        instance.compiler = SkillCompiler()
+        instance.discovery_engine = SkillDiscoveryEngine(compiler=instance.compiler)
+        instance.hitl_engine = HITLEngine()
+
+        for s in instance._skills.values():
+            instance.discovery_engine.register_skill(s)
+        instance.discovery_engine.build_index()
         return instance
 
     @property
@@ -914,6 +944,7 @@ class SkillRegistry:
         """Returns summarized metadata for all registered skills."""
         summaries: List[SkillSummary] = []
         for s in self._skills.values():
+            compiled_ref = s.compiled_reference or self.compiler.compile(s)
             summaries.append(
                 SkillSummary(
                     name=s.name,
@@ -924,9 +955,53 @@ class SkillRegistry:
                     category=s.category,
                     tags=s.tags,
                     trigger_phrases=s.trigger_phrases,
+                    sha256_hash=compiled_ref.sha256_hash,
+                    hitl_tier=compiled_ref.hitl_tier,
                 )
             )
         return summaries
+
+    def compile_all(
+        self,
+        strict_schemas: bool = True,
+        allow_additional_properties: Optional[List[str]] = None,
+    ) -> Dict[str, CompiledSkillReference]:
+        """Compiles all registered skills using custom compiler options."""
+        compiler = SkillCompiler(
+            strict_schemas=strict_schemas,
+            allow_additional_properties=allow_additional_properties,
+        )
+        compiled_map: Dict[str, CompiledSkillReference] = {}
+        for s in self._skills.values():
+            compiled_ref = compiler.compile(s)
+            compiled_map[s.name] = compiled_ref
+        return compiled_map
+
+    def search_intent(self, intent: str, top_k: int = 5) -> SkillDirectorySearchResult:
+        """Executes natural language JIT discovery search using local TF-IDF index."""
+        return self.discovery_engine.search_skills(intent, top_k=top_k)
+
+    def evaluate_execution_gate(
+        self,
+        skill_name: str,
+        runtime_params: Optional[Dict[str, Any]] = None,
+        force_skip_hitl: bool = False,
+    ) -> HITLGateResult:
+        """Evaluates HITL execution policy gate for a given skill."""
+        skill = self.get(skill_name)
+        if not skill:
+            return HITLGateResult(
+                approved=False,
+                tier=HITLPolicyTier.TIER_3_MANDATORY_APPROVAL,
+                reason=f"Skill '{skill_name}' not found in registry.",
+            )
+        ref = skill.compiled_reference or self.compiler.compile(skill)
+        return self.hitl_engine.evaluate_gate(
+            skill=skill,
+            ref=ref,
+            runtime_params=runtime_params,
+            force_skip_hitl=force_skip_hitl,
+        )
 
     def search(self, query: str) -> List[SkillDefinition]:
         """Searches skills by keyword matching in name, description, instructions, or references with memoization."""

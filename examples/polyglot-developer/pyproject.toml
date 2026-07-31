@@ -1,6 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0", "retailcortex-skills-loader"]
+build-backend = "loader.build_meta"
+
+[tool.retailcortex-loader]
+dest = ".skills"
+dependencies = [
+    "github://retail-cortex/skills@main/packages/skills-bazel",
+    "github://retail-cortex/skills@main/packages/skills-python"
+]
 
 [project]
 name = "retailcortex-example-polyglot-developer"

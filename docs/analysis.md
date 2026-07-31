@@ -126,3 +126,29 @@ To guarantee that remote or global skill definitions never silently overwrite lo
   2. If the hashes differ, a `SkillCollisionWarning` is logged, explicitly noting that local definition at `<local_path>` shadows remote/lower-priority skill at `<remote_path>`.
   3. Loaders expose a `compare_skills(local_def, candidate_def)` utility returning line-by-line diffs so developers can inspect upstream changes before adopting them.
 
+---
+
+## 7. Advanced Discovery & Storage Gap Analysis
+
+This table synthesizes the cognitive and architectural gaps present in legacy frameworks compared to the fortified standard implemented in `skill-builder`.
+
+| Category | Legacy State (e.g., standard agentskills.io) | Fortified `skill-builder` Standard | Impact |
+| :--- | :--- | :--- | :--- |
+| **Skill Loading** | Static loading of domain-specific packages (e.g., all bazel skills at initialization). | Semantic retrieval of tools based on the query before engaging the LLM. JIT Loading via `skill_directory_search` and Compiled References. | Massive reduction in initial token load, prevention of context bloat, and improved decision making. |
+| **Schema Strictness** | Loose parameters, allowing LLM interpretation and hallucination. | Strict JSON Schema (`additionalProperties: false`, strict Enums). | Eliminates hallucinated parameters; forces "Poka-yoke" execution. |
+| **Safe Storage** | Local file system or basic GitHub repository loading with loose text files. | Immutable OCI-like registry with Cryptographic Manifest Locking (`.manifest.lock`). | Prevents runtime injection, manipulation, and unauthorized code execution. |
+| **Execution Safety** | Basic error catching and standard library fallbacks; purely automated execution. | Human-in-the-Loop (HITL) architecture with tiered intervention gates, user approval, and explicit compliance validation components. | Prevents catastrophic autonomous actions, addresses Agent-Human Interaction (AHI) security problems, and maintains full audit compliance. |
+
+---
+
+## 8. References & Further Reading
+
+1. **On-Demand Tool Discovery**: *ToolLLM: Facilitating Large Language Models to Master 16000+ Real-world APIs* - Discusses dynamic retrieval of APIs based on intent rather than static loading.
+2. **JIT Loading and Prompt Bloat**: *Reflexion: Language Agents with Verbal Reinforcement Learning* - Addresses the cognitive limitations of feeding too many schema instructions to a model.
+3. **Semantic Tool Retrieval (RAG-MCP)**: *Gorilla: Large Language Model Connected with Massive APIs* - Details using vector space for tool semantic retrieval before engaging the primary LLM to reduce prompt size.
+4. **Narrowing Choices for LLMs**: *OpenAI Function Calling Guide* - Recommends limiting the number of functions provided to a model to prevent hallucinations.
+5. **Tiered Intervention and Compliance**: *Anthropic's Constitutional AI* - Outlines safety frameworks and strict execution bounds for LLM actions.
+6. **Human-in-the-Loop (HITL) Architectures**: *Training a Helpful and Harmless Assistant with Reinforcement Learning from Human Feedback* - Discusses the necessity of human oversight for high-risk operations in automated systems.
+7. **Agent-Human Interaction (AHI) Security**: *OWASP Top 10 for LLMs (LLM08: Excessive Agency)* - Emphasizes that LLMs cannot be trusted to self-regulate authorization and require human approval gates.
+8. **Audit Trails and Remediation**: *Microsoft Semantic Kernel Plugin Guidelines* - Recommends strict separation of Read/Write skills and mandates approval gates for state changes.
+

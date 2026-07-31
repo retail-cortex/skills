@@ -71,6 +71,38 @@ build_skills_manifest(out_path=Path("skills_manifest.json"))
 skills = load_skills_from_manifest(Path("skills_manifest.json"))
 ```
 
+## Build-Lifecycle Plugin (PEP 517 / Poetry / Setup.py)
+
+The loader can act as a build-time plugin to automatically download and stage skill dependencies before your package is built.
+
+### For PEP 517 Backends (Hatchling, Setuptools, etc.)
+
+Configure your `pyproject.toml` to use the loader's build wrapper:
+
+```toml
+[build-system]
+requires = ["retailcortex-skills-loader", "setuptools>=61.0"]
+build-backend = "loader.build_meta"
+
+[tool.retailcortex-loader]
+# Optional: Target directory to bundle the skills into for packaging (defaults to .skills)
+dest = "src/my_package/skills"
+dependencies = [
+    "github://retail-cortex/skills@main/packages/skills-python"
+]
+```
+
+### For Poetry or Legacy `setup.py`
+
+You can achieve the exact same automated downloading by calling the exposed function directly in your `build.py` (Poetry) or `setup.py`:
+
+```python
+from loader import download_build_dependencies
+
+# This will read [tool.retailcortex-loader] from pyproject.toml
+download_build_dependencies()
+```
+
 ## License
 
 Apache License 2.0. See LICENSE for details.

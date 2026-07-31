@@ -865,6 +865,8 @@ class SkillRegistry:
         self.compiler = SkillCompiler()
         self.discovery_engine = SkillDiscoveryEngine(compiler=self.compiler)
         self.hitl_engine = HITLEngine()
+        self._search_cache: Dict[str, List[SkillDefinition]] = {}
+        self._domain_cache: Dict[str, Dict[str, Any]] = {}
 
         # Automatically index loaded skills
         for s in self._skills.values():

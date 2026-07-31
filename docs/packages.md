@@ -51,7 +51,7 @@ bazel run //:start-agent
 
 ## 3. `packages/validator`
 
-The `validator` package implements a 5-point SDLC audit scanner that inspects skills for compliance with agentskills.io specifications, security rules, and testing standards.
+The `validator` package implements a 5-point SDLC audit scanner that inspects skills for compliance with the Enterprise AI Agent Skills Specification, security rules, and testing standards.
 
 ### Key Capabilities
 

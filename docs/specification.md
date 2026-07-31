@@ -9,6 +9,9 @@ This specification extends and supersedes baseline specifications (such as `agen
 2. **5-Point SDLC Quality Invariants**: Mandatory frontmatter, progressive disclosure sub-trees, CWE security checkpoints, HTTP 429 resilience rules, and strict `file:///` link resolution.
 3. **Polyglot URI Resolution**: Unified URI syntax supporting GitHub repositories (`github://`), Go modules (`mod://`), Java Maven artifacts (`maven://`), local packages (`pkg://`), and local filesystems (`file://`).
 4. **Zero-I/O Pre-compiled Manifests (`skills_manifest.json`)**: In-memory skill registration for low-latency agent startup.
+5. **Just-in-Time (JIT) Semantic Discovery**: Semantic retrieval mapping user intent to specific skills, eliminating the need to statically load entire registries.
+6. **Compiled References & Strict Schemas**: Stripping verbose natural language instructions down to strict JSON Schema bounded constraints.
+7. **Human-in-the-Loop (HITL) Intervention Gates**: Explicit compliance validation checkpoints designed to isolate read vs. write workloads for AHI safety.
 
 ---
 

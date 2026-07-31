@@ -1,6 +1,6 @@
 # Skills Registry
 
-This registry provides 23 enterprise-ready AI Agent Skills built strictly in compliance with [agentskills.io](https://agentskills.io/specification) and Google ADK progressive disclosure rules.
+This registry provides 23 enterprise-ready AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security and performance requirements for the Google Agent Development Kit (ADK).
 
 ---
 

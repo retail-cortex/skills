@@ -13,6 +13,9 @@ The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.22, 
 * **Multi-Source URI Resolution**: Supports `file://`, `pkg://` (Python package entry points / Java classpaths), and `github://` (remote git branch/tag resolution with zipball fallbacks).
 * **Zero-I/O Pre-compiled Manifests**: Pre-processes skill registries into `skills_manifest.json` for instant cold starts in serverless or containerized environments.
 * **5-Point SDLC Quality Gate**: Automated security auditor ([`audit.py`](file:///Users/rmcguinness/Projects/skill-builder/packages/validator/src/validator/audit.py) / [`SkillAuditor.java`](file:///Users/rmcguinness/Projects/skill-builder/clients/java/src/main/java/com/retailcortex/skills/loader/validator/SkillAuditor.java)) enforcing frontmatter rules, L3 directory structures, CWE security checkpoints, HTTP 429 rate-limit resilience, and markdown file scheme links.
+* **Just-in-Time (JIT) Semantic Discovery**: Replaces static registry loading with RAG-MCP semantic tool retrieval to eliminate LLM context bloat.
+* **Compiled References & Strict Schemas**: Strips verbose natural language into cryptographically hashed, JSON Schema constraints.
+* **Human-in-the-Loop (HITL) Architecture**: Implements tiered intervention gates and explicit compliance validation components to guarantee Agent-Human Interaction (AHI) safety.
 
 ---
 
@@ -69,6 +72,8 @@ The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.22, 
 1. **Strict Cross-Language Parity**: Provides identical data structures and registry APIs across Python, Go, and Java.
 2. **Pre-compiled Manifest Pre-processing**: Generates `skills_manifest.json` during build time (e.g. via Maven [`GenerateManifestMojo.java`](file:///Users/rmcguinness/Projects/skill-builder/clients/java/src/main/java/com/retailcortex/skills/loader/GenerateManifestMojo.java) or Python/Go build scripts), enabling zero-I/O loading in cloud environments.
 3. **Automated Security & SDLC Auditing**: Includes a dedicated validation suite checking CWE security checkpoints, HTTP 429 retry guidelines, and clickable file link formatting.
+4. **JIT Semantic Retrieval**: Proactively combats context bloat by retrieving only semantically relevant tools based on user intent rather than statically loading entire domain registries.
+5. **Human-in-the-Loop (HITL) Execution**: Provides built-in tiered intervention gates to isolate read and write workloads, actively addressing LLM excessive agency (OWASP LLM08).
 
 ---
 

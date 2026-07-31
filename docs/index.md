@@ -1,6 +1,12 @@
 # Project Overview: Agent Skill Builder
 
-Welcome to the **Agent Skill Builder** documentation. This registry provides a comprehensive, standardized suite of 33 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
+Welcome to the **Agent Skill Builder** documentation. This registry provides a comprehensive, standardized suite of 33 AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security and performance requirements for the Google Agent Development Kit (ADK).
+
+### Enterprise Extensions
+- **Just-in-Time (JIT) Semantic Discovery**: Replaces static loading with RAG-MCP semantic retrieval to prevent LLM context bloat.
+- **Compiled References & Schema Strictness**: Strips verbose natural language into cryptographically hashed, strict JSON Schema constraints (`additionalProperties: false`).
+- **Cryptographic Manifest Locking (`.manifest.lock`)**: Enforces immutable execution parameters preventing prompt-injected payload tampering.
+- **Human-in-the-Loop (HITL) Architecture**: Implements tiered intervention gates and explicit compliance validation components to guarantee Agent-Human Interaction (AHI) safety.
 
 ---
 

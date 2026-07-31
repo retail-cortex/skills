@@ -2,7 +2,13 @@
 
 [![Coverage](coverage.svg)](https://github.com/retail-cortex/skills)
 
-This registry provides a comprehensive, standardized suite of 33 AI Agent Skills built strictly in compliance with the [agentskills.io](https://agentskills.io/specification) specification and Google Agent Development Kit (ADK) progressive disclosure architecture.
+This registry provides a comprehensive, standardized suite of 33 AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security and performance requirements for the Google Agent Development Kit (ADK).
+
+### Enterprise Extensions
+- **Just-in-Time (JIT) Semantic Discovery**: Replaces static loading with RAG-MCP semantic retrieval to prevent LLM context bloat.
+- **Compiled References & Schema Strictness**: Strips verbose natural language into cryptographically hashed, strict JSON Schema constraints (`additionalProperties: false`).
+- **Cryptographic Manifest Locking (`.manifest.lock`)**: Enforces immutable execution parameters preventing prompt-injected payload tampering.
+- **Human-in-the-Loop (HITL) Architecture**: Implements tiered intervention gates and explicit compliance validation components to guarantee Agent-Human Interaction (AHI) safety.
 
 ```mermaid
 classDiagram
@@ -31,6 +37,58 @@ class ManifestLock {
 
 ---
 
+## Quickstart Commands
+
+### 1. SKM (Skill Manager) Go CLI
+Use the standalone `skm` CLI to pull, audit, search, and scaffold skills using `github://`, `mod://`, `maven://`, `pkg://`, and `file://` URIs:
+
+```bash
+# Build & run skm CLI via Bazel
+bazel run //:skm -- add github://retail-cortex/skills@main/packages/skills-python
+bazel run //:skm -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
+bazel run //:skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
+
+# Recursively audit all skills in directory
+bazel run //:skm -- validate -r ./packages
+```
+
+### 2. Run Native ADK Agent Example
+```bash
+uv run python examples/example-adk/main.py
+```
+
+### 3. Run Polyglot Developer Agent CLI
+```bash
+uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-polyglot-app
+```
+
+### 4. Run SDLC 5-Point Skill Validator
+```bash
+# via uv
+uv run python -m validator.cli audit
+# or via Bazel
+bazel run //:validate
+```
+
+### 5. Run Test Suite
+```bash
+bazel test //...
+# or via pytest
+uv run pytest
+```
+
+---
+
+## Documentation Sections
+
+1. **[Project Overview](https://retail-cortex.github.io/skills/)**: Introduction, features, quickstart guidelines, and workspace structure.
+2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
+3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Specialized domain and technology skills catalog.
+4. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Standalone **`skm`** CLI, modular packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`), and Bazel targets.
+5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`example-adk` and `polyglot-developer`).
+
+---
+
 ## Documentation Site (MkDocs)
 
 The full documentation site is published live at **[https://retail-cortex.github.io/skills/](https://retail-cortex.github.io/skills/)**.
@@ -47,7 +105,6 @@ bazel run //:docs
 # or direct mkdocs CLI
 uv run mkdocs serve
 ```
-
 Access the local documentation server at `http://127.0.0.1:8000`.
 
 ### Build Static Site
@@ -67,63 +124,6 @@ The repository uses official GitHub Actions workflows for continuous integration
 - **[Bazel CI Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/bazel-ci.yml)**: Automated build, hermetic testing (`bazel test //...`), and SDLC validation on every `push` and `pull_request` using Node 24 native actions (`bazelbuild/setup-bazelisk@v3`, `astral-sh/setup-uv@v7`, `actions/checkout@v7`, `actions/setup-python@v7`).
 - **[GitHub Pages Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/deploy-docs.yml)**: Automated MkDocs build (`uv run build-docs`) and deployment to GitHub Pages using Node 24 native actions (`actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`, `actions/configure-pages@v6`).
 - **[Release Pipeline Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/release.yml)**: Automated multi-platform build and publishing of independent download assets (`skm` CLI binaries for Linux/macOS/Windows, Java client JAR, Python wheels/sdist, and `SHA256SUMS.txt`) upon pushing `v*` release tags or manual workflow dispatch.
-
----
-
-## Documentation Sections
-
-1. **[Project Overview](https://retail-cortex.github.io/skills/)**: Introduction, features, quickstart guidelines, and workspace structure.
-2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
-3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Specialized domain and technology skills catalog.
-5. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Standalone **`skm`** CLI, modular packages (`skills-loader` with its new PEP 517 build-lifecycle plugin, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`), and Bazel targets.
-6. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`example-adk` and `polyglot-developer`).
-
----
-
-## Quickstart Commands
-
-### 1. SKM (Skill Manager) Go CLI
-
-Use the standalone `skm` CLI to pull, audit, search, and scaffold skills using `github://`, `mod://`, `maven://`, `pkg://`, and `file://` URIs:
-
-```bash
-# Build & run skm CLI via Bazel
-bazel run //:skm -- add github://retail-cortex/skills@main/packages/skills-python
-bazel run //:skm -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
-bazel run //:skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
-
-# Recursively audit all skills in directory
-bazel run //:skm -- validate -r ./packages
-```
-
-### 2. Run Native ADK Agent Example
-
-```bash
-uv run python examples/example-adk/main.py
-```
-
-### 3. Run Polyglot Developer Agent CLI
-
-```bash
-uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-polyglot-app
-```
-
-### 4. Run SDLC 5-Point Skill Validator
-
-```bash
-# via uv
-uv run python -m validator.cli audit
-# or via Bazel
-bazel run //:validate
-```
-
-### 5. Run Test Suite
-
-```bash
-bazel test //...
-# or via pytest
-uv run pytest
-```
 
 ---
 

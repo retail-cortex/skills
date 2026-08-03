@@ -144,6 +144,7 @@ public class SkillAuditor {
             try (Stream<Path> stream = Files.walk(skillsDir, FileVisitOption.FOLLOW_LINKS)) {
                 stream.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git") && !p.toString().contains(".loader_skills"))
                         .map(Path::getParent)
                         .forEach(skillDirsSet::add);
             } catch (IOException ignored) {}
@@ -155,6 +156,19 @@ public class SkillAuditor {
             try (Stream<Path> stream = Files.walk(packagesDir, FileVisitOption.FOLLOW_LINKS)) {
                 stream.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git") && !p.toString().contains(".loader_skills"))
+                        .map(Path::getParent)
+                        .forEach(skillDirsSet::add);
+            } catch (IOException ignored) {}
+        }
+
+        Path examplesDir = root.getFileName() != null && root.getFileName().toString().equals("examples")
+                ? root : root.resolve("examples");
+        if (Files.isDirectory(examplesDir)) {
+            try (Stream<Path> stream = Files.walk(examplesDir, FileVisitOption.FOLLOW_LINKS)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git") && !p.toString().contains(".loader_skills"))
                         .map(Path::getParent)
                         .forEach(skillDirsSet::add);
             } catch (IOException ignored) {}

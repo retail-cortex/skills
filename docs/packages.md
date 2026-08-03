@@ -70,7 +70,7 @@ bazel run //:validate
 
 ---
 
-## 4. `cli/cmd/skm` (SKM Skill Manager CLI)
+## 4. `apps/cli/cmd/skm` (SKM Skill Manager CLI)
 
 `skm` is a standalone Go CLI tool built with Bazel for fetching, resolving, validating, and scaffolding AI Agent Skills across local and remote ecosystems.
 
@@ -112,8 +112,8 @@ Root Bazel convenience targets defined in [BUILD.bazel]({{ config.repo_url }}/bl
 
 | Command | Bazel Target | Description |
 | :--- | :--- | :--- |
-| `bazel run //:skm` | `//cli/cmd/skm` | Executes standalone `skm` (*Skill Manager*) Go CLI binary on host system. |
-| `bazel build //:skm-binaries` | `//cli/cmd/skm:skm_binaries` | Native cross-compilation of `skm` executables for Windows (x64), Linux (x64/arm64), and macOS (x64/arm64). |
+| `bazel run //:skm` | `//apps/cli/cmd/skm` | Executes standalone `skm` (*Skill Manager*) Go CLI binary on host system. |
+| `bazel build //:skm-binaries` | `//apps/cli/cmd/skm:skm_binaries` | Native cross-compilation of `skm` executables for Windows (x64), Linux (x64/arm64), and macOS (x64/arm64). |
 | `bazel run //:start-agent` | `//packages/skills-agent:start_agent` | Launches interactive ADK programming agent CLI REPL. |
 | `bazel run //:validate` | `//packages/validator:validate_skills` | Executes 5-point SDLC validator on all skills in `skills/`. |
 | `bazel run //:docs` | `//packages/skills-loader:docs` | Launches local MkDocs development documentation server. |

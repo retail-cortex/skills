@@ -15,7 +15,7 @@ def find_registry_root() -> Path:
 
     current: Path = Path(__file__).resolve().parent
     for parent in [current] + list(current.parents):
-        if (parent / "skills").is_dir():
+        if (parent / "skills").is_dir() or (parent / "examples" / "skills").is_dir():
             return parent
     return Path(__file__).parents[4]
 

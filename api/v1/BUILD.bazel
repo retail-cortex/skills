@@ -2,6 +2,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@protobuf//bazel:java_proto_library.bzl", "java_proto_library")
 load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:defs.bzl", "py_library")
 
 
 
@@ -14,6 +15,7 @@ proto_library(
     srcs = [
         "manifest.proto",
         "skill.proto",
+        "skill_service.proto",
     ],
 )
 
@@ -31,4 +33,35 @@ java_proto_library(
 py_proto_library(
     name = "skills_v1_py_proto",
     deps = [":skills_v1_proto"],
+)
+
+genrule(
+    name = "skills_v1_py_grpc_gen",
+    srcs = [
+        "manifest.proto",
+        "skill.proto",
+        "skill_service.proto",
+    ],
+    outs = [
+        "manifest_pb2_grpc.py",
+        "skill_pb2_grpc.py",
+        "skill_service_pb2_grpc.py",
+    ],
+    cmd = """
+        uv run --with grpcio-tools python3 -m grpc_tools.protoc \\
+            -I. \\
+            --grpc_python_out=$(RULEDIR)/../.. \\
+            $(SRCS)
+    """,
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+)
+
+py_library(
+    name = "skills_v1_py_grpc",
+    srcs = [":skills_v1_py_grpc_gen"],
+    imports = ["../.."],
+    deps = [":skills_v1_py_proto"],
 )

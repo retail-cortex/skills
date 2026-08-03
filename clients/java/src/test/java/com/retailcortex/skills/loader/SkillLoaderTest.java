@@ -6,13 +6,25 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import org.mockito.Mockito;
+import org.mockito.ArgumentMatchers;
+
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -255,6 +267,195 @@ class SkillLoaderTest {
         assertThat(reportMiss.totalSkills()).isEqualTo(1);
         assertThat(reportMiss.missingCount()).isEqualTo(1);
         assertThat(reportMiss.results().get(0).status()).isEqualTo("missing");
+    }
+
+    @Test
+    @DisplayName("Should mock HTTP calls with Mockito to test loading skills from remote GitHub repository")
+    void testLoadSkillsFromGithubWithMockito(@TempDir Path tempDir) throws Exception {
+        Path mockZip = tempDir.resolve("mock_repo.zip");
+        createMockSkillZip(mockZip, "test-remote-skill", "A mocked remote skill from GitHub");
+
+        HttpClient mockClient = Mockito.mock(HttpClient.class);
+        @SuppressWarnings("unchecked")
+        HttpResponse<Path> mockResponse = (HttpResponse<Path>) Mockito.mock(HttpResponse.class);
+        Mockito.when(mockResponse.statusCode()).thenReturn(200);
+
+        Mockito.doAnswer(inv -> {
+            Path tmpRoot = Paths.get(System.getProperty("java.io.tmpdir"));
+            try (Stream<Path> s = Files.list(tmpRoot)) {
+                s.filter(p -> p.getFileName().toString().startsWith("skills-loader-gh-"))
+                 .max(Comparator.comparingLong(p -> p.toFile().lastModified()))
+                 .ifPresent(p -> {
+                     try {
+                         Files.copy(mockZip, p.resolve("repo.zip"), StandardCopyOption.REPLACE_EXISTING);
+                     } catch (IOException e) {
+                         throw new RuntimeException(e);
+                     }
+                 });
+            }
+            return mockResponse;
+        }).when(mockClient).send(ArgumentMatchers.any(HttpRequest.class), ArgumentMatchers.any());
+
+        SkillLoader.setHttpClient(mockClient);
+        try {
+            Map<String, SkillDefinition> loaded = SkillLoader.loadSkillsFromGithub("owner/repo", "main", List.of("skills", "."), null, "secret-token", null);
+            assertThat(loaded).containsKey("test-remote-skill");
+
+            Map<String, SkillDefinition> filtered = SkillLoader.loadSkillsFromGithub("https://github.com/owner/repo.git", "v1.0.0", List.of("."), List.of("test-remote-skill"), null, null);
+            assertThat(filtered).containsKey("test-remote-skill");
+
+            Map<String, SkillDefinition> fromRoots = SkillLoader.loadSkillsFromRoots(List.of("github://owner/repo@main/skills"), null, "token", null);
+            assertThat(fromRoots).containsKey("test-remote-skill");
+        } finally {
+            SkillLoader.setHttpClient(null);
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle GitHub HTTP error gracefully")
+    void testLoadSkillsFromGithubHttpError() throws Exception {
+        HttpClient mockClient = Mockito.mock(HttpClient.class);
+        HttpResponse<Path> mockResponse = (HttpResponse<Path>) Mockito.mock(HttpResponse.class);
+        Mockito.when(mockResponse.statusCode()).thenReturn(404);
+        Mockito.doReturn(mockResponse).when(mockClient).send(ArgumentMatchers.any(HttpRequest.class), ArgumentMatchers.any());
+
+        SkillLoader.setHttpClient(mockClient);
+        try {
+            Map<String, SkillDefinition> loaded = SkillLoader.loadSkillsFromGithub("owner/nonexistent", "main", List.of("."), null, null, null);
+            assertThat(loaded).isEmpty();
+        } finally {
+            SkillLoader.setHttpClient(null);
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle GitHub network exception gracefully")
+    void testLoadSkillsFromGithubNetworkException() throws Exception {
+        HttpClient mockClient = Mockito.mock(HttpClient.class);
+        Mockito.doThrow(new IOException("Simulated network timeout")).when(mockClient).send(ArgumentMatchers.any(HttpRequest.class), ArgumentMatchers.any());
+
+        SkillLoader.setHttpClient(mockClient);
+        try {
+            Map<String, SkillDefinition> loaded = SkillLoader.loadSkillsFromGithub("owner/repo", "main", List.of("."), null, null, null);
+            assertThat(loaded).isEmpty();
+        } finally {
+            SkillLoader.setHttpClient(null);
+        }
+    }
+
+    @Test
+    @DisplayName("Should load skills from Maven local m2 repository")
+    void testLoadSkillsFromMavenLocalM2(@TempDir Path tempDir) throws IOException {
+        Path m2Repo = tempDir.resolve(".m2").resolve("repository").resolve("com").resolve("test").resolve("my-artifact").resolve("1.0.0");
+        Files.createDirectories(m2Repo);
+        Path jarPath = m2Repo.resolve("my-artifact-1.0.0.jar");
+        createMockSkillZip(jarPath, "maven-skill", "Mocked skill inside Maven JAR", "");
+
+        String origHome = System.getProperty("user.home");
+        try {
+            System.setProperty("user.home", tempDir.toAbsolutePath().toString());
+            Map<String, SkillDefinition> loaded = SkillLoader.loadSkillsFromMaven("com.test:my-artifact:1.0.0", null, List.of("."), null);
+            assertThat(loaded).containsKey("maven-skill");
+        } finally {
+            if (origHome != null) {
+                System.setProperty("user.home", origHome);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should load skills from Go module local GOPATH")
+    void testLoadSkillsFromGoModuleLocalGopath(@TempDir Path tempDir) throws IOException {
+        Path goModDir = tempDir.resolve("go").resolve("pkg").resolve("mod").resolve("github.com").resolve("owner").resolve("repo@v1.0.0");
+        Path skillDir = goModDir.resolve("skills").resolve("go-skill");
+        Files.createDirectories(skillDir);
+        Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: go-skill\ndescription: Mock Go mod skill\n---\n# Go skill\n");
+
+        String origHome = System.getProperty("user.home");
+        try {
+            System.setProperty("user.home", tempDir.toAbsolutePath().toString());
+            Map<String, SkillDefinition> loaded = SkillLoader.loadSkillsFromGoModule("github.com/owner/repo", "v1.0.0", List.of("skills"), null);
+            assertThat(loaded).containsKey("go-skill");
+        } finally {
+            if (origHome != null) {
+                System.setProperty("user.home", origHome);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should compute valid skill checksum and get loader dir")
+    void testCalculateSkillChecksumAndLoaderDir(@TempDir Path tempDir) throws IOException {
+        Path skillDir = tempDir.resolve("checksum-skill");
+        Files.createDirectories(skillDir);
+        Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: checksum-skill\n---\n# Checksum\n");
+
+        String checksum = SkillLoader.calculateSkillChecksum(skillDir);
+        assertThat(checksum).isNotEmpty();
+
+        Path loaderDir = SkillLoader.getLoaderSkillsDir();
+        assertThat(loaderDir).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should test manifest lock read, write, update, and verify")
+    void testManifestLockMethods(@TempDir Path tempDir) throws IOException {
+        Map<String, Object> lockData = new java.util.HashMap<>(Map.of(
+                "version", "1.0.0",
+                "skills", new java.util.HashMap<>(Map.of("skill-a", Map.of("uri", "file://a", "sha256", "sha256-111")))
+        ));
+        Path lockPath = SkillLoader.writeManifestLock(tempDir, lockData);
+        assertThat(Files.isRegularFile(lockPath)).isTrue();
+
+        Map<String, Object> readBack = SkillLoader.readManifestLock(tempDir);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> readSkills = (Map<String, Object>) readBack.get("skills");
+        assertThat(readSkills).containsKey("skill-a");
+
+        SkillLoader.updateManifestLock(tempDir, "skill-b", "file://b", "sha256-222");
+        Map<String, Object> updated = SkillLoader.readManifestLock(tempDir);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> updatedSkills = (Map<String, Object>) updated.get("skills");
+        assertThat(updatedSkills).containsKeys("skill-a", "skill-b");
+    }
+
+    @Test
+    @DisplayName("Should test SkillRegistry fromRoots and fromGithub factories")
+    void testSkillRegistryFromMethods(@TempDir Path tempDir) throws Exception {
+        Path skillDir = tempDir.resolve("skills").resolve("reg-skill");
+        Files.createDirectories(skillDir);
+        Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: reg-skill\ndescription: Reg\n---\n# Reg\n");
+
+        SkillRegistry regRoots = SkillRegistry.fromRoots(List.of("file://" + tempDir.resolve("skills")), null, null, null);
+        assertThat(regRoots.getSkills()).containsKey("reg-skill");
+
+        HttpClient mockClient = Mockito.mock(HttpClient.class);
+        @SuppressWarnings("unchecked")
+        HttpResponse<Path> mockResponse = (HttpResponse<Path>) Mockito.mock(HttpResponse.class);
+        Mockito.when(mockResponse.statusCode()).thenReturn(404);
+        Mockito.doReturn(mockResponse).when(mockClient).send(ArgumentMatchers.any(HttpRequest.class), ArgumentMatchers.any());
+
+        SkillLoader.setHttpClient(mockClient);
+        try {
+            SkillRegistry regGh = SkillRegistry.fromGithub("owner/nonexistent", "main", List.of("."), null, null, null);
+            assertThat(regGh.getSkills()).isEmpty();
+        } finally {
+            SkillLoader.setHttpClient(null);
+        }
+    }
+
+    private void createMockSkillZip(Path zipPath, String skillName, String skillDescription) throws IOException {
+        createMockSkillZip(zipPath, skillName, skillDescription, "extracted-repo/");
+    }
+
+    private void createMockSkillZip(Path zipPath, String skillName, String skillDescription, String prefix) throws IOException {
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()))) {
+            ZipEntry entry = new ZipEntry(prefix + "skills/" + skillName + "/SKILL.md");
+            zos.putNextEntry(entry);
+            String content = "---\nname: " + skillName + "\ndescription: " + skillDescription + "\n---\n# " + skillName + "\n";
+            zos.write(content.getBytes(StandardCharsets.UTF_8));
+            zos.closeEntry();
+        }
     }
 }
 

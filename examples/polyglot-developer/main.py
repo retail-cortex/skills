@@ -9,12 +9,12 @@ from typing import Dict, List, Optional
 # Add project packages to sys.path for direct execution
 project_root = Path(__file__).resolve().parents[2]
 loader_src = project_root / "packages/loader/src"
-bazel_src = project_root / "packages/skills-bazel/src"
-go_src = project_root / "packages/skills-go/src"
-java_src = project_root / "packages/skills-java/src"
-proto_src = project_root / "packages/skills-protobuf/src"
-py_src = project_root / "packages/skills-python/src"
-frontend_src = project_root / "packages/skills-frontend/src"
+bazel_src = project_root / "examples/skills-bazel/src"
+go_src = project_root / "examples/skills-go/src"
+java_src = project_root / "examples/skills-java/src"
+proto_src = project_root / "examples/skills-protobuf/src"
+py_src = project_root / "examples/skills-python/src"
+frontend_src = project_root / "examples/skills-frontend/src"
 
 for src_path in [loader_src, bazel_src, go_src, java_src, proto_src, py_src, frontend_src]:
     if str(src_path) not in sys.path:

@@ -9,10 +9,10 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "skills_data",
-    srcs = glob(["skills/**", "packages/skills-*/src/*/skills/**"], allow_empty = True) + [
-        "//packages/skills-python:skills_python_data",
-        "//packages/skills-go:skills_go_data",
-        "//packages/skills-java:skills_java_data",
+    srcs = glob(["examples/skills/**", "examples/skills-*/src/*/skills/**"], allow_empty = True) + [
+        "//examples/skills-python:skills_python_data",
+        "//examples/skills-go:skills_go_data",
+        "//examples/skills-java:skills_java_data",
     ],
 )
 
@@ -38,12 +38,12 @@ alias(
 
 alias(
     name = "docs",
-    actual = "//packages/loader:docs",
+    actual = "//tools/docs:docs",
 )
 
 alias(
     name = "serve-docs",
-    actual = "//packages/loader:docs",
+    actual = "//tools/docs:docs",
 )
 
 alias(
@@ -53,12 +53,12 @@ alias(
 
 alias(
     name = "skm",
-    actual = "//cli/cmd/skm",
+    actual = "//apps/cli/cmd/skm",
 )
 
 alias(
     name = "skm-binaries",
-    actual = "//cli/cmd/skm:skm_binaries",
+    actual = "//apps/cli/cmd/skm:skm_binaries",
 )
 
 alias(
@@ -74,9 +74,9 @@ test_suite(
         "//tests/e2e:test_skills_e2e",
         "//clients/go/pkg/skillsloader:skillsloader_test",
         "//clients/java:skills_loader_java_test",
-        "//cli/internal/validator:validator_test",
-        "//cli/internal/installer:installer_test",
-        "//cli/internal/commands:commands_test",
+        "//apps/cli/internal/validator:validator_test",
+        "//apps/cli/internal/installer:installer_test",
+        "//apps/cli/internal/commands:commands_test",
     ],
 )
 

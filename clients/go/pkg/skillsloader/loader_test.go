@@ -14,7 +14,7 @@ import (
 func TestFindRegistryRoot(t *testing.T) {
 	root := FindRegistryRoot()
 	assert.NotEmpty(t, root)
-	assert.True(t, isDir(filepath.Join(root, "packages")) || isDir(filepath.Join(root, "skills")))
+	assert.True(t, isDir(filepath.Join(root, "packages")) || isDir(filepath.Join(root, "skills")) || isDir(filepath.Join(root, "examples")))
 }
 
 func TestParseFrontmatter(t *testing.T) {

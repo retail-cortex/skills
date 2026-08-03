@@ -300,11 +300,6 @@ class TestSkillsLoaderPackage(unittest.TestCase):
             self.assertGreaterEqual(len(loaded), 20)
             self.assertIn("python-core", loaded)
 
-    def test_docs_generator(self) -> None:
-        from loader import docs
-        docs._ensure_workspace_cwd()
-        self.assertTrue(True)
-
     def test_load_skills_from_maven_local_m2(self) -> None:
         from loader.loader import load_skills_from_maven
         with tempfile.TemporaryDirectory() as tmp_dir:

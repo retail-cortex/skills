@@ -4,11 +4,24 @@ module(
 )
 
 bazel_dep(name = "rules_python", version = "1.7.0")
+bazel_dep(name = "apple_support", version = "1.11.1")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     python_version = "3.13",
 )
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    environment = {
+        "PIP_CONFIG_FILE": "/dev/null",
+        "PIP_INDEX_URL": "https://pypi.org/simple",
+    },
+    hub_name = "pypi",
+    python_version = "3.13",
+    requirements_lock = "//apps/skills-service:requirements_lock.txt",
+)
+use_repo(pip, "pypi")
 
 # --- Go & Proto Language Rules ---
 bazel_dep(name = "rules_cc", version = "0.2.17")
@@ -29,7 +42,7 @@ use_repo(
 )
 
 # --- Java Language Rules & JUnit 5 ---
-bazel_dep(name = "rules_java", version = "9.1.0")
+bazel_dep(name = "rules_java", version = "8.8.0")
 bazel_dep(name = "rules_jvm_external", version = "6.7")
 bazel_dep(name = "contrib_rules_jvm", version = "0.27.0")
 
@@ -60,3 +73,9 @@ maven.install(
     fetch_sources = True,
 )
 use_repo(maven, "maven")
+
+# Override apple_support to 1.11.1 to bypass Xcode detection crash on macOS 15 CLI environments
+single_version_override(
+    module_name = "apple_support",
+    version = "1.11.1",
+)

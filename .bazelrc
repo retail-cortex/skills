@@ -1,0 +1,5 @@
+# --- Root .bazelrc Configuration ---
+# Bypass Apple C++ toolchain / Xcode locator in non-interactive macOS CLI/SSH environments
+# where LaunchServices hides apple-internal apps from LSCopyApplicationURLsForBundleIdentifier.
+build --action_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
+build --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1

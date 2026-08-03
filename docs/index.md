@@ -80,11 +80,12 @@ skill-builder/
 ├── LICENSE                    # Apache 2.0 License
 ├── NOTICE                     # Legal attribution notices
 ├── validator_report.json      # Persisted 5-point SDLC audit results
-├── cli/                       # SKM (Skill Manager) Go CLI package
-│   ├── cmd/skm/               # Minimal main.go entry point
-│   ├── internal/installer/    # Polyglot URI skill resolver (github, mod, maven, pkg, file)
-│   ├── internal/validator/    # 5-point skill audit & validation engine
-│   └── internal/commands/     # Subcommand execution router
+├── apps/                      # Application binaries & services
+│   ├── cli/                   # SKM (Skill Manager) Go CLI package
+│   │   ├── cmd/skm/           # Minimal main.go entry point
+│   │   ├── internal/installer/# Polyglot URI skill resolver (github, mod, maven, pkg, file)
+│   │   ├── internal/validator/# 5-point skill audit & validation engine
+│   │   └── internal/commands/ # Subcommand execution router
 ├── skills/                    # Root skills directory categorized by domain
 │   ├── a2a/                   # Agent-to-Agent protocol skills
 │   ├── a2ui/                  # Agent-to-User Interface skills

@@ -13,16 +13,6 @@ py_library(
     ],
 )
 
-py_binary(
-    name = "docs",
-    srcs = ["src/loader/docs.py"],
-    data = [
-        "//:docs_data",
-        "//:skills_data",
-    ],
-    main = "src/loader/docs.py",
-    deps = [":loader_lib"],
-)
 
 py_test(
     name = "test_loader",

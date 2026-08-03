@@ -1,0 +1,25 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "model_lib",
+    srcs = glob(["src/model/**/*.py"]),
+    imports = ["src"],
+    deps = [
+        "@pypi//email_validator:pkg",
+        "@pypi//pydantic:pkg",
+        "@pypi//sqlmodel:pkg",
+    ],
+)
+
+py_test(
+    name = "test_model",
+    size = "small",
+    srcs = ["tests/test_model.py"],
+    main = "tests/test_model.py",
+    deps = [
+        ":model_lib",
+        "@pypi//pytest:pkg",
+    ],
+)

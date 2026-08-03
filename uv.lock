@@ -444,15 +444,22 @@ source = { directory = "packages/loader" }
 
 [package.metadata]
 requires-dist = [
-    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
-    { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.7.7" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=5.0.0" },
 ]
-provides-extras = ["docs"]
+provides-extras = ["test"]
 
 [[package]]
 name = "retailcortex-skill-validator"
 version = "1.0.0"
 source = { directory = "packages/validator" }
+
+[package.metadata]
+requires-dist = [
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=5.0.0" },
+]
+provides-extras = ["test"]
 
 [[package]]
 name = "retailcortex-skills"

@@ -127,9 +127,10 @@ skm completion fish | source  # Fish
 ```
 
 ### Oh My Zsh Plugin Integration
-An official plugin with aliases is provided in `cli/plugins/oh-my-zsh/skm`.
+An official plugin with aliases is provided in `apps/cli/plugins/oh-my-zsh/skm`.
+
 ```bash
-cp -r cli/plugins/oh-my-zsh/skm ~/.oh-my-zsh/custom/plugins/
+cp -r apps/cli/plugins/oh-my-zsh/skm ~/.oh-my-zsh/custom/plugins/
 # Then add 'skm' to your plugins=(...) array in ~/.zshrc and source ~/.zshrc
 ```
 **Aliases**: `skma` (add), `skmver` (verify), `skmv` (validate), `skml` (list), `skms` (search), `skmc` (compile), `skmi` (init).
@@ -142,9 +143,9 @@ Bazel natively cross-compiles static `skm` executables for Linux, macOS, and Win
 bazel build //:skm-binaries
 
 # Or target specific architectures
-bazel build //cli:skm_linux_amd64
-bazel build //cli:skm_darwin_arm64
-bazel build //cli:skm_windows_amd64
+bazel build //apps/cli:skm_linux_amd64
+bazel build //apps/cli:skm_darwin_arm64
+bazel build //apps/cli:skm_windows_amd64
 ```
 
 ---

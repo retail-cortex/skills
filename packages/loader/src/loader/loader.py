@@ -372,18 +372,24 @@ def load_all_skills(
                         loaded[skill_def.name] = skill_def
 
     # 2. Fallback scan for standalone skills directory (and subcategory folders)
-    skills_dir = root / "skills" if not root.name == "skills" else root
-    if skills_dir.is_dir():
-        for skill_md in sorted(skills_dir.rglob("SKILL.md"), key=lambda p: p.parent.name):
-            entry = skill_md.parent
-            if entry.name in loaded:
-                continue
-            if filter_set and entry.name not in filter_set:
-                continue
-            skill_def = load_skill_from_dir(entry)
-            if skill_def:
-                if not filter_set or skill_def.name in filter_set:
-                    loaded[skill_def.name] = skill_def
+    candidate_dirs = [
+        root / "examples" / "skills",
+        root / "skills",
+    ]
+    if root.name == "skills":
+        candidate_dirs = [root]
+    for skills_dir in candidate_dirs:
+        if skills_dir.is_dir():
+            for skill_md in sorted(skills_dir.rglob("SKILL.md"), key=lambda p: p.parent.name):
+                entry = skill_md.parent
+                if entry.name in loaded:
+                    continue
+                if filter_set and entry.name not in filter_set:
+                    continue
+                skill_def = load_skill_from_dir(entry)
+                if skill_def:
+                    if not filter_set or skill_def.name in filter_set:
+                        loaded[skill_def.name] = skill_def
 
     # 3. Scan standard cross-client .agents/skills directories (project-level & user-level)
     agents_dirs = [
@@ -471,17 +477,21 @@ def load_skills_from_package(
 
     # 3. Workspace package fallback discovery
     root = find_registry_root()
-    packages_dir = root / "packages" if not root.name == "packages" else root
-    if packages_dir.is_dir():
-        for p in sorted(packages_dir.glob("skills-*")):
-            src_dir = p / "src"
-            if src_dir.is_dir():
-                for pkg_dir in src_dir.iterdir():
-                    if pkg_dir.name == clean_pkg and pkg_dir.is_dir():
-                        skills_sub = pkg_dir / "skills"
-                        target = skills_sub if skills_sub.is_dir() else pkg_dir
-                        skills = load_all_skills(target, skill_filter=skill_filter)
-                        loaded.update(skills)
+    search_dirs = [
+        root / "packages" if not root.name == "packages" else root,
+        root / "examples" if not root.name == "examples" else root,
+    ]
+    for parent_dir in search_dirs:
+        if parent_dir.is_dir():
+            for p in sorted(parent_dir.glob("skills-*")):
+                src_dir = p / "src"
+                if src_dir.is_dir():
+                    for pkg_dir in src_dir.iterdir():
+                        if pkg_dir.name == clean_pkg and pkg_dir.is_dir():
+                            skills_sub = pkg_dir / "skills"
+                            target = skills_sub if skills_sub.is_dir() else pkg_dir
+                            skills = load_all_skills(target, skill_filter=skill_filter)
+                            loaded.update(skills)
 
     return loaded
 

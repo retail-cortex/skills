@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package retailcortex.skills.v1;
+
+import "api/v1/skill.proto";
+
+option go_package = "github.com/retail-cortex/skills/api/v1;skillsv1";
+option java_package = "com.retailcortex.skills.api.v1";
+option java_multiple_files = true;
+
+// ListSkillsRequest specifies criteria for querying skills.
+message ListSkillsRequest {
+  string s = 1; // Optional semantic vector search query string
+}
+
+// ListSkillsResponse contains a list of matching skill definitions.
+message ListSkillsResponse {
+  repeated SkillDefinition skills = 1;
+}
+
+// GetSkillRequest specifies the skill ID or unique name to retrieve.
+message GetSkillRequest {
+  string skill_id_or_name = 1;
+}
+
+// RegisterSkillRequest contains parameters for creating a new skill.
+message RegisterSkillRequest {
+  string api_key = 1;
+  string name = 2;
+  string description = 3;
+  string instructions = 4;
+  string license = 5;
+  string author = 6;
+  string version = 7;
+  string category = 8;
+  repeated string tags = 9;
+  repeated string trigger_phrases = 10;
+  map<string, string> metadata = 11;
+  map<string, string> references = 12;
+  map<string, string> examples = 13;
+}
+
+// UpdateSkillRequest contains parameters for modifying an existing skill.
+message UpdateSkillRequest {
+  string api_key = 1;
+  string skill_id = 2;
+  string description = 3;
+  string instructions = 4;
+  string license = 5;
+  string category = 6;
+  string version = 7;
+  map<string, string> metadata = 8;
+  map<string, string> references = 9;
+  map<string, string> examples = 10;
+}
+
+// DeleteSkillRequest specifies the target skill to delete.
+message DeleteSkillRequest {
+  string api_key = 1;
+  string skill_id = 2;
+}
+
+// DeleteSkillResponse contains execution status of skill deletion.
+message DeleteSkillResponse {
+  string status = 1;
+  string message = 2;
+}
+
+// RegisterAppRequest specifies parameters for application registration.
+message RegisterAppRequest {
+  string app_name = 1;
+  string email = 2;
+}
+
+// RegisterAppResponse contains credentials and verification details.
+message RegisterAppResponse {
+  string app_id = 1;
+  string app_name = 2;
+  string email = 3;
+  string api_key = 4;
+  string verification_token = 5;
+  string verification_url = 6;
+}
+
+// VerifyAppRequest specifies the email verification token.
+message VerifyAppRequest {
+  string token = 1;
+}
+
+// VerifyAppResponse contains activation status.
+message VerifyAppResponse {
+  string app_id = 1;
+  string app_name = 2;
+  string email = 3;
+  bool is_active = 4;
+  string message = 5;
+}
+
+// SkillService provides gRPC methods for skill discovery and lifecycle management.
+service SkillService {
+  rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
+  rpc GetSkill (GetSkillRequest) returns (SkillDefinition);
+  rpc RegisterSkill (RegisterSkillRequest) returns (SkillDefinition);
+  rpc UpdateSkill (UpdateSkillRequest) returns (SkillDefinition);
+  rpc DeleteSkill (DeleteSkillRequest) returns (DeleteSkillResponse);
+}
+
+// AppService provides gRPC methods for application registration and verification.
+service AppService {
+  rpc RegisterApp (RegisterAppRequest) returns (RegisterAppResponse);
+  rpc VerifyApp (VerifyAppRequest) returns (VerifyAppResponse);
+}

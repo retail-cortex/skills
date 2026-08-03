@@ -117,7 +117,15 @@ def audit_all_skills(registry_root: Path) -> AuditSummary:
         for skill_md in packages_dir.rglob("SKILL.md"):
             skill_dirs_set.add(skill_md.parent)
 
+    examples_dir = registry_root / "examples" if not registry_root.name == "examples" else registry_root
+    if examples_dir.is_dir():
+        for skill_md in examples_dir.rglob("SKILL.md"):
+            skill_dirs_set.add(skill_md.parent)
+
     for d in sorted(skill_dirs_set, key=lambda x: x.name):
+        s_str = str(d)
+        if any(part in s_str for part in (".venv", ".git", ".loader_skills")):
+            continue
         res = audit_skill_directory(d)
         summary.results.append(res)
         summary.total_skills += 1

@@ -21,7 +21,7 @@ import (
 // FindRegistryRoot discovers the root workspace directory containing enterprise skill packages.
 func FindRegistryRoot() string {
 	if ws := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); ws != "" {
-		if isDir(filepath.Join(ws, "packages")) || isDir(filepath.Join(ws, "skills")) {
+		if isDir(filepath.Join(ws, "packages")) || isDir(filepath.Join(ws, "skills")) || isDir(filepath.Join(ws, "examples")) {
 			return ws
 		}
 	}
@@ -39,7 +39,7 @@ func FindRegistryRoot() string {
 		)
 
 		for _, cand := range candidates {
-			if isDir(filepath.Join(cand, "packages")) || isDir(filepath.Join(cand, "skills")) {
+			if isDir(filepath.Join(cand, "packages")) || isDir(filepath.Join(cand, "skills")) || isDir(filepath.Join(cand, "examples")) {
 				return cand
 			}
 		}
@@ -53,7 +53,7 @@ func FindRegistryRoot() string {
 			if info.Name() == "SKILL.md" {
 				dir := filepath.Dir(path)
 				for dir != "." && dir != "/" {
-					if isDir(filepath.Join(dir, "packages")) || isDir(filepath.Join(dir, "skills")) {
+					if isDir(filepath.Join(dir, "packages")) || isDir(filepath.Join(dir, "skills")) || isDir(filepath.Join(dir, "examples")) {
 						foundRoot = dir
 						return fmt.Errorf("found")
 					}
@@ -76,7 +76,7 @@ func FindRegistryRoot() string {
 	if err == nil {
 		curr := cwd
 		for {
-			if isDir(filepath.Join(curr, "packages")) || isDir(filepath.Join(curr, "skills")) {
+			if isDir(filepath.Join(curr, "packages")) || isDir(filepath.Join(curr, "skills")) || isDir(filepath.Join(curr, "examples")) {
 				return curr
 			}
 			parent := filepath.Dir(curr)
@@ -457,26 +457,30 @@ func LoadAllSkills(skillsRoot string, skillFilter []string) (map[string]*SkillDe
 		}
 	}
 
-	// 1. Scan workspace packages for skills
-	packagesDir := filepath.Join(root, "packages")
-	if filepath.Base(root) == "packages" {
-		packagesDir = root
+	// 1. Scan workspace packages and examples for skills
+	searchDirs := []string{
+		filepath.Join(root, "packages"),
+		filepath.Join(root, "examples"),
 	}
-
-	if isDir(packagesDir) {
-		pattern := filepath.Join(packagesDir, "skills-*", "src", "*", "skills", "*")
-		matches, _ := filepath.Glob(pattern)
-		sort.Strings(matches)
-		for _, skillDir := range matches {
-			if isDir(skillDir) && !strings.HasPrefix(filepath.Base(skillDir), ".") {
-				skillName := filepath.Base(skillDir)
-				if hasFilter && !filterSet[skillName] {
-					continue
-				}
-				skillDef, err := LoadSkillFromDir(skillDir)
-				if err == nil && skillDef != nil {
-					if !hasFilter || filterSet[skillDef.Name] {
-						loaded[skillDef.Name] = skillDef
+	if filepath.Base(root) == "packages" || filepath.Base(root) == "examples" {
+		searchDirs = []string{root}
+	}
+	for _, parentDir := range searchDirs {
+		if isDir(parentDir) {
+			pattern := filepath.Join(parentDir, "skills-*", "src", "*", "skills", "*")
+			matches, _ := filepath.Glob(pattern)
+			sort.Strings(matches)
+			for _, skillDir := range matches {
+				if isDir(skillDir) && !strings.HasPrefix(filepath.Base(skillDir), ".") {
+					skillName := filepath.Base(skillDir)
+					if hasFilter && !filterSet[skillName] {
+						continue
+					}
+					skillDef, err := LoadSkillFromDir(skillDir)
+					if err == nil && skillDef != nil {
+						if !hasFilter || filterSet[skillDef.Name] {
+							loaded[skillDef.Name] = skillDef
+						}
 					}
 				}
 			}
@@ -484,26 +488,31 @@ func LoadAllSkills(skillsRoot string, skillFilter []string) (map[string]*SkillDe
 	}
 
 	// 2. Fallback scan for standalone skills directory (and subcategory folders)
-	skillsDir := filepath.Join(root, "skills")
+	skillsDirs := []string{
+		filepath.Join(root, "skills"),
+		filepath.Join(root, "examples", "skills"),
+	}
 	if filepath.Base(root) == "skills" {
-		skillsDir = root
+		skillsDirs = []string{root}
 	}
 
-	if isDir(skillsDir) {
-		_ = filepath.Walk(skillsDir, func(path string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() && info.Name() == "SKILL.md" {
-				dir := filepath.Dir(path)
-				dirName := filepath.Base(dir)
-				if _, exists := loaded[dirName]; !exists {
-					if !hasFilter || filterSet[dirName] {
-						if skillDef, err := LoadSkillFromDir(dir); err == nil && skillDef != nil {
-							loaded[skillDef.Name] = skillDef
+	for _, sDir := range skillsDirs {
+		if isDir(sDir) {
+			_ = filepath.Walk(sDir, func(path string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() && info.Name() == "SKILL.md" {
+					dir := filepath.Dir(path)
+					dirName := filepath.Base(dir)
+					if _, exists := loaded[dirName]; !exists {
+						if !hasFilter || filterSet[dirName] {
+							if skillDef, err := LoadSkillFromDir(dir); err == nil && skillDef != nil {
+								loaded[skillDef.Name] = skillDef
+							}
 						}
 					}
 				}
-			}
-			return nil
-		})
+				return nil
+			})
+		}
 	}
 
 	// 3. Scan standard cross-client .agents/skills directories (project-level & user-level)
@@ -547,30 +556,35 @@ func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string
 	}
 
 	root := FindRegistryRoot()
-	packagesDir := filepath.Join(root, "packages")
-	if filepath.Base(root) == "packages" {
-		packagesDir = root
+	searchDirs := []string{
+		filepath.Join(root, "packages"),
+		filepath.Join(root, "examples"),
+	}
+	if filepath.Base(root) == "packages" || filepath.Base(root) == "examples" {
+		searchDirs = []string{root}
 	}
 
 	loaded := make(map[string]*SkillDefinition)
-	if isDir(packagesDir) {
-		pats, _ := filepath.Glob(filepath.Join(packagesDir, "skills-*"))
-		for _, p := range pats {
-			srcDir := filepath.Join(p, "src")
-			if isDir(srcDir) {
-				entries, _ := os.ReadDir(srcDir)
-				for _, entry := range entries {
-					if entry.IsDir() && entry.Name() == cleanPkg {
-						pkgDir := filepath.Join(srcDir, entry.Name())
-						skillsSub := filepath.Join(pkgDir, "skills")
-						target := pkgDir
-						if isDir(skillsSub) {
-							target = skillsSub
-						}
-						skills, err := LoadAllSkills(target, skillFilter)
-						if err == nil {
-							for k, v := range skills {
-								loaded[k] = v
+	for _, parentDir := range searchDirs {
+		if isDir(parentDir) {
+			pats, _ := filepath.Glob(filepath.Join(parentDir, "skills-*"))
+			for _, p := range pats {
+				srcDir := filepath.Join(p, "src")
+				if isDir(srcDir) {
+					entries, _ := os.ReadDir(srcDir)
+					for _, entry := range entries {
+						if entry.IsDir() && entry.Name() == cleanPkg {
+							pkgDir := filepath.Join(srcDir, entry.Name())
+							skillsSub := filepath.Join(pkgDir, "skills")
+							target := pkgDir
+							if isDir(skillsSub) {
+								target = skillsSub
+							}
+							skills, err := LoadAllSkills(target, skillFilter)
+							if err == nil {
+								for k, v := range skills {
+									loaded[k] = v
+								}
 							}
 						}
 					}
@@ -651,6 +665,8 @@ func LoadSkillsFromGoModule(target, ref string, roots, filter []string) (map[str
 	candidates := []string{
 		filepath.Join(root, "packages", "skills-"+artName),
 		filepath.Join(root, "packages", artName),
+		filepath.Join(root, "examples", "skills-"+artName),
+		filepath.Join(root, "examples", artName),
 		filepath.Join(root, "clients", "go"),
 	}
 	for _, cand := range candidates {
@@ -742,6 +758,8 @@ func LoadSkillsFromMaven(target string, ref string, roots []string, filter []str
 	candidates := []string{
 		filepath.Join(root, "packages", "skills-"+artifactId),
 		filepath.Join(root, "packages", artifactId),
+		filepath.Join(root, "examples", "skills-"+artifactId),
+		filepath.Join(root, "examples", artifactId),
 		filepath.Join(root, "clients", "java"),
 	}
 	for _, cand := range candidates {

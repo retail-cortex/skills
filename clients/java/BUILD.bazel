@@ -8,9 +8,9 @@ java_library(
     javacopts = ["--release", "17"],
     data = [
         "//:skills_data",
-        "//packages/skills-go:skills_go_data",
-        "//packages/skills-java:skills_java_data",
-        "//packages/skills-python:skills_python_data",
+        "//examples/skills-go:skills_go_data",
+        "//examples/skills-java:skills_java_data",
+        "//examples/skills-python:skills_python_data",
     ],
     deps = [
         "//api/v1:skills_v1_java_proto",
@@ -36,9 +36,9 @@ java_test(
     args = ["--select-package", "com.retailcortex.skills.loader"],
     data = [
         "//:skills_data",
-        "//packages/skills-go:skills_go_data",
-        "//packages/skills-java:skills_java_data",
-        "//packages/skills-python:skills_python_data",
+        "//examples/skills-go:skills_go_data",
+        "//examples/skills-java:skills_java_data",
+        "//examples/skills-python:skills_python_data",
     ],
     main_class = "org.junit.platform.console.ConsoleLauncher",
     tags = ["local"],

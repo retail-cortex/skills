@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
+
 
 	"gopkg.in/yaml.v3"
 )
@@ -157,6 +159,15 @@ func ParseDotenvFile(envPath string) map[string]string {
 // ParseSkillRootURI parses a qualified skill root URI into (scheme, target, ref, subpath).
 func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 	clean := strings.TrimSpace(uri)
+	if strings.HasPrefix(clean, "skm://") || strings.HasPrefix(clean, "skms://") {
+		prefix := "skm://"
+		if strings.HasPrefix(clean, "skms://") {
+			prefix = "skms://"
+		}
+		raw := clean[len(prefix):]
+		raw = strings.TrimPrefix(raw, "skills/")
+		return "skm", raw, "", ""
+	}
 	if strings.HasPrefix(clean, "file://") {
 		return "file", clean[len("file://"):], "", ""
 	}
@@ -167,6 +178,7 @@ func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 		}
 		return "pkg", clean[len(prefix):], "", ""
 	}
+
 
 	if strings.HasPrefix(clean, "mod://") || strings.HasPrefix(clean, "go://") {
 		prefix := "mod://"
@@ -567,7 +579,13 @@ func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string
 	loaded := make(map[string]*SkillDefinition)
 	for _, parentDir := range searchDirs {
 		if isDir(parentDir) {
-			pats, _ := filepath.Glob(filepath.Join(parentDir, "skills-*"))
+			var pats []string
+			p1, _ := filepath.Glob(filepath.Join(parentDir, "skills-*"))
+			p2, _ := filepath.Glob(filepath.Join(parentDir, "*", "skills"))
+			p3, _ := filepath.Glob(filepath.Join(parentDir, "*"))
+			pats = append(pats, p1...)
+			pats = append(pats, p2...)
+			pats = append(pats, p3...)
 			for _, p := range pats {
 				srcDir := filepath.Join(p, "src")
 				if isDir(srcDir) {
@@ -592,6 +610,7 @@ func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string
 			}
 		}
 	}
+
 
 	return loaded, nil
 }
@@ -662,13 +681,17 @@ func LoadSkillsFromGoModule(target, ref string, roots, filter []string) (map[str
 
 	root := FindRegistryRoot()
 	artName := filepath.Base(cleanMod)
+	cleanArtName := strings.TrimPrefix(artName, "skills-")
 	candidates := []string{
-		filepath.Join(root, "packages", "skills-"+artName),
-		filepath.Join(root, "packages", artName),
-		filepath.Join(root, "examples", "skills-"+artName),
-		filepath.Join(root, "examples", artName),
+		filepath.Join(root, "examples", cleanArtName, "skills"),
+		filepath.Join(root, "examples", "skills-"+cleanArtName),
+		filepath.Join(root, "examples", cleanArtName),
+		filepath.Join(root, "packages", "skills-"+cleanArtName),
+		filepath.Join(root, "packages", cleanArtName),
 		filepath.Join(root, "clients", "go"),
 	}
+
+
 	for _, cand := range candidates {
 		if isDir(cand) {
 			skills, err := LoadAllSkills(cand, filter)
@@ -755,13 +778,16 @@ func LoadSkillsFromMaven(target string, ref string, roots []string, filter []str
 	}
 
 	root := FindRegistryRoot()
+	cleanArtId := strings.TrimPrefix(artifactId, "skills-")
 	candidates := []string{
-		filepath.Join(root, "packages", "skills-"+artifactId),
-		filepath.Join(root, "packages", artifactId),
-		filepath.Join(root, "examples", "skills-"+artifactId),
-		filepath.Join(root, "examples", artifactId),
+		filepath.Join(root, "examples", cleanArtId, "skills"),
+		filepath.Join(root, "examples", "skills-"+cleanArtId),
+		filepath.Join(root, "examples", cleanArtId),
+		filepath.Join(root, "packages", "skills-"+cleanArtId),
+		filepath.Join(root, "packages", cleanArtId),
 		filepath.Join(root, "clients", "java"),
 	}
+
 	for _, cand := range candidates {
 		if isDir(cand) {
 			skills, err := LoadAllSkills(cand, filter)
@@ -1665,4 +1691,102 @@ func VerifyManifestLock(destDir string) (*VerificationReport, error) {
 
 	return report, nil
 }
+
+// LoadSkillsFromSKMServer fetches a skill definition from a central SKM server.
+func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, apiKey string) (map[string]*SkillDefinition, error) {
+	if serverURL == "" {
+		serverURL = "http://localhost:8080"
+	}
+	endpoint := fmt.Sprintf("%s/api/v1/skills/%s", strings.TrimRight(serverURL, "/"), target)
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request for %s: %w", endpoint, err)
+	}
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch skill from server %s: %w", endpoint, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var data struct {
+		ID           string            `json:"id"`
+		Name         string            `json:"name"`
+		URI          string            `json:"uri"`
+		SourceURI    string            `json:"source_uri"`
+		Description  string            `json:"description"`
+		Instructions string            `json:"instructions"`
+		License      *string           `json:"license"`
+		Author       *string           `json:"author"`
+		Version      string            `json:"version"`
+		Category     *string           `json:"category"`
+		Tags         []string          `json:"tags"`
+		Metadata     map[string]string `json:"metadata"`
+		References   map[string]string `json:"references"`
+		Examples     map[string]string `json:"examples"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, fmt.Errorf("failed to parse skill response: %w", err)
+	}
+
+	lic := ""
+	if data.License != nil {
+		lic = *data.License
+	}
+	auth := ""
+	if data.Author != nil {
+		auth = *data.Author
+	}
+
+	s := &SkillDefinition{
+		Name:         data.Name,
+		Description:  data.Description,
+		Instructions: data.Instructions,
+		License:      lic,
+		Author:       auth,
+		Version:      data.Version,
+		Metadata:     data.Metadata,
+		References:   data.References,
+		Examples:     data.Examples,
+	}
+
+	tmpDir, err := os.MkdirTemp("", "skm-server-skill-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	s.Path = tmpDir
+
+	skillMDContent := fmt.Sprintf("---\nname: %s\ndescription: %s\nlicense: %s\nauthor: %s\nversion: %s\n---\n\n# %s\n\n%s\n",
+		s.Name, s.Description, s.License, s.Author, s.Version, s.Name, s.Instructions)
+	_ = os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte(skillMDContent), 0644)
+
+	if len(s.References) > 0 {
+		refDir := filepath.Join(tmpDir, "references")
+		_ = os.MkdirAll(refDir, 0755)
+		for name, content := range s.References {
+			_ = os.WriteFile(filepath.Join(refDir, name), []byte(content), 0644)
+		}
+	}
+
+	if len(s.Examples) > 0 {
+		exDir := filepath.Join(tmpDir, "examples")
+		_ = os.MkdirAll(exDir, 0755)
+		for name, content := range s.Examples {
+			_ = os.WriteFile(filepath.Join(exDir, name), []byte(content), 0644)
+		}
+	}
+
+	return map[string]*SkillDefinition{s.Name: s}, nil
+}
+
 

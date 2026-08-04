@@ -1,0 +1,69 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/.DS_Store": true,
+			"**/.DS_Store?": true,
+			"**/.git": true,
+			"**/.hg": true,
+			"**/.svn": true,
+			"**/CVS": true,
+			"**/Thumbs.db": true,
+			"**/bazel-*": true,
+			"**/.bazel-cache": true,
+			"**/.gemini": true,
+			"**/.loader_skills": true,
+			"**/.skills": true,
+			"**/.system_generated": true,
+			"**/scratch": true,
+			"**/.venv": true,
+			"**/__pycache__": true,
+			"**/*.pyc": true,
+			"**/*.egg-info": true,
+			"**/.pytest_cache": true,
+			"**/.ruff_cache": true,
+			"**/.mypy_cache": true,
+			"**/.coverage": true,
+			"**/htmlcov": true,
+			"**/node_modules": true,
+			"**/.next": true,
+			"**/.turbo": true,
+			"**/target": true,
+			"**/dist": true,
+			"**/build": true
+		},
+		"search.exclude": {
+			"**/bazel-*": true,
+			"**/.bazel-cache": true,
+			"**/.gemini": true,
+			"**/.loader_skills": true,
+			"**/.system_generated": true,
+			"**/scratch": true,
+			"**/.venv": true,
+			"**/__pycache__": true,
+			"**/*.egg-info": true,
+			"**/.pytest_cache": true,
+			"**/node_modules": true,
+			"**/.next": true,
+			"**/target": true,
+			"**/dist": true,
+			"**/uv.lock": true,
+			"**/go.sum": true
+		},
+		"files.watcherExclude": {
+			"**/bazel-*/**": true,
+			"**/.bazel-cache/**": true,
+			"**/.gemini/**": true,
+			"**/.venv/**": true,
+			"**/__pycache__/**": true,
+			"**/node_modules/**": true,
+			"**/.next/**": true,
+			"**/target/**": true,
+			"**/dist/**": true
+		}
+	}
+}

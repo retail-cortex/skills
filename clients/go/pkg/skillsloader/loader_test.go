@@ -110,11 +110,12 @@ func TestParseSkillRootURI(t *testing.T) {
 		},
 		{
 			name:       "mod URI with version and subpath",
-			uri:        "mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go",
+			uri:        "mod://github.com/retail-cortex/skills@v1.0.0/examples/go/skills",
 			reqScheme:  "mod",
 			reqTarget:  "github.com/retail-cortex/skills",
 			reqRef:     "v1.0.0",
-			reqSubpath: "packages/skills-go",
+			reqSubpath: "examples/go/skills",
+
 		},
 		{
 			name:       "github URI with trailing ref",

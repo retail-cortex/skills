@@ -17,7 +17,7 @@ class TestSkillsLoader(unittest.TestCase):
     def test_find_registry_root(self) -> None:
         root = find_registry_root()
         self.assertTrue(root.exists())
-        self.assertTrue((root / "packages").is_dir() or (root / "skills").is_dir() or root.name in ("packages", "skills"))
+        self.assertTrue((root / "clients").is_dir() or (root / "apps").is_dir() or (root / "pkg").is_dir() or (root / "skills").is_dir() or root.name in ("clients", "apps", "pkg", "skills"))
 
     def test_parse_frontmatter(self) -> None:
         sample = "---\nname: test-skill\ndescription: A test description\n---\n# Instructions\nFollow these rules."

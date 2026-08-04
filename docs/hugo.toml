@@ -1,0 +1,15 @@
+baseURL = 'http://localhost:1313/'
+locale = 'en-US'
+title = 'RetailCortex Skill Builder Documentation'
+
+theme = 'hugo-geekdoc'
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+[params]
+  geekdocRepo = 'https://github.com/retail-cortex/skills'
+  geekdocEditPath = 'edit/main/docs/content'
+  geekdocSearch = true

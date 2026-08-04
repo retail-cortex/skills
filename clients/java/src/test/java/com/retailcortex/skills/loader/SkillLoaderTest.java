@@ -37,7 +37,7 @@ class SkillLoaderTest {
         Path root = SkillLoader.findRegistryRoot();
         assertThat(root).isNotNull();
         assertThat(Files.exists(root)).isTrue();
-        assertThat(Files.isDirectory(root.resolve("packages")) || Files.isDirectory(root.resolve("skills"))).isTrue();
+        assertThat(Files.isDirectory(root.resolve("clients")) || Files.isDirectory(root.resolve("cmd")) || Files.isDirectory(root.resolve("pkg")) || Files.isDirectory(root.resolve("skills")) || Files.isDirectory(root.resolve("examples"))).isTrue();
     }
 
     @Test

@@ -66,7 +66,7 @@ public class SkillLoader {
         String buildWs = System.getenv("BUILD_WORKSPACE_DIRECTORY");
         if (buildWs != null && !buildWs.isBlank()) {
             Path ws = Paths.get(buildWs);
-            if (Files.isDirectory(ws.resolve("packages")) || Files.isDirectory(ws.resolve("skills")) || Files.isDirectory(ws.resolve("examples"))) {
+            if (Files.isDirectory(ws.resolve("clients")) || Files.isDirectory(ws.resolve("cmd")) || Files.isDirectory(ws.resolve("pkg")) || Files.isDirectory(ws.resolve("skills")) || Files.isDirectory(ws.resolve("examples"))) {
                 return ws;
             }
         }
@@ -75,7 +75,7 @@ public class SkillLoader {
         while (curr != null) {
             String str = curr.toString();
             if (!str.contains("bazel-out") && !str.contains(".runfiles") && !str.contains("sandbox")) {
-                if (Files.isDirectory(curr.resolve("packages")) || Files.isDirectory(curr.resolve("skills")) || Files.isDirectory(curr.resolve("examples"))) {
+                if (Files.isDirectory(curr.resolve("clients")) || Files.isDirectory(curr.resolve("cmd")) || Files.isDirectory(curr.resolve("pkg")) || Files.isDirectory(curr.resolve("skills")) || Files.isDirectory(curr.resolve("examples"))) {
                     return curr;
                 }
             }
@@ -139,11 +139,18 @@ public class SkillLoader {
             Map<String, Object> loaded = yaml.load(yamlText);
             if (loaded != null) {
                 for (Map.Entry<String, Object> entry : loaded.entrySet()) {
-                    if (entry.getValue() != null) {
+                    if (entry.getValue() instanceof Map<?, ?> subMap) {
+                        for (Map.Entry<?, ?> subEntry : subMap.entrySet()) {
+                            if (subEntry.getValue() != null) {
+                                data.put(String.valueOf(subEntry.getKey()), String.valueOf(subEntry.getValue()));
+                            }
+                        }
+                    } else if (entry.getValue() != null) {
                         data.put(entry.getKey(), String.valueOf(entry.getValue()));
                     }
                 }
             }
+
         } catch (Exception e) {
             logger.debug("SnakeYAML parsing failed, falling back to line parsing: {}", e.getMessage());
             for (String line : yamlText.split("\n")) {
@@ -414,6 +421,8 @@ public class SkillLoader {
             logger.warn("Failed loading skill from {}: {}", skillDir, e.getMessage());
             return null;
         }
+
+
     }
 
     /**
@@ -433,7 +442,26 @@ public class SkillLoader {
             }
         }
 
-        // 1. Scan packages and examples directories
+        // 1. Direct scan for skill subdirectories containing SKILL.md
+        try (Stream<Path> walk = Files.walk(root, 6, FileVisitOption.FOLLOW_LINKS)) {
+            walk.filter(p -> Files.isDirectory(p) && Files.isRegularFile(p.resolve("SKILL.md")))
+                .sorted(Comparator.comparing(Path::toString))
+                .forEach(skillDir -> {
+                    String skillName = skillDir.getFileName().toString();
+                    if (hasFilter && !filterSet.contains(skillName)) {
+                        return;
+                    }
+                    SkillDefinition def = loadSkillFromDir(skillDir);
+                    if (def != null && (!hasFilter || filterSet.contains(def.getName()))) {
+                        loaded.put(def.getName(), def);
+                    }
+                });
+        } catch (IOException e) {
+            logger.debug("Error walking root for skills: {}", e.getMessage());
+        }
+
+        // 2. Scan packages and examples directories
+
         List<Path> searchDirs = new ArrayList<>();
         if (root.getFileName() != null && (root.getFileName().toString().equals("packages") || root.getFileName().toString().equals("examples"))) {
             searchDirs.add(root);
@@ -443,13 +471,16 @@ public class SkillLoader {
         }
         for (Path parentDir : searchDirs) {
             if (Files.isDirectory(parentDir)) {
-                try (DirectoryStream<Path> stream = Files.newDirectoryStream(parentDir, "skills-*")) {
-                    List<Path> pkgPaths = new ArrayList<>();
-                    for (Path p : stream) pkgPaths.add(p);
-                    pkgPaths.sort(Comparator.comparing(Path::toString));
+                try (Stream<Path> stream = Files.walk(parentDir, 5, FileVisitOption.FOLLOW_LINKS)) {
+
+                    List<Path> pkgPaths = stream
+                        .filter(p -> Files.isDirectory(p) && p.resolve("src").toFile().exists())
+                        .sorted(Comparator.comparing(Path::toString))
+                        .toList();
 
                     for (Path pkg : pkgPaths) {
                         Path srcDir = pkg.resolve("src");
+
                         if (Files.isDirectory(srcDir)) {
                             try (Stream<Path> walk = Files.walk(srcDir, 4)) {
                                 walk.filter(Files::isDirectory)
@@ -481,6 +512,7 @@ public class SkillLoader {
                         }
                     }
                 } catch (IOException e) {
+
                     logger.debug("Error listing packages directory: {}", e.getMessage());
                 }
             }
@@ -571,11 +603,25 @@ public class SkillLoader {
         Map<String, SkillDefinition> loaded = new HashMap<>();
         for (Path parentDir : searchDirs) {
             if (Files.isDirectory(parentDir)) {
-                try (DirectoryStream<Path> stream = Files.newDirectoryStream(parentDir, "skills-*")) {
-                    for (Path p : stream) {
+                try (Stream<Path> stream = Files.walk(parentDir, 5, FileVisitOption.FOLLOW_LINKS)) {
+                    List<Path> allDirs = stream.filter(Files::isDirectory).toList();
+                    List<Path> pPaths = allDirs.stream().filter(p -> p.resolve("src").toFile().exists()).toList();
+                    for (Path p : pPaths) {
+
+
+
                         Path srcDir = p.resolve("src");
                         if (Files.isDirectory(srcDir)) {
                             Path pkgDir = srcDir.resolve(cleanPkg);
+                            if (!Files.isDirectory(pkgDir)) {
+                                String altName = cleanPkg.startsWith("retailcortex_skills_") ?
+                                    cleanPkg.substring("retailcortex_skills_".length()) :
+                                    "retailcortex_skills_" + cleanPkg.replace("-", "_");
+                                Path altDir = srcDir.resolve(altName);
+                                if (Files.isDirectory(altDir)) {
+                                    pkgDir = altDir;
+                                }
+                            }
                             if (Files.isDirectory(pkgDir)) {
                                 Path skillsSub = pkgDir.resolve("skills");
                                 Path target = Files.isDirectory(skillsSub) ? skillsSub : pkgDir;
@@ -588,8 +634,11 @@ public class SkillLoader {
                 }
             }
         }
+
+        System.err.println("DEBUG loadSkillsFromPackage cleanPkg=" + cleanPkg + " root=" + root + " searchDirs=" + searchDirs + " loaded=" + loaded.keySet());
         return loaded;
     }
+
 
     /**
      * Loads skills from a Maven artifact coordinates or classpath.
@@ -633,13 +682,16 @@ public class SkillLoader {
         }
 
         Path root = findRegistryRoot();
+        String cleanId = artifactId.startsWith("skills-") ? artifactId.substring(7) : artifactId;
         List<Path> candidates = List.of(
-            root.resolve("packages").resolve("skills-" + artifactId),
-            root.resolve("packages").resolve(artifactId),
-            root.resolve("examples").resolve("skills-" + artifactId),
-            root.resolve("examples").resolve(artifactId),
+            root.resolve("examples").resolve(cleanId).resolve("skills"),
+            root.resolve("examples").resolve("skills-" + cleanId),
+            root.resolve("examples").resolve(cleanId),
+            root.resolve("packages").resolve("skills-" + cleanId),
+            root.resolve("packages").resolve(cleanId),
             root.resolve("clients").resolve("java")
         );
+
         for (Path cand : candidates) {
             if (Files.isDirectory(cand)) {
                 Map<String, SkillDefinition> skills = loadAllSkills(cand, filter);
@@ -685,13 +737,16 @@ public class SkillLoader {
 
         Path root = findRegistryRoot();
         String artName = Paths.get(cleanMod).getFileName().toString();
+        String cleanName = artName.startsWith("skills-") ? artName.substring(7) : artName;
         List<Path> candidates = List.of(
-            root.resolve("packages").resolve("skills-" + artName),
-            root.resolve("packages").resolve(artName),
-            root.resolve("examples").resolve("skills-" + artName),
-            root.resolve("examples").resolve(artName),
+            root.resolve("examples").resolve(cleanName).resolve("skills"),
+            root.resolve("examples").resolve("skills-" + cleanName),
+            root.resolve("examples").resolve(cleanName),
+            root.resolve("packages").resolve("skills-" + cleanName),
+            root.resolve("packages").resolve(cleanName),
             root.resolve("clients").resolve("go")
         );
+
         for (Path cand : candidates) {
             if (Files.isDirectory(cand)) {
                 Map<String, SkillDefinition> skills = loadAllSkills(cand, filter);

@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package retailcortex.registration.v1;
+
+option go_package = "github.com/retail-cortex/skills/proto/retailcortex/registration/v1;registrationv1";
+option java_package = "com.retailcortex.skills.proto.retailcortex.registration.v1";
+option java_multiple_files = true;
+
+// RegisterAppRequest specifies parameters for application registration.
+message RegisterAppRequest {
+  string app_name = 1;
+  string email = 2;
+}
+
+// RegisterAppResponse contains credentials and verification details.
+message RegisterAppResponse {
+  string app_id = 1;
+  string app_name = 2;
+  string email = 3;
+  string api_key = 4;
+  string verification_token = 5;
+  string verification_url = 6;
+}
+
+// VerifyAppRequest specifies the email verification token.
+message VerifyAppRequest {
+  string token = 1;
+}
+
+// VerifyAppResponse contains activation status.
+message VerifyAppResponse {
+  string app_id = 1;
+  string app_name = 2;
+  string email = 3;
+  bool is_active = 4;
+  string message = 5;
+}
+
+// AppService provides gRPC and REST methods for application registration and verification.
+//
+// HTTP Endpoints:
+// - POST /api/v1/apps/register -> RegisterApp
+// - GET  /api/v1/apps/verify   -> VerifyApp
+service AppService {
+  // Register a new application to acquire API credentials.
+  // HTTP: POST /api/v1/apps/register
+  rpc RegisterApp (RegisterAppRequest) returns (RegisterAppResponse);
+
+  // Verify an application using email verification token.
+  // HTTP: GET /api/v1/apps/verify?token={verification_token}
+  rpc VerifyApp (VerifyAppRequest) returns (VerifyAppResponse);
+}
+
+
+
+

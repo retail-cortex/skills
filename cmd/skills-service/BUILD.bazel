@@ -1,0 +1,42 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "skills-service_lib",
+    srcs = [
+        "config.go",
+        "handlers.go",
+        "main.go",
+    ],
+    importpath = "github.com/retail-cortex/skills/cmd/skills-service",
+    deps = [
+        "//pkg/data",
+        "//pkg/mcp",
+        "//pkg/model",
+        "//pkg/service",
+        "@com_github_gin_gonic_gin//:gin",
+        "@com_github_mark3labs_mcp_go//server",
+        "@com_github_rrmcguinness_modenv//pkg/modenv",
+    ],
+)
+
+go_binary(
+    name = "skills-service",
+    embed = [":skills-service_lib"],
+)
+
+go_test(
+    name = "skills-service_test",
+    size = "small",
+    srcs = ["service_test.go"],
+    embed = [":skills-service_lib"],
+    deps = [
+        "//pkg/data",
+        "//pkg/model",
+        "@com_github_gin_gonic_gin//:gin",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)
+

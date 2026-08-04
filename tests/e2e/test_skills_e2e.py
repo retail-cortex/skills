@@ -50,7 +50,7 @@ class TestSkillsE2E(unittest.TestCase):
         """Verify workspace root discovery under Bazel and uv execution."""
         self.assertTrue(self.root.exists(), f"Registry root does not exist: {self.root}")
         self.assertTrue(
-            (self.root / "packages").is_dir() or (self.root / "skills").is_dir() or self.root.name in ("packages", "skills"),
+            (self.root / "clients").is_dir() or (self.root / "apps").is_dir() or (self.root / "pkg").is_dir() or (self.root / "skills").is_dir() or self.root.name in ("clients", "apps", "pkg", "skills"),
             f"Invalid registry root structure at {self.root}",
         )
 

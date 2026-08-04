@@ -52,14 +52,14 @@ bazel run //:skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
 bazel run //:skm -- validate -r ./packages
 ```
 
-### 2. Run Native ADK Agent Example
+### 2. Run Native Python Client Example
 ```bash
-uv run python examples/example-adk/main.py
+uv run python examples/python/client/main.py
 ```
 
 ### 3. Run Polyglot Developer Agent CLI
 ```bash
-uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-polyglot-app
+uv run python examples/python/polyglot/main.py --target-dir ./scratch/my-polyglot-app
 ```
 
 ### 4. Run SDLC 5-Point Skill Validator
@@ -85,7 +85,8 @@ uv run pytest
 2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
 3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Specialized domain and technology skills catalog.
 4. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Standalone **`skm`** CLI, modular packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`), and Bazel targets.
-5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`example-adk` and `polyglot-developer`).
+5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`examples/python/client`, `examples/go/client`, `examples/java/client`, and `examples/python/polyglot`).
+
 
 ---
 

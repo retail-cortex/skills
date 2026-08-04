@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "client_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/retail-cortex/skills/examples/go/client",
+    deps = [
+        "//clients/go/pkg/skillsloader",
+        "@com_github_rrmcguinness_modenv//pkg/modenv",
+    ],
+)
+
+go_test(
+    name = "test_go_client_example",
+    size = "small",
+    srcs = ["main_test.go"],
+    data = ["configs/.env.toml"],
+    embed = [":client_lib"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+    ],
+)

@@ -1,49 +1,29 @@
 load("@gazelle//:def.bzl", "gazelle")
 
-
 # gazelle:prefix github.com/retail-cortex/skills
 gazelle(name = "gazelle")
 
 package(default_visibility = ["//visibility:public"])
 
-
 filegroup(
     name = "skills_data",
-    srcs = glob(["examples/skills/**", "examples/skills-*/src/*/skills/**"], allow_empty = True) + [
-        "//examples/skills-python:skills_python_data",
-        "//examples/skills-go:skills_go_data",
-        "//examples/skills-java:skills_java_data",
+    srcs = glob(
+        [
+            "examples/skills/**",
+            "examples/*/skills/src/*/skills/**",
+        ],
+        allow_empty = True,
+    ) + [
+        "//examples/go/skills:skills_go_data",
+        "//examples/java/skills:skills_java_data",
+        "//examples/python/skills:skills_python_data",
     ],
 )
 
-filegroup(
-    name = "docs_data",
-    srcs = glob(["docs/**"], allow_empty = True) + ["mkdocs.yml"],
-)
-
-alias(
-    name = "validate",
-    actual = "//packages/validator:validate_skills",
-)
-
-alias(
-    name = "test",
-    actual = "//packages/validator:test_validator",
-)
 
 alias(
     name = "start-agent",
     actual = "//tests/adk-agent:start_agent",
-)
-
-alias(
-    name = "docs",
-    actual = "//tools/docs:docs",
-)
-
-alias(
-    name = "serve-docs",
-    actual = "//tools/docs:docs",
 )
 
 alias(
@@ -52,14 +32,45 @@ alias(
 )
 
 alias(
+    name = "python-loader",
+    actual = "//clients/python:loader_lib",
+)
+
+alias(
+    name = "java-loader",
+    actual = "//clients/java:skills_loader_java",
+)
+
+alias(
     name = "skm",
-    actual = "//apps/cli/cmd/skm",
+    actual = "//cmd/skm",
 )
 
 alias(
     name = "skm-binaries",
-    actual = "//apps/cli/cmd/skm:skm_binaries",
+    actual = "//cmd/skm:skm_binaries",
 )
+
+alias(
+    name = "skills-service",
+    actual = "//cmd/skills-service",
+)
+
+alias(
+    name = "docs",
+    actual = "//docs:serve",
+)
+
+alias(
+    name = "serve-docs",
+    actual = "//docs:serve",
+)
+
+alias(
+    name = "site",
+    actual = "//docs:site",
+)
+
 
 alias(
     name = "diagrams",
@@ -67,16 +78,20 @@ alias(
 )
 
 
-
 test_suite(
     name = "test-e2e",
     tests = [
-        "//tests/e2e:test_skills_e2e",
         "//clients/go/pkg/skillsloader:skillsloader_test",
         "//clients/java:skills_loader_java_test",
-        "//apps/cli/internal/validator:validator_test",
-        "//apps/cli/internal/installer:installer_test",
-        "//apps/cli/internal/commands:commands_test",
+        "//cmd/skills-service:skills-service_test",
+        "//examples/go/client:test_go_client_example",
+        "//examples/java/client:test_java_client_example",
+        "//examples/python/client:test_python_client_example",
+        "//examples/python/polyglot:test_polyglot_developer",
+        "//internal/commands:commands_test",
+        "//internal/installer:installer_test",
+        "//pkg/validator:validator_test",
+        "//tests/e2e:test_skills_e2e",
     ],
 )
 

@@ -7,6 +7,7 @@ go_library(
     srcs = [
         "commands.go",
         "config.go",
+        "login.go",
         "register.go",
     ],
     importpath = "github.com/retail-cortex/skills/internal/commands",

@@ -52,8 +52,12 @@ func (h *ServerHandlers) RegisterApp(c *gin.Context) {
 	db := data.GetDB()
 	res, err := h.appsService.RegisterApp(db, req, baseURL)
 	if err != nil {
-		if errors.Is(err, data.ErrAppAlreadyRegistered) {
+		if errors.Is(err, data.ErrAppAlreadyRegistered) || errors.Is(err, data.ErrInvalidRegistrationEmail) {
 			c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+			return
+		}
+		if errors.Is(err, data.ErrFreemailDomainProhibited) {
+			c.JSON(http.StatusForbidden, gin.H{"detail": err.Error()})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})

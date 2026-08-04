@@ -31,6 +31,8 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	subArgs := args[1:]
 
 	switch subcommand {
+	case "login":
+		return runLogin(subArgs, stdout, stderr)
 	case "register":
 		return runRegister(subArgs, stdout, stderr)
 	case "config":
@@ -652,6 +654,7 @@ Usage:
   skm <command> [options] [arguments]
 
 Commands:
+  login --email <email>   Register application identity & authenticate CLI credentials (~/.skm/.env.toml)
   config <show|set>       Configure CLI settings (~/.skm/.env.toml)
   register <source-uri>   Register a skill from github://, file://, etc. with central SKM server
   add <uri>...            Add skills from skm://, github://, mod://, maven://, pkg://, or file:// to .skills (or -d directory)

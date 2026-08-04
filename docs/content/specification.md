@@ -81,3 +81,19 @@ Central server registration publishes source skills and assigns immutable `skill
 1. **Client Request**: `skm register <source_uri>` sends `POST /api/v1/skills` with `X-API-Key` authentication header.
 2. **Server Processing**: `skills-service` validates source skill frontmatter, assigns `skill_id` (e.g., `sk-9b1deb4d`), and stores `source_uri` and canonical `uri` (`skm://skills/{skill_id}`).
 3. **Client Response**: Returns HTTP `201 Created` with canonical URI `skm://skills/{skill_id}`.
+
+---
+
+## 6. Domain Scoping & Application Registration Standard (`urn:skm:app:...`)
+
+Every application registered with `skills-service` MUST be bound to a verified domain authority and assigned a canonical RFC 8141 URN:
+
+### 6.1 URN Syntax
+- **Application URN**: `urn:skm:app:<domain>:<app_name>` (e.g. `urn:skm:app:retailcortex.com:checkout-agent`)
+- **Skill URN**: `urn:skm:skill:<domain>:<app_name>:<skill_name>:<version>` (e.g. `urn:skm:skill:retailcortex.com:checkout-agent:payment-gateway:v1.0.0`)
+
+### 6.2 Domain Ownership Validation Rules
+1. **SSO Email Match (`VERIFIED_SSO`)**: If the developer's email domain matches the requested registration domain (e.g. `dev@retailcortex.com` registering `retailcortex.com`), domain verification is automatically confirmed.
+2. **Freemail Prohibition (`ErrFreemailDomainProhibited`)**: Public freemail provider addresses (`gmail.com`, `yahoo.com`, `outlook.com`, `hotmail.com`, `icloud.com`, etc.) are explicitly forbidden from claiming corporate domain namespaces.
+3. **DNS Challenge Fallback (`PENDING_DNS`)**: Claiming a custom third-party domain generates a DNS TXT challenge token (`skm-domain-verify-<uuid>`) that must be published under `_skm-challenge.<domain>` before activation.
+

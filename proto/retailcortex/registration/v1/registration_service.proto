@@ -6,20 +6,36 @@ option go_package = "github.com/retail-cortex/skills/proto/retailcortex/registra
 option java_package = "com.retailcortex.skills.proto.retailcortex.registration.v1";
 option java_multiple_files = true;
 
+// DomainVerificationStatus classifies domain ownership validation state.
+enum DomainVerificationStatus {
+  DOMAIN_VERIFICATION_STATUS_UNSPECIFIED = 0;
+  DOMAIN_VERIFICATION_STATUS_VERIFIED_SSO = 1;     // Verified via SSO/email domain match
+  DOMAIN_VERIFICATION_STATUS_VERIFIED_DNS = 2;     // Verified via DNS TXT record challenge
+  DOMAIN_VERIFICATION_STATUS_PENDING_DNS = 3;      // Awaiting DNS TXT record challenge
+  DOMAIN_VERIFICATION_STATUS_REJECTED = 4;         // Domain claim rejected
+}
+
 // RegisterAppRequest specifies parameters for application registration.
 message RegisterAppRequest {
   string app_name = 1;
-  string email = 2;
+  string domain = 2;
+  string email = 3;
+  string organization_id = 4;
 }
 
 // RegisterAppResponse contains credentials and verification details.
 message RegisterAppResponse {
   string app_id = 1;
   string app_name = 2;
-  string email = 3;
-  string api_key = 4;
-  string verification_token = 5;
-  string verification_url = 6;
+  string domain = 3;
+  string app_urn = 4;
+  string email = 5;
+  string organization_id = 6;
+  DomainVerificationStatus domain_verification_status = 7;
+  string dns_txt_challenge = 8;
+  string api_key = 9;
+  string verification_token = 10;
+  string verification_url = 11;
 }
 
 // VerifyAppRequest specifies the email verification token.

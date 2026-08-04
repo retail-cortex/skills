@@ -9,8 +9,10 @@ import (
 )
 
 type CLIConfig struct {
-	ServerURL string `json:"server_url"`
-	APIKey    string `json:"api_key"`
+	ServerURL      string `json:"server_url"`
+	APIKey         string `json:"api_key"`
+	Domain         string `json:"domain"`
+	OrganizationID string `json:"organization_id"`
 }
 
 func GetConfigPath() string {
@@ -43,6 +45,10 @@ func LoadCLIConfig() (*CLIConfig, error) {
 					cfg.ServerURL = val
 				case "SKM_API_KEY", "api_key", "API_KEY":
 					cfg.APIKey = val
+				case "SKM_DOMAIN", "domain", "DOMAIN":
+					cfg.Domain = val
+				case "SKM_ORGANIZATION_ID", "organization_id", "ORGANIZATION_ID", "org":
+					cfg.OrganizationID = val
 				}
 			}
 		}
@@ -53,6 +59,12 @@ func LoadCLIConfig() (*CLIConfig, error) {
 	}
 	if envKey := os.Getenv("SKM_API_KEY"); envKey != "" {
 		cfg.APIKey = envKey
+	}
+	if envDomain := os.Getenv("SKM_DOMAIN"); envDomain != "" {
+		cfg.Domain = envDomain
+	}
+	if envOrg := os.Getenv("SKM_ORGANIZATION_ID"); envOrg != "" {
+		cfg.OrganizationID = envOrg
 	}
 
 	return cfg, nil
@@ -65,7 +77,8 @@ func SaveCLIConfig(cfg *CLIConfig) error {
 		return fmt.Errorf("failed to create config directory %s: %w", dir, err)
 	}
 
-	content := fmt.Sprintf("# SKM Enterprise CLI Configuration\nSKM_SERVER_URL=%q\nSKM_API_KEY=%q\n", cfg.ServerURL, cfg.APIKey)
+	content := fmt.Sprintf("# SKM Enterprise CLI Configuration\nSKM_SERVER_URL=%q\nSKM_API_KEY=%q\nSKM_DOMAIN=%q\nSKM_ORGANIZATION_ID=%q\n",
+		cfg.ServerURL, cfg.APIKey, cfg.Domain, cfg.OrganizationID)
 	return os.WriteFile(configPath, []byte(content), 0600)
 }
 
@@ -78,7 +91,7 @@ func runConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "\nSKM CLI Configuration (~/.skm/.env.toml)\n")
 		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 60))
-		fmt.Fprintf(stdout, "Server URL: %s\n", cfg.ServerURL)
+		fmt.Fprintf(stdout, "Server URL:      %s\n", cfg.ServerURL)
 		maskedKey := "<not set>"
 		if cfg.APIKey != "" {
 			if len(cfg.APIKey) > 8 {
@@ -87,13 +100,23 @@ func runConfig(args []string, stdout, stderr io.Writer) int {
 				maskedKey = "***"
 			}
 		}
-		fmt.Fprintf(stdout, "API Key:    %s\n\n", maskedKey)
+		fmt.Fprintf(stdout, "API Key:         %s\n", maskedKey)
+		domainStr := "<not set>"
+		if cfg.Domain != "" {
+			domainStr = cfg.Domain
+		}
+		fmt.Fprintf(stdout, "Domain:          %s\n", domainStr)
+		orgStr := "<not set>"
+		if cfg.OrganizationID != "" {
+			orgStr = cfg.OrganizationID
+		}
+		fmt.Fprintf(stdout, "Organization ID: %s\n\n", orgStr)
 		return 0
 	}
 
 	if args[0] == "set" {
 		if len(args) < 3 {
-			fmt.Fprintf(stderr, "Usage: skm config set <server|api_key> <value>\n")
+			fmt.Fprintf(stderr, "Usage: skm config set <server|api_key|domain|org> <value>\n")
 			return 1
 		}
 		key := strings.ToLower(args[1])
@@ -107,8 +130,14 @@ func runConfig(args []string, stdout, stderr io.Writer) int {
 		case "api_key", "api-key", "key":
 			cfg.APIKey = val
 			fmt.Fprintf(stdout, "Updated API key.\n")
+		case "domain", "skm_domain":
+			cfg.Domain = val
+			fmt.Fprintf(stdout, "Updated Domain: %s\n", val)
+		case "org", "organization_id", "organization-id", "organization":
+			cfg.OrganizationID = val
+			fmt.Fprintf(stdout, "Updated Organization ID: %s\n", val)
 		default:
-			fmt.Fprintf(stderr, "Unknown config key %s. Valid keys: server, api_key\n", key)
+			fmt.Fprintf(stderr, "Unknown config key %s. Valid keys: server, api_key, domain, org\n", key)
 			return 1
 		}
 

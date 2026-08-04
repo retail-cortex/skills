@@ -18,7 +18,7 @@ graph TD
     A --> D[3. Skill Dependencies & Installation]
     A --> E[4. Scaffolding & Quality Audit]
 
-    B --> B1["skm config set server / api_key"]
+    B --> B1["skm config set server / api_key / domain / org"]
     C --> C1["skm register github://..."]
     D --> D1["skm add skm://skills/{skill_id}"]
     E --> E1["skm validate / skm init"]

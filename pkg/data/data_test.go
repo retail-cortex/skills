@@ -21,23 +21,49 @@ func TestAppsRepository(t *testing.T) {
 	db := data.GetDB()
 	repo := data.NewAppsRepository()
 
-	// 1. Register App
+	// 1. Register App with matching domain (SSO Verification)
 	req := model.AppRegisterRequest{
 		AppName: "test-app",
+		Domain:  "example.com",
 		Email:   "test@example.com",
 	}
 	res, err := repo.RegisterApp(db, req, "http://localhost:8000")
 	require.NoError(t, err)
 	assert.NotEmpty(t, res.AppID)
+	assert.Equal(t, "example.com", res.Domain)
+	assert.Equal(t, "urn:skm:app:example.com:test-app", res.AppURN)
+	assert.Equal(t, model.DomainStatusVerifiedSSO, res.DomainVerificationStatus)
 	assert.NotEmpty(t, res.APIKey)
 	assert.NotEmpty(t, res.VerificationToken)
 	assert.Contains(t, res.VerificationURL, res.VerificationToken)
+
+	// 2. Register App with custom non-matching domain (DNS Challenge)
+	reqCustom := model.AppRegisterRequest{
+		AppName: "custom-app",
+		Domain:  "customdomain.org",
+		Email:   "dev@corp.com",
+	}
+	resCustom, err := repo.RegisterApp(db, reqCustom, "http://localhost:8000")
+	require.NoError(t, err)
+	assert.Equal(t, "customdomain.org", resCustom.Domain)
+	assert.Equal(t, "urn:skm:app:customdomain.org:custom-app", resCustom.AppURN)
+	assert.Equal(t, model.DomainStatusPendingDNS, resCustom.DomainVerificationStatus)
+	assert.Contains(t, resCustom.DNSTXTChallenge, "skm-domain-verify-")
+
+	// 3. Prohibit freemail claiming enterprise domain
+	reqFreemail := model.AppRegisterRequest{
+		AppName: "spoof-app",
+		Domain:  "google.com",
+		Email:   "hacker@gmail.com",
+	}
+	_, err = repo.RegisterApp(db, reqFreemail, "http://localhost:8000")
+	assert.ErrorIs(t, err, data.ErrFreemailDomainProhibited)
 
 	// Duplicate registration attempt
 	_, err = repo.RegisterApp(db, req, "http://localhost:8000")
 	assert.ErrorIs(t, err, data.ErrAppAlreadyRegistered)
 
-	// 2. Authenticate unverified app should fail
+	// 4. Authenticate unverified app should fail
 	_, err = repo.AuthenticateAPIKey(db, res.APIKey)
 	assert.ErrorIs(t, err, data.ErrAppNotVerified)
 
@@ -49,18 +75,20 @@ func TestAppsRepository(t *testing.T) {
 	_, err = repo.AuthenticateAPIKey(db, "sk_live_invalid")
 	assert.ErrorIs(t, err, data.ErrInvalidAPIKey)
 
-	// 3. Verify App
+	// 5. Verify App
 	verifyRes, err := repo.VerifyApp(db, res.VerificationToken)
 	require.NoError(t, err)
 	assert.True(t, verifyRes.IsActive)
+	assert.Equal(t, "example.com", verifyRes.Domain)
+	assert.Equal(t, "urn:skm:app:example.com:test-app", verifyRes.AppURN)
 
-	// 4. Authenticate verified app
+	// 6. Authenticate verified app
 	app, err := repo.AuthenticateAPIKey(db, res.APIKey)
 	require.NoError(t, err)
 	assert.Equal(t, res.AppID, app.AppID)
 	assert.True(t, app.IsActive)
 
-	// 5. Invalid token verify
+	// 7. Invalid token verify
 	_, err = repo.VerifyApp(db, "invalid-token")
 	assert.ErrorIs(t, err, data.ErrInvalidVerificationToken)
 }

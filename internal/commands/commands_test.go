@@ -460,4 +460,13 @@ func TestExecute_RegisterMissingArgs(t *testing.T) {
 	assert.Contains(t, errOut.String(), "source URI required")
 }
 
+func TestExecute_LoginMissingEmail(t *testing.T) {
+	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
+	code := Execute([]string{"login"}, out, errOut)
+	assert.Equal(t, 1, code)
+	assert.Contains(t, errOut.String(), "email address required for registration")
+}
+
+
 

@@ -21,7 +21,20 @@ var (
 	ErrMissingAPIKey            = errors.New("missing API key header X-API-Key")
 	ErrInvalidAPIKey            = errors.New("invalid API key provided")
 	ErrAppNotVerified           = errors.New("application is pending email verification")
+	ErrFreemailDomainProhibited = errors.New("freemail accounts (e.g. @gmail.com) cannot claim enterprise domain names")
+	ErrInvalidRegistrationEmail = errors.New("invalid email address format for registration")
 )
+
+var freemailDomains = map[string]bool{
+	"gmail.com":      true,
+	"yahoo.com":      true,
+	"hotmail.com":    true,
+	"outlook.com":    true,
+	"icloud.com":     true,
+	"aol.com":        true,
+	"protonmail.com": true,
+	"zoho.com":       true,
+}
 
 type AppsRepository struct{}
 
@@ -44,8 +57,23 @@ func (r *AppsRepository) generateAPIKey() (string, error) {
 	return fmt.Sprintf("sk_live_%s", hex.EncodeToString(bytes)), nil
 }
 
-// RegisterApp registers a new application, issuing an API key and email verification token.
+// RegisterApp registers a new application with domain scoping, issuing an API key and email verification token.
 func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, baseURL string) (*model.AppRegisterResponse, error) {
+	emailParts := strings.Split(req.Email, "@")
+	if len(emailParts) != 2 || strings.TrimSpace(emailParts[0]) == "" || strings.TrimSpace(emailParts[1]) == "" {
+		return nil, ErrInvalidRegistrationEmail
+	}
+	emailDomain := strings.ToLower(strings.TrimSpace(emailParts[1]))
+
+	requestedDomain := strings.ToLower(strings.TrimSpace(req.Domain))
+	if requestedDomain == "" {
+		requestedDomain = emailDomain
+	}
+
+	if freemailDomains[emailDomain] && requestedDomain != emailDomain {
+		return nil, fmt.Errorf("%w: %s cannot claim %s", ErrFreemailDomainProhibited, req.Email, requestedDomain)
+	}
+
 	var existing model.RegisteredApp
 	err := db.Where("email = ?", req.Email).First(&existing).Error
 	if err == nil {
@@ -60,15 +88,31 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 
 	appID := uuid.New().String()
 	verificationToken := uuid.New().String()
+	appURN := fmt.Sprintf("urn:skm:app:%s:%s", requestedDomain, req.AppName)
+
+	var domainStatus model.DomainVerificationStatus
+	var dnsChallenge string
+
+	if emailDomain == requestedDomain {
+		domainStatus = model.DomainStatusVerifiedSSO
+	} else {
+		domainStatus = model.DomainStatusPendingDNS
+		dnsChallenge = fmt.Sprintf("skm-domain-verify-%s", uuid.New().String())
+	}
 
 	app := model.RegisteredApp{
-		AppID:             appID,
-		AppName:           req.AppName,
-		Email:             req.Email,
-		APIKeyHash:        apiKeyHash,
-		IsActive:          false,
-		VerificationToken: verificationToken,
-		CreatedAt:         time.Now().UTC(),
+		AppID:                  appID,
+		AppName:                req.AppName,
+		Domain:                 requestedDomain,
+		AppURN:                 appURN,
+		OrganizationID:         req.OrganizationID,
+		Email:                  req.Email,
+		DomainVerificationStatus: domainStatus,
+		DNSTXTChallenge:        dnsChallenge,
+		APIKeyHash:             apiKeyHash,
+		IsActive:               false,
+		VerificationToken:      verificationToken,
+		CreatedAt:              time.Now().UTC(),
 	}
 
 	if err := db.Create(&app).Error; err != nil {
@@ -87,12 +131,17 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 	verificationURL := fmt.Sprintf("%s/api/v1/apps/verify?token=%s", hostURL, verificationToken)
 
 	return &model.AppRegisterResponse{
-		AppID:             app.AppID,
-		AppName:           app.AppName,
-		Email:             app.Email,
-		APIKey:            rawAPIKey,
-		VerificationToken: app.VerificationToken,
-		VerificationURL:   verificationURL,
+		AppID:                  app.AppID,
+		AppName:                app.AppName,
+		Domain:                 app.Domain,
+		AppURN:                 app.AppURN,
+		OrganizationID:         app.OrganizationID,
+		Email:                  app.Email,
+		DomainVerificationStatus: app.DomainVerificationStatus,
+		DNSTXTChallenge:        app.DNSTXTChallenge,
+		APIKey:                 rawAPIKey,
+		VerificationToken:      app.VerificationToken,
+		VerificationURL:        verificationURL,
 	}, nil
 }
 
@@ -113,11 +162,14 @@ func (r *AppsRepository) VerifyApp(db *gorm.DB, token string) (*model.AppVerifyR
 	}
 
 	return &model.AppVerifyResponse{
-		AppID:    app.AppID,
-		AppName:  app.AppName,
-		Email:    app.Email,
-		IsActive: app.IsActive,
-		Message:  "Application email verified successfully. Account is now active.",
+		AppID:                  app.AppID,
+		AppName:                app.AppName,
+		Domain:                 app.Domain,
+		AppURN:                 app.AppURN,
+		Email:                  app.Email,
+		DomainVerificationStatus: app.DomainVerificationStatus,
+		IsActive:               app.IsActive,
+		Message:                "Application email verified successfully. Account is now active.",
 	}, nil
 }
 

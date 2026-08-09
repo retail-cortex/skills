@@ -1,3 +1,17 @@
+# Copyright 2026 Ryan McGuinness
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Fixtures and setup helpers for skills loader E2E tests."""
 
 import tempfile
@@ -17,9 +31,9 @@ def get_workspace_root() -> Path:
 def get_multi_skill_file_roots(root: Path | None = None) -> List[str]:
     """Returns file:// URIs pointing to distinct skills across python, go, and bazel packages."""
     ws_root = root or get_workspace_root()
-    python_skill_path = ws_root / "skills/python/python-core"
-    go_skill_path = ws_root / "skills/go/go-lang"
-    bazel_skill_path = ws_root / "skills/bazel/bazel-modules"
+    python_skill_path = ws_root / "examples/skills/python/python-core"
+    go_skill_path = ws_root / "examples/skills/go/go-lang"
+    bazel_skill_path = ws_root / "examples/skills/bazel/bazel-modules"
 
     return [
         f"file://{python_skill_path}",

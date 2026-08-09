@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package skillsloader
 
 import (
@@ -14,7 +28,7 @@ import (
 func TestFindRegistryRoot(t *testing.T) {
 	root := FindRegistryRoot()
 	assert.NotEmpty(t, root)
-	assert.True(t, isDir(filepath.Join(root, "packages")) || isDir(filepath.Join(root, "skills")))
+	assert.True(t, isDir(filepath.Join(root, "packages")) || isDir(filepath.Join(root, "skills")) || isDir(filepath.Join(root, "examples")))
 }
 
 func TestParseFrontmatter(t *testing.T) {
@@ -110,11 +124,12 @@ func TestParseSkillRootURI(t *testing.T) {
 		},
 		{
 			name:       "mod URI with version and subpath",
-			uri:        "mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go",
+			uri:        "mod://github.com/retail-cortex/skills@v1.0.0/examples/go/skills",
 			reqScheme:  "mod",
 			reqTarget:  "github.com/retail-cortex/skills",
 			reqRef:     "v1.0.0",
-			reqSubpath: "packages/skills-go",
+			reqSubpath: "examples/go/skills",
+
 		},
 		{
 			name:       "github URI with trailing ref",
@@ -683,13 +698,16 @@ func TestCoverageBoost(t *testing.T) {
 	assert.Contains(t, skillsSub, "sub-skill")
 }
 
+func TestSkillRegistry_SuggestSkills(t *testing.T) {
+	registry, err := NewSkillRegistry("", nil, nil, "")
+	require.NoError(t, err)
+	require.NotNil(t, registry)
 
+	// Suggest skills with bounded limit
+	suggested := registry.SuggestSkills("go microservice testing", 3, "")
+	assert.True(t, len(suggested) > 0 && len(suggested) <= 3)
 
-
-
-
-
-
-
-
-
+	// Empty prompt returns top-k
+	emptySuggested := registry.SuggestSkills("", 2, "")
+	assert.True(t, len(emptySuggested) > 0 && len(emptySuggested) <= 2)
+}

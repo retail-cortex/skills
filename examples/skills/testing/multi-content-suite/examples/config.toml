@@ -1,0 +1,7 @@
+[encoding]
+engine = "skm-polyglot-v1"
+supported_formats = ["png", "pdf", "svg", "csv", "json", "yaml", "sql", "go", "py", "tsx", "java", "tf"]
+
+[server]
+port = 8080
+enable_binary_passthrough = true

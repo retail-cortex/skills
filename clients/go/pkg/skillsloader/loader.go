@@ -1,19 +1,37 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package skillsloader
 
 import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -21,7 +39,7 @@ import (
 // FindRegistryRoot discovers the root workspace directory containing enterprise skill packages.
 func FindRegistryRoot() string {
 	if ws := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); ws != "" {
-		if isDir(filepath.Join(ws, "packages")) || isDir(filepath.Join(ws, "skills")) {
+		if isDir(filepath.Join(ws, "packages")) || isDir(filepath.Join(ws, "skills")) || isDir(filepath.Join(ws, "examples")) {
 			return ws
 		}
 	}
@@ -39,7 +57,7 @@ func FindRegistryRoot() string {
 		)
 
 		for _, cand := range candidates {
-			if isDir(filepath.Join(cand, "packages")) || isDir(filepath.Join(cand, "skills")) {
+			if isDir(filepath.Join(cand, "packages")) || isDir(filepath.Join(cand, "skills")) || isDir(filepath.Join(cand, "examples")) {
 				return cand
 			}
 		}
@@ -53,7 +71,7 @@ func FindRegistryRoot() string {
 			if info.Name() == "SKILL.md" {
 				dir := filepath.Dir(path)
 				for dir != "." && dir != "/" {
-					if isDir(filepath.Join(dir, "packages")) || isDir(filepath.Join(dir, "skills")) {
+					if isDir(filepath.Join(dir, "packages")) || isDir(filepath.Join(dir, "skills")) || isDir(filepath.Join(dir, "examples")) {
 						foundRoot = dir
 						return fmt.Errorf("found")
 					}
@@ -76,7 +94,7 @@ func FindRegistryRoot() string {
 	if err == nil {
 		curr := cwd
 		for {
-			if isDir(filepath.Join(curr, "packages")) || isDir(filepath.Join(curr, "skills")) {
+			if isDir(filepath.Join(curr, "packages")) || isDir(filepath.Join(curr, "skills")) || isDir(filepath.Join(curr, "examples")) {
 				return curr
 			}
 			parent := filepath.Dir(curr)
@@ -157,6 +175,15 @@ func ParseDotenvFile(envPath string) map[string]string {
 // ParseSkillRootURI parses a qualified skill root URI into (scheme, target, ref, subpath).
 func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 	clean := strings.TrimSpace(uri)
+	if strings.HasPrefix(clean, "skm://") || strings.HasPrefix(clean, "skms://") {
+		prefix := "skm://"
+		if strings.HasPrefix(clean, "skms://") {
+			prefix = "skms://"
+		}
+		raw := clean[len(prefix):]
+		raw = strings.TrimPrefix(raw, "skills/")
+		return "skm", raw, "", ""
+	}
 	if strings.HasPrefix(clean, "file://") {
 		return "file", clean[len("file://"):], "", ""
 	}
@@ -167,6 +194,7 @@ func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 		}
 		return "pkg", clean[len(prefix):], "", ""
 	}
+
 
 	if strings.HasPrefix(clean, "mod://") || strings.HasPrefix(clean, "go://") {
 		prefix := "mod://"
@@ -286,6 +314,50 @@ func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 	return "file", clean, "", ""
 }
 
+// readSkillFileContent reads file content, preserving text as-is and encoding binary files as Data URIs.
+func readSkillFileContent(filePath string) (string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	// If valid UTF-8 and does not contain raw null byte, return as plain text
+	if utf8.Valid(data) && !bytes.Contains(data, []byte{0}) {
+		return string(data), nil
+	}
+	// Fallback to Data URI with MIME detection for binary formats
+	mimeType := http.DetectContentType(data)
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".pdf":
+		mimeType = "application/pdf"
+	case ".svg":
+		mimeType = "image/svg+xml"
+	case ".png":
+		mimeType = "image/png"
+	case ".jpg", ".jpeg":
+		mimeType = "image/jpeg"
+	case ".webp":
+		mimeType = "image/webp"
+	case ".gif":
+		mimeType = "image/gif"
+	case ".ico":
+		mimeType = "image/x-icon"
+	case ".wasm":
+		mimeType = "application/wasm"
+	case ".wav":
+		mimeType = "audio/wav"
+	case ".mp3":
+		mimeType = "audio/mpeg"
+	case ".zip":
+		mimeType = "application/zip"
+	case ".db", ".sqlite":
+		mimeType = "application/x-sqlite3"
+	case ".pb", ".bin":
+		mimeType = "application/octet-stream"
+	}
+	return fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(data)), nil
+}
+
 // LoadSkillFromDir loads a single skill definition from its directory, enforcing boundary checks.
 func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 	skillMD := filepath.Join(skillDir, "SKILL.md")
@@ -383,11 +455,11 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 	if isDir(refDir) {
 		entries, _ := os.ReadDir(refDir)
 		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+			if !entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 				refPath := filepath.Join(refDir, entry.Name())
 				if isWithinBaseDir(skillDir, refPath) {
-					if refContent, err := os.ReadFile(refPath); err == nil {
-						references[entry.Name()] = string(refContent)
+					if refContent, err := readSkillFileContent(refPath); err == nil {
+						references[entry.Name()] = refContent
 					}
 				}
 			}
@@ -402,8 +474,8 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 			if !entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 				exPath := filepath.Join(exDir, entry.Name())
 				if isWithinBaseDir(skillDir, exPath) {
-					if exContent, err := os.ReadFile(exPath); err == nil {
-						examples[entry.Name()] = string(exContent)
+					if exContent, err := readSkillFileContent(exPath); err == nil {
+						examples[entry.Name()] = exContent
 					}
 				}
 			}
@@ -457,26 +529,30 @@ func LoadAllSkills(skillsRoot string, skillFilter []string) (map[string]*SkillDe
 		}
 	}
 
-	// 1. Scan workspace packages for skills
-	packagesDir := filepath.Join(root, "packages")
-	if filepath.Base(root) == "packages" {
-		packagesDir = root
+	// 1. Scan workspace packages and examples for skills
+	searchDirs := []string{
+		filepath.Join(root, "packages"),
+		filepath.Join(root, "examples"),
 	}
-
-	if isDir(packagesDir) {
-		pattern := filepath.Join(packagesDir, "skills-*", "src", "*", "skills", "*")
-		matches, _ := filepath.Glob(pattern)
-		sort.Strings(matches)
-		for _, skillDir := range matches {
-			if isDir(skillDir) && !strings.HasPrefix(filepath.Base(skillDir), ".") {
-				skillName := filepath.Base(skillDir)
-				if hasFilter && !filterSet[skillName] {
-					continue
-				}
-				skillDef, err := LoadSkillFromDir(skillDir)
-				if err == nil && skillDef != nil {
-					if !hasFilter || filterSet[skillDef.Name] {
-						loaded[skillDef.Name] = skillDef
+	if filepath.Base(root) == "packages" || filepath.Base(root) == "examples" {
+		searchDirs = []string{root}
+	}
+	for _, parentDir := range searchDirs {
+		if isDir(parentDir) {
+			pattern := filepath.Join(parentDir, "skills-*", "src", "*", "skills", "*")
+			matches, _ := filepath.Glob(pattern)
+			sort.Strings(matches)
+			for _, skillDir := range matches {
+				if isDir(skillDir) && !strings.HasPrefix(filepath.Base(skillDir), ".") {
+					skillName := filepath.Base(skillDir)
+					if hasFilter && !filterSet[skillName] {
+						continue
+					}
+					skillDef, err := LoadSkillFromDir(skillDir)
+					if err == nil && skillDef != nil {
+						if !hasFilter || filterSet[skillDef.Name] {
+							loaded[skillDef.Name] = skillDef
+						}
 					}
 				}
 			}
@@ -484,26 +560,31 @@ func LoadAllSkills(skillsRoot string, skillFilter []string) (map[string]*SkillDe
 	}
 
 	// 2. Fallback scan for standalone skills directory (and subcategory folders)
-	skillsDir := filepath.Join(root, "skills")
+	skillsDirs := []string{
+		filepath.Join(root, "skills"),
+		filepath.Join(root, "examples", "skills"),
+	}
 	if filepath.Base(root) == "skills" {
-		skillsDir = root
+		skillsDirs = []string{root}
 	}
 
-	if isDir(skillsDir) {
-		_ = filepath.Walk(skillsDir, func(path string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() && info.Name() == "SKILL.md" {
-				dir := filepath.Dir(path)
-				dirName := filepath.Base(dir)
-				if _, exists := loaded[dirName]; !exists {
-					if !hasFilter || filterSet[dirName] {
-						if skillDef, err := LoadSkillFromDir(dir); err == nil && skillDef != nil {
-							loaded[skillDef.Name] = skillDef
+	for _, sDir := range skillsDirs {
+		if isDir(sDir) {
+			_ = filepath.Walk(sDir, func(path string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() && info.Name() == "SKILL.md" {
+					dir := filepath.Dir(path)
+					dirName := filepath.Base(dir)
+					if _, exists := loaded[dirName]; !exists {
+						if !hasFilter || filterSet[dirName] {
+							if skillDef, err := LoadSkillFromDir(dir); err == nil && skillDef != nil {
+								loaded[skillDef.Name] = skillDef
+							}
 						}
 					}
 				}
-			}
-			return nil
-		})
+				return nil
+			})
+		}
 	}
 
 	// 3. Scan standard cross-client .agents/skills directories (project-level & user-level)
@@ -547,30 +628,41 @@ func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string
 	}
 
 	root := FindRegistryRoot()
-	packagesDir := filepath.Join(root, "packages")
-	if filepath.Base(root) == "packages" {
-		packagesDir = root
+	searchDirs := []string{
+		filepath.Join(root, "packages"),
+		filepath.Join(root, "examples"),
+	}
+	if filepath.Base(root) == "packages" || filepath.Base(root) == "examples" {
+		searchDirs = []string{root}
 	}
 
 	loaded := make(map[string]*SkillDefinition)
-	if isDir(packagesDir) {
-		pats, _ := filepath.Glob(filepath.Join(packagesDir, "skills-*"))
-		for _, p := range pats {
-			srcDir := filepath.Join(p, "src")
-			if isDir(srcDir) {
-				entries, _ := os.ReadDir(srcDir)
-				for _, entry := range entries {
-					if entry.IsDir() && entry.Name() == cleanPkg {
-						pkgDir := filepath.Join(srcDir, entry.Name())
-						skillsSub := filepath.Join(pkgDir, "skills")
-						target := pkgDir
-						if isDir(skillsSub) {
-							target = skillsSub
-						}
-						skills, err := LoadAllSkills(target, skillFilter)
-						if err == nil {
-							for k, v := range skills {
-								loaded[k] = v
+	for _, parentDir := range searchDirs {
+		if isDir(parentDir) {
+			var pats []string
+			p1, _ := filepath.Glob(filepath.Join(parentDir, "skills-*"))
+			p2, _ := filepath.Glob(filepath.Join(parentDir, "*", "skills"))
+			p3, _ := filepath.Glob(filepath.Join(parentDir, "*"))
+			pats = append(pats, p1...)
+			pats = append(pats, p2...)
+			pats = append(pats, p3...)
+			for _, p := range pats {
+				srcDir := filepath.Join(p, "src")
+				if isDir(srcDir) {
+					entries, _ := os.ReadDir(srcDir)
+					for _, entry := range entries {
+						if entry.IsDir() && entry.Name() == cleanPkg {
+							pkgDir := filepath.Join(srcDir, entry.Name())
+							skillsSub := filepath.Join(pkgDir, "skills")
+							target := pkgDir
+							if isDir(skillsSub) {
+								target = skillsSub
+							}
+							skills, err := LoadAllSkills(target, skillFilter)
+							if err == nil {
+								for k, v := range skills {
+									loaded[k] = v
+								}
 							}
 						}
 					}
@@ -578,6 +670,7 @@ func LoadSkillsFromPackage(packageName string, skillFilter []string) (map[string
 			}
 		}
 	}
+
 
 	return loaded, nil
 }
@@ -648,11 +741,17 @@ func LoadSkillsFromGoModule(target, ref string, roots, filter []string) (map[str
 
 	root := FindRegistryRoot()
 	artName := filepath.Base(cleanMod)
+	cleanArtName := strings.TrimPrefix(artName, "skills-")
 	candidates := []string{
-		filepath.Join(root, "packages", "skills-"+artName),
-		filepath.Join(root, "packages", artName),
+		filepath.Join(root, "examples", cleanArtName, "skills"),
+		filepath.Join(root, "examples", "skills-"+cleanArtName),
+		filepath.Join(root, "examples", cleanArtName),
+		filepath.Join(root, "packages", "skills-"+cleanArtName),
+		filepath.Join(root, "packages", cleanArtName),
 		filepath.Join(root, "clients", "go"),
 	}
+
+
 	for _, cand := range candidates {
 		if isDir(cand) {
 			skills, err := LoadAllSkills(cand, filter)
@@ -739,11 +838,16 @@ func LoadSkillsFromMaven(target string, ref string, roots []string, filter []str
 	}
 
 	root := FindRegistryRoot()
+	cleanArtId := strings.TrimPrefix(artifactId, "skills-")
 	candidates := []string{
-		filepath.Join(root, "packages", "skills-"+artifactId),
-		filepath.Join(root, "packages", artifactId),
+		filepath.Join(root, "examples", cleanArtId, "skills"),
+		filepath.Join(root, "examples", "skills-"+cleanArtId),
+		filepath.Join(root, "examples", cleanArtId),
+		filepath.Join(root, "packages", "skills-"+cleanArtId),
+		filepath.Join(root, "packages", cleanArtId),
 		filepath.Join(root, "clients", "java"),
 	}
+
 	for _, cand := range candidates {
 		if isDir(cand) {
 			skills, err := LoadAllSkills(cand, filter)
@@ -1366,6 +1470,111 @@ func (r *SkillRegistry) GetDomainSkills(domain string) []*SkillDefinition {
 	return results
 }
 
+// SuggestSkills dynamically suggests the top-k most relevant skills for an agent prompt using remote vector search with local fallback.
+func (r *SkillRegistry) SuggestSkills(prompt string, maxSkills int, serverURL string) []*SkillDefinition {
+	if strings.TrimSpace(prompt) == "" {
+		all := make([]*SkillDefinition, 0, len(r.skills))
+		for _, s := range r.skills {
+			all = append(all, s)
+			if len(all) >= maxSkills {
+				break
+			}
+		}
+		return all
+	}
+
+	boundedMax := maxSkills
+	if boundedMax <= 0 {
+		boundedMax = 3
+	}
+	if boundedMax > 25 {
+		boundedMax = 25
+	}
+
+	targetServer := serverURL
+	if targetServer == "" {
+		targetServer = os.Getenv("SKILLS_SERVER_URL")
+		if targetServer == "" {
+			targetServer = os.Getenv("SKM_SERVER_URL")
+		}
+	}
+
+	if targetServer != "" {
+		endpoint := fmt.Sprintf("%s/api/v1/skills?s=%s&page_size=%d", strings.TrimRight(targetServer, "/"), url.QueryEscape(prompt), boundedMax)
+		client := &http.Client{Timeout: 3 * time.Second}
+		if resp, err := client.Get(endpoint); err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			var items []struct {
+				Name        string   `json:"name"`
+				Description string   `json:"description"`
+				Version     string   `json:"version"`
+				URI         string   `json:"uri"`
+				Tags        []string `json:"tags"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&items); err == nil && len(items) > 0 {
+				remoteMatches := make([]*SkillDefinition, 0, len(items))
+				for _, item := range items {
+					if localSkill, exists := r.skills[item.Name]; exists {
+						remoteMatches = append(remoteMatches, localSkill)
+					} else {
+						remoteMatches = append(remoteMatches, &SkillDefinition{
+							Name:        item.Name,
+							Description: item.Description,
+							Version:     item.Version,
+							Path:        item.URI,
+							Tags:        item.Tags,
+						})
+					}
+				}
+				if len(remoteMatches) > 0 {
+					if len(remoteMatches) > boundedMax {
+						return remoteMatches[:boundedMax]
+					}
+					return remoteMatches
+				}
+			}
+		}
+	}
+
+	// Local fallback: search matching keywords
+	localMatches := r.Search(prompt)
+	if len(localMatches) > 0 {
+		if len(localMatches) > boundedMax {
+			return localMatches[:boundedMax]
+		}
+		return localMatches
+	}
+
+	// Domain fallback
+	words := strings.Fields(strings.ToLower(prompt))
+	domainMatches := make([]*SkillDefinition, 0)
+	seen := make(map[string]bool)
+	for _, w := range words {
+		for _, s := range r.GetDomainSkills(w) {
+			if !seen[s.Name] {
+				seen[s.Name] = true
+				domainMatches = append(domainMatches, s)
+			}
+		}
+	}
+	if len(domainMatches) > 0 {
+		if len(domainMatches) > boundedMax {
+			return domainMatches[:boundedMax]
+		}
+		return domainMatches
+	}
+
+	// Return first available skills up to boundedMax
+	fallback := make([]*SkillDefinition, 0, boundedMax)
+	for _, s := range r.skills {
+		fallback = append(fallback, s)
+		if len(fallback) >= boundedMax {
+			break
+		}
+	}
+	return fallback
+}
+
 // --- Helper Functions ---
 
 func isDir(path string) bool {
@@ -1647,4 +1856,120 @@ func VerifyManifestLock(destDir string) (*VerificationReport, error) {
 
 	return report, nil
 }
+
+// LoadSkillsFromSKMServer fetches a skill definition from a central SKM server.
+func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, apiKey string) (map[string]*SkillDefinition, error) {
+	if serverURL == "" {
+		serverURL = "http://localhost:8080"
+	}
+	endpoint := fmt.Sprintf("%s/api/v1/skills/%s", strings.TrimRight(serverURL, "/"), target)
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request for %s: %w", endpoint, err)
+	}
+	if apiKey != "" {
+		req.Header.Set("X-API-Key", apiKey)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch skill from server %s: %w", endpoint, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var data struct {
+		ID           string            `json:"id"`
+		Name         string            `json:"name"`
+		URI          string            `json:"uri"`
+		SourceURI    string            `json:"source_uri"`
+		Description  string            `json:"description"`
+		Instructions string            `json:"instructions"`
+		License      *string           `json:"license"`
+		Author       *string           `json:"author"`
+		Version      string            `json:"version"`
+		Category     *string           `json:"category"`
+		Tags         []string          `json:"tags"`
+		Metadata     map[string]string `json:"metadata"`
+		References   map[string]string `json:"references"`
+		Examples     map[string]string `json:"examples"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, fmt.Errorf("failed to parse skill response: %w", err)
+	}
+
+	lic := ""
+	if data.License != nil {
+		lic = *data.License
+	}
+	auth := ""
+	if data.Author != nil {
+		auth = *data.Author
+	}
+
+	s := &SkillDefinition{
+		Name:         data.Name,
+		Description:  data.Description,
+		Instructions: data.Instructions,
+		License:      lic,
+		Author:       auth,
+		Version:      data.Version,
+		Metadata:     data.Metadata,
+		References:   data.References,
+		Examples:     data.Examples,
+	}
+
+	tmpDir, err := os.MkdirTemp("", "skm-server-skill-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	s.Path = tmpDir
+
+	skillMDContent := fmt.Sprintf("---\nname: %s\ndescription: %s\nlicense: %s\nauthor: %s\nversion: %s\n---\n\n# %s\n\n%s\n",
+		s.Name, s.Description, s.License, s.Author, s.Version, s.Name, s.Instructions)
+	if strings.HasPrefix(strings.TrimSpace(s.Instructions), "---") || strings.HasPrefix(strings.TrimSpace(s.Instructions), "# ") {
+		skillMDContent = s.Instructions
+	}
+	_ = os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte(skillMDContent), 0644)
+
+	writeFilePayload := func(destPath string, content string) error {
+		var data []byte
+		if strings.HasPrefix(content, "data:") && strings.Contains(content, ";base64,") {
+			parts := strings.SplitN(content, ";base64,", 2)
+			if decoded, err := base64.StdEncoding.DecodeString(parts[1]); err == nil {
+				data = decoded
+			} else {
+				data = []byte(content)
+			}
+		} else {
+			data = []byte(content)
+		}
+		return os.WriteFile(destPath, data, 0644)
+	}
+
+	if len(s.References) > 0 {
+		refDir := filepath.Join(tmpDir, "references")
+		_ = os.MkdirAll(refDir, 0755)
+		for name, content := range s.References {
+			_ = writeFilePayload(filepath.Join(refDir, name), content)
+		}
+	}
+
+	if len(s.Examples) > 0 {
+		exDir := filepath.Join(tmpDir, "examples")
+		_ = os.MkdirAll(exDir, 0755)
+		for name, content := range s.Examples {
+			_ = writeFilePayload(filepath.Join(exDir, name), content)
+		}
+	}
+
+	return map[string]*SkillDefinition{s.Name: s}, nil
+}
+
 

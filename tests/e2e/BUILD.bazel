@@ -6,7 +6,7 @@ py_library(
     name = "fixtures",
     srcs = ["fixtures.py"],
     deps = [
-        "//packages/loader:loader_lib",
+        "//clients/python:loader_lib",
     ],
 )
 
@@ -18,6 +18,6 @@ py_test(
     main = "test_skills_e2e.py",
     deps = [
         ":fixtures",
-        "//packages/loader:loader_lib",
+        "//clients/python:loader_lib",
     ],
 )

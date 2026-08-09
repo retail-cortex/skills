@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "embedding",
+    srcs = ["provider.go"],
+    importpath = "github.com/retail-cortex/skills/pkg/embedding",
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/model"],
+)
+
+go_test(
+    name = "embedding_test",
+    srcs = ["harness_test.go"],
+    deps = [
+        ":embedding",
+        "//pkg/embedding/alloydb",
+        "//pkg/embedding/vertex",
+        "//pkg/model",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

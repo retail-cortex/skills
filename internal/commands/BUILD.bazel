@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "commands",
+    srcs = [
+        "commands.go",
+        "config.go",
+        "login.go",
+        "register.go",
+    ],
+    importpath = "github.com/retail-cortex/skills/internal/commands",
+    deps = [
+        "//clients/go/pkg/skillsloader",
+        "//internal/installer",
+        "//pkg/model",
+        "//pkg/validator",
+    ],
+)
+
+go_test(
+    name = "commands_test",
+    size = "small",
+    srcs = ["commands_test.go"],
+    embed = [":commands"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+    ],
+)

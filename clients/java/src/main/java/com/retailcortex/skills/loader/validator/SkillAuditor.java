@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.retailcortex.skills.loader.validator;
 
 import com.retailcortex.skills.loader.SkillLoader;
@@ -144,6 +158,7 @@ public class SkillAuditor {
             try (Stream<Path> stream = Files.walk(skillsDir, FileVisitOption.FOLLOW_LINKS)) {
                 stream.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git") && !p.toString().contains(".loader_skills"))
                         .map(Path::getParent)
                         .forEach(skillDirsSet::add);
             } catch (IOException ignored) {}
@@ -155,6 +170,19 @@ public class SkillAuditor {
             try (Stream<Path> stream = Files.walk(packagesDir, FileVisitOption.FOLLOW_LINKS)) {
                 stream.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git") && !p.toString().contains(".loader_skills"))
+                        .map(Path::getParent)
+                        .forEach(skillDirsSet::add);
+            } catch (IOException ignored) {}
+        }
+
+        Path examplesDir = root.getFileName() != null && root.getFileName().toString().equals("examples")
+                ? root : root.resolve("examples");
+        if (Files.isDirectory(examplesDir)) {
+            try (Stream<Path> stream = Files.walk(examplesDir, FileVisitOption.FOLLOW_LINKS)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                        .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git") && !p.toString().contains(".loader_skills"))
                         .map(Path::getParent)
                         .forEach(skillDirsSet::add);
             } catch (IOException ignored) {}

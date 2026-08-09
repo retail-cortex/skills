@@ -1,3 +1,17 @@
+# Copyright 2026 Ryan McGuinness
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """ADK Programming Agent implementation with skill toolset and 429 rate limit resilience."""
 
 import asyncio
@@ -107,14 +121,19 @@ class SkillToolset:
         matches = self.registry.search(query)
         return [s.to_dict() for s in matches]
 
+    def suggest_skills(self, query: str, max_skills: int = 3, tool_context: Optional[ToolContext] = None) -> List[Dict[str, object]]:
+        """Suggests the top-k most relevant skills for an agent prompt based on vector search ranking."""
+        matches = self.registry.suggest_skills(query, max_skills=max_skills)
+        return [s.to_dict() for s in matches]
+
     def generate_guidance(self, query: str, tool_context: Optional[ToolContext] = None) -> str:
         """Generates architectural guidance by synthesizing matching enterprise skills."""
-        matches = self.registry.search(query)
+        matches = self.registry.suggest_skills(query, max_skills=3)
         if not matches:
             return f"No direct skill match found for '{query}'. Using standard enterprise SDLC guidelines."
 
         lines: List[str] = [f"Found {len(matches)} matching enterprise skills for '{query}':\n"]
-        for s in matches[:5]:
+        for s in matches:
             lines.append(f"### Skill: {s.name}")
             lines.append(f"**Description**: {s.description}")
             if s.instructions:
@@ -172,25 +191,11 @@ class ADKProgrammingAgent:
         tool_ctx = ToolContext(state=context.session.state)
         token = tool_ctx.state.get("user_token", "unauthenticated")
 
-        # Find relevant skills for the query
-        relevant_skills = self.registry.search(prompt)
-        if not relevant_skills and len(prompt.split()) > 0:
-            # Fallback to domain match
-            for word in prompt.lower().split():
-                matches = self.registry.get_domain_skills(word)
-                if matches:
-                    relevant_skills.extend(matches)
-
-        # Deduplicate skills
-        seen = set()
-        unique_skills: List[SkillDefinition] = []
-        for s in relevant_skills:
-            if s.name not in seen:
-                seen.add(s.name)
-                unique_skills.append(s)
+        # Pre-call optimization: dynamically pull top relevant skills based on search optimization (max 3)
+        relevant_skills = self.registry.suggest_skills(prompt, max_skills=3)
 
         # Generate response
-        content = await self._simulate_llm_reasoning(prompt, unique_skills)
+        content = await self._simulate_llm_reasoning(prompt, relevant_skills)
 
         # Record in session history
         context.session.history.append({"role": "user", "content": prompt})

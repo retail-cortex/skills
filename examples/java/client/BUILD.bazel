@@ -1,0 +1,29 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_test_suite")
+load("@rules_java//java:defs.bzl", "java_library")
+
+package(default_visibility = ["//visibility:public"])
+
+java_library(
+    name = "client_lib",
+    srcs = glob(["src/main/java/**/*.java"]),
+    deps = [
+        "//clients/java:skills_loader_java",
+        "@maven//:org_slf4j_slf4j_api",
+    ],
+)
+
+java_test_suite(
+    name = "test_java_client_example",
+    size = "small",
+    srcs = glob(["src/test/java/**/*.java"]),
+    runner = "junit5",
+    deps = [
+        ":client_lib",
+        "//clients/java:skills_loader_java",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_junit_jupiter_junit_jupiter_api",
+        "@maven//:org_junit_jupiter_junit_jupiter_engine",
+        "@maven//:org_junit_platform_junit_platform_launcher",
+        "@maven//:org_junit_platform_junit_platform_reporting",
+    ],
+)

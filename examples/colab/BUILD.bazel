@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "README.md",
+    "skills_service_adk_tutorial.ipynb",
+])
+
+filegroup(
+    name = "colab_files",
+    srcs = [
+        "README.md",
+        "skills_service_adk_tutorial.ipynb",
+    ],
+)

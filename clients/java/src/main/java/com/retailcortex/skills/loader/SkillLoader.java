@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.retailcortex.skills.loader;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,14 +56,31 @@ public class SkillLoader {
 
     public record FrontmatterResult(Map<String, String> data, String body) {}
 
+    private static HttpClient httpClient = null;
+
     /**
+     * For unit testing: inject a custom or mock HttpClient.
+     */
+    public static void setHttpClient(HttpClient client) {
+        httpClient = client;
+    }
+
+    private static HttpClient getHttpClient() {
+        if (httpClient != null) {
+            return httpClient;
+        }
+        return HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
+    }
+
+    /**
+
      * Discovers the root workspace directory containing enterprise skill packages.
      */
     public static Path findRegistryRoot() {
         String buildWs = System.getenv("BUILD_WORKSPACE_DIRECTORY");
         if (buildWs != null && !buildWs.isBlank()) {
             Path ws = Paths.get(buildWs);
-            if (Files.isDirectory(ws.resolve("packages")) || Files.isDirectory(ws.resolve("skills"))) {
+            if (Files.isDirectory(ws.resolve("clients")) || Files.isDirectory(ws.resolve("cmd")) || Files.isDirectory(ws.resolve("pkg")) || Files.isDirectory(ws.resolve("skills")) || Files.isDirectory(ws.resolve("examples"))) {
                 return ws;
             }
         }
@@ -58,7 +89,7 @@ public class SkillLoader {
         while (curr != null) {
             String str = curr.toString();
             if (!str.contains("bazel-out") && !str.contains(".runfiles") && !str.contains("sandbox")) {
-                if (Files.isDirectory(curr.resolve("packages")) || Files.isDirectory(curr.resolve("skills"))) {
+                if (Files.isDirectory(curr.resolve("clients")) || Files.isDirectory(curr.resolve("cmd")) || Files.isDirectory(curr.resolve("pkg")) || Files.isDirectory(curr.resolve("skills")) || Files.isDirectory(curr.resolve("examples"))) {
                     return curr;
                 }
             }
@@ -78,7 +109,7 @@ public class SkillLoader {
             candidates.add(base);
 
             for (Path cand : candidates) {
-                if (Files.isDirectory(cand.resolve("packages")) || Files.isDirectory(cand.resolve("skills"))) {
+                if (Files.isDirectory(cand.resolve("packages")) || Files.isDirectory(cand.resolve("skills")) || Files.isDirectory(cand.resolve("examples"))) {
                     return cand;
                 }
             }
@@ -122,11 +153,18 @@ public class SkillLoader {
             Map<String, Object> loaded = yaml.load(yamlText);
             if (loaded != null) {
                 for (Map.Entry<String, Object> entry : loaded.entrySet()) {
-                    if (entry.getValue() != null) {
+                    if (entry.getValue() instanceof Map<?, ?> subMap) {
+                        for (Map.Entry<?, ?> subEntry : subMap.entrySet()) {
+                            if (subEntry.getValue() != null) {
+                                data.put(String.valueOf(subEntry.getKey()), String.valueOf(subEntry.getValue()));
+                            }
+                        }
+                    } else if (entry.getValue() != null) {
                         data.put(entry.getKey(), String.valueOf(entry.getValue()));
                     }
                 }
             }
+
         } catch (Exception e) {
             logger.debug("SnakeYAML parsing failed, falling back to line parsing: {}", e.getMessage());
             for (String line : yamlText.split("\n")) {
@@ -397,6 +435,8 @@ public class SkillLoader {
             logger.warn("Failed loading skill from {}: {}", skillDir, e.getMessage());
             return null;
         }
+
+
     }
 
     /**
@@ -405,6 +445,7 @@ public class SkillLoader {
     public static Map<String, SkillDefinition> loadAllSkills(Path skillsRoot, List<String> skillFilter) {
         Path root = skillsRoot != null ? skillsRoot : findRegistryRoot();
         Set<String> filterSet = skillFilter != null ? new HashSet<>(skillFilter) : Collections.emptySet();
+        boolean hasFilter = !filterSet.isEmpty();
         Map<String, SkillDefinition> loaded = new LinkedHashMap<>();
 
         if (Files.isRegularFile(root.resolve("SKILL.md"))) {
@@ -415,71 +456,111 @@ public class SkillLoader {
             }
         }
 
-        // 1. Scan packages directory
-        Path packagesDir = root.getFileName() != null && root.getFileName().toString().equals("packages")
-                ? root : root.resolve("packages");
-        if (Files.isDirectory(packagesDir)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(packagesDir, "skills-*")) {
-                List<Path> pkgPaths = new ArrayList<>();
-                for (Path p : stream) pkgPaths.add(p);
-                pkgPaths.sort(Comparator.comparing(Path::toString));
+        // 1. Direct scan for skill subdirectories containing SKILL.md
+        try (Stream<Path> walk = Files.walk(root, 6, FileVisitOption.FOLLOW_LINKS)) {
+            walk.filter(p -> Files.isDirectory(p) && Files.isRegularFile(p.resolve("SKILL.md")))
+                .sorted(Comparator.comparing(Path::toString))
+                .forEach(skillDir -> {
+                    String skillName = skillDir.getFileName().toString();
+                    if (hasFilter && !filterSet.contains(skillName)) {
+                        return;
+                    }
+                    SkillDefinition def = loadSkillFromDir(skillDir);
+                    if (def != null && (!hasFilter || filterSet.contains(def.getName()))) {
+                        loaded.put(def.getName(), def);
+                    }
+                });
+        } catch (IOException e) {
+            logger.debug("Error walking root for skills: {}", e.getMessage());
+        }
 
-                for (Path pkg : pkgPaths) {
-                    Path srcDir = pkg.resolve("src");
-                    if (Files.isDirectory(srcDir)) {
-                        try (Stream<Path> walk = Files.walk(srcDir, 4)) {
-                            walk.filter(Files::isDirectory)
-                                    .filter(p -> p.getFileName().toString().equals("skills"))
-                                    .flatMap(skillsFolder -> {
-                                        try {
-                                            return Files.list(skillsFolder);
-                                        } catch (IOException e) {
-                                            return Stream.empty();
-                                        }
-                                    })
-                                    .filter(Files::isDirectory)
-                                    .sorted(Comparator.comparing(Path::toString))
-                                    .forEach(skillDir -> {
-                                        String skillName = skillDir.getFileName().toString();
-                                        if (!filterSet.isEmpty() && !filterSet.contains(skillName)) {
-                                            return;
-                                        }
-                                        SkillDefinition def = loadSkillFromDir(skillDir);
-                                        if (def != null && (filterSet.isEmpty() || filterSet.contains(def.getName()))) {
-                                            loaded.put(def.getName(), def);
-                                        }
-                                    });
-                        } catch (IOException e) {
-                            logger.debug("Error walking package src directory: {}", e.getMessage());
+        // 2. Scan packages and examples directories
+
+        List<Path> searchDirs = new ArrayList<>();
+        if (root.getFileName() != null && (root.getFileName().toString().equals("packages") || root.getFileName().toString().equals("examples"))) {
+            searchDirs.add(root);
+        } else {
+            searchDirs.add(root.resolve("packages"));
+            searchDirs.add(root.resolve("examples"));
+        }
+        for (Path parentDir : searchDirs) {
+            if (Files.isDirectory(parentDir)) {
+                try (Stream<Path> stream = Files.walk(parentDir, 5, FileVisitOption.FOLLOW_LINKS)) {
+
+                    List<Path> pkgPaths = stream
+                        .filter(p -> Files.isDirectory(p) && p.resolve("src").toFile().exists())
+                        .sorted(Comparator.comparing(Path::toString))
+                        .toList();
+
+                    for (Path pkg : pkgPaths) {
+                        Path srcDir = pkg.resolve("src");
+
+                        if (Files.isDirectory(srcDir)) {
+                            try (Stream<Path> walk = Files.walk(srcDir, 4)) {
+                                walk.filter(Files::isDirectory)
+                                        .filter(p -> p.getFileName().toString().equals("skills"))
+                                        .flatMap(skillsFolder -> {
+                                            try {
+                                                return Files.list(skillsFolder);
+                                            } catch (IOException e) {
+                                                return Stream.empty();
+                                            }
+                                        })
+                                        .filter(Files::isDirectory)
+                                        .sorted(Comparator.comparing(Path::toString))
+                                        .forEach(skillDir -> {
+                                            String skillName = skillDir.getFileName().toString();
+                                            if (hasFilter && !filterSet.contains(skillName)) {
+                                                return;
+                                            }
+                                            SkillDefinition def = loadSkillFromDir(skillDir);
+                                            if (def != null) {
+                                                if (!hasFilter || filterSet.contains(def.getName())) {
+                                                    loaded.put(def.getName(), def);
+                                                }
+                                            }
+                                        });
+                            } catch (IOException e) {
+                                logger.debug("Error walking package src directory: {}", e.getMessage());
+                            }
                         }
                     }
+                } catch (IOException e) {
+
+                    logger.debug("Error listing packages directory: {}", e.getMessage());
                 }
-            } catch (IOException e) {
-                logger.debug("Error listing packages directory: {}", e.getMessage());
             }
         }
 
         // 2. Scan skills directory (and subcategory folders)
-        Path skillsDir = root.getFileName() != null && root.getFileName().toString().equals("skills")
-                ? root : root.resolve("skills");
-        if (Files.isDirectory(skillsDir)) {
-            try (Stream<Path> stream = Files.walk(skillsDir, FileVisitOption.FOLLOW_LINKS)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(p -> p.getFileName().toString().equals("SKILL.md"))
-                        .map(Path::getParent)
-                        .sorted(Comparator.comparing(p -> p.getFileName().toString()))
-                        .forEach(skillDir -> {
-                            String skillName = skillDir.getFileName().toString();
-                            if (loaded.containsKey(skillName)) return;
-                            if (!filterSet.isEmpty() && !filterSet.contains(skillName)) return;
+        List<Path> skillsDirs = new ArrayList<>();
+        if (root.getFileName() != null && root.getFileName().toString().equals("skills")) {
+            skillsDirs.add(root);
+        } else {
+            skillsDirs.add(root.resolve("skills"));
+            skillsDirs.add(root.resolve("examples").resolve("skills"));
+        }
+        for (Path sDir : skillsDirs) {
+            if (Files.isDirectory(sDir)) {
+                try (Stream<Path> stream = Files.walk(sDir, FileVisitOption.FOLLOW_LINKS)) {
+                    stream.filter(Files::isRegularFile)
+                            .filter(p -> p.getFileName().toString().equals("SKILL.md"))
+                            .filter(p -> !p.toString().contains(".venv") && !p.toString().contains(".git"))
+                            .map(Path::getParent)
+                            .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                            .forEach(skillDir -> {
+                                String skillName = skillDir.getFileName().toString();
+                                if (loaded.containsKey(skillName)) return;
+                                if (!filterSet.isEmpty() && !filterSet.contains(skillName)) return;
 
-                            SkillDefinition def = loadSkillFromDir(skillDir);
-                            if (def != null && (filterSet.isEmpty() || filterSet.contains(def.getName()))) {
-                                loaded.put(def.getName(), def);
-                            }
-                        });
-            } catch (IOException e) {
-                logger.debug("Error scanning skills directory: {}", e.getMessage());
+                                SkillDefinition def = loadSkillFromDir(skillDir);
+                                if (def != null && (filterSet.isEmpty() || filterSet.contains(def.getName()))) {
+                                    loaded.put(def.getName(), def);
+                                }
+                            });
+                } catch (IOException e) {
+                    logger.debug("Error scanning skills directory: {}", e.getMessage());
+                }
             }
         }
 
@@ -525,29 +606,53 @@ public class SkillLoader {
         }
         String cleanPkg = packageName.trim();
         Path root = findRegistryRoot();
-        Path packagesDir = root.getFileName() != null && root.getFileName().toString().equals("packages")
-                ? root : root.resolve("packages");
+        List<Path> searchDirs = new ArrayList<>();
+        if (root.getFileName() != null && (root.getFileName().toString().equals("packages") || root.getFileName().toString().equals("examples"))) {
+            searchDirs.add(root);
+        } else {
+            searchDirs.add(root.resolve("packages"));
+            searchDirs.add(root.resolve("examples"));
+        }
 
         Map<String, SkillDefinition> loaded = new HashMap<>();
-        if (Files.isDirectory(packagesDir)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(packagesDir, "skills-*")) {
-                for (Path p : stream) {
-                    Path srcDir = p.resolve("src");
-                    if (Files.isDirectory(srcDir)) {
-                        Path pkgDir = srcDir.resolve(cleanPkg);
-                        if (Files.isDirectory(pkgDir)) {
-                            Path skillsSub = pkgDir.resolve("skills");
-                            Path target = Files.isDirectory(skillsSub) ? skillsSub : pkgDir;
-                            loaded.putAll(loadAllSkills(target, filter));
+        for (Path parentDir : searchDirs) {
+            if (Files.isDirectory(parentDir)) {
+                try (Stream<Path> stream = Files.walk(parentDir, 5, FileVisitOption.FOLLOW_LINKS)) {
+                    List<Path> allDirs = stream.filter(Files::isDirectory).toList();
+                    List<Path> pPaths = allDirs.stream().filter(p -> p.resolve("src").toFile().exists()).toList();
+                    for (Path p : pPaths) {
+
+
+
+                        Path srcDir = p.resolve("src");
+                        if (Files.isDirectory(srcDir)) {
+                            Path pkgDir = srcDir.resolve(cleanPkg);
+                            if (!Files.isDirectory(pkgDir)) {
+                                String altName = cleanPkg.startsWith("retailcortex_skills_") ?
+                                    cleanPkg.substring("retailcortex_skills_".length()) :
+                                    "retailcortex_skills_" + cleanPkg.replace("-", "_");
+                                Path altDir = srcDir.resolve(altName);
+                                if (Files.isDirectory(altDir)) {
+                                    pkgDir = altDir;
+                                }
+                            }
+                            if (Files.isDirectory(pkgDir)) {
+                                Path skillsSub = pkgDir.resolve("skills");
+                                Path target = Files.isDirectory(skillsSub) ? skillsSub : pkgDir;
+                                loaded.putAll(loadAllSkills(target, filter));
+                            }
                         }
                     }
+                } catch (IOException e) {
+                    logger.debug("Error searching packages: {}", e.getMessage());
                 }
-            } catch (IOException e) {
-                logger.debug("Error searching packages: {}", e.getMessage());
             }
         }
+
+        System.err.println("DEBUG loadSkillsFromPackage cleanPkg=" + cleanPkg + " root=" + root + " searchDirs=" + searchDirs + " loaded=" + loaded.keySet());
         return loaded;
     }
+
 
     /**
      * Loads skills from a Maven artifact coordinates or classpath.
@@ -591,11 +696,16 @@ public class SkillLoader {
         }
 
         Path root = findRegistryRoot();
+        String cleanId = artifactId.startsWith("skills-") ? artifactId.substring(7) : artifactId;
         List<Path> candidates = List.of(
-            root.resolve("packages").resolve("skills-" + artifactId),
-            root.resolve("packages").resolve(artifactId),
+            root.resolve("examples").resolve(cleanId).resolve("skills"),
+            root.resolve("examples").resolve("skills-" + cleanId),
+            root.resolve("examples").resolve(cleanId),
+            root.resolve("packages").resolve("skills-" + cleanId),
+            root.resolve("packages").resolve(cleanId),
             root.resolve("clients").resolve("java")
         );
+
         for (Path cand : candidates) {
             if (Files.isDirectory(cand)) {
                 Map<String, SkillDefinition> skills = loadAllSkills(cand, filter);
@@ -641,11 +751,16 @@ public class SkillLoader {
 
         Path root = findRegistryRoot();
         String artName = Paths.get(cleanMod).getFileName().toString();
+        String cleanName = artName.startsWith("skills-") ? artName.substring(7) : artName;
         List<Path> candidates = List.of(
-            root.resolve("packages").resolve("skills-" + artName),
-            root.resolve("packages").resolve(artName),
+            root.resolve("examples").resolve(cleanName).resolve("skills"),
+            root.resolve("examples").resolve("skills-" + cleanName),
+            root.resolve("examples").resolve(cleanName),
+            root.resolve("packages").resolve("skills-" + cleanName),
+            root.resolve("packages").resolve(cleanName),
             root.resolve("clients").resolve("go")
         );
+
         for (Path cand : candidates) {
             if (Files.isDirectory(cand)) {
                 Map<String, SkillDefinition> skills = loadAllSkills(cand, filter);
@@ -723,7 +838,7 @@ public class SkillLoader {
             Path zipPath = tmpDir.resolve("repo.zip");
             String archiveUrl = String.format("https://api.github.com/repos/%s/zipball/%s", cleanRepo, gitRef);
 
-            HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
+            HttpClient client = getHttpClient();
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder().uri(URI.create(archiveUrl))
                     .header("User-Agent", "skills-loader-java/1.0.0")
                     .GET();
@@ -967,13 +1082,14 @@ public class SkillLoader {
     public static Path writeManifestLock(Path destDir, Map<String, Object> lockData) throws IOException {
         Files.createDirectories(destDir);
         Path lockFile = destDir.resolve(".manifest.lock");
-        if (!lockData.containsKey("version")) {
-            lockData.put("version", "1.0.0");
+        Map<String, Object> copy = new HashMap<>(lockData);
+        if (!copy.containsKey("version")) {
+            copy.put("version", "1.0.0");
         }
-        if (!lockData.containsKey("skills")) {
-            lockData.put("skills", new HashMap<String, Object>());
+        if (!copy.containsKey("skills")) {
+            copy.put("skills", new HashMap<String, Object>());
         }
-        objectMapper.writeValue(lockFile.toFile(), lockData);
+        objectMapper.writeValue(lockFile.toFile(), copy);
         return lockFile;
     }
 

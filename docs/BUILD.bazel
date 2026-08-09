@@ -1,0 +1,31 @@
+load("@rules_hugo//hugo:rules.bzl", "hugo_serve", "hugo_site", "hugo_theme")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+package(default_visibility = ["//visibility:public"])
+
+hugo_theme(
+    name = "geekdoc",
+    srcs = [
+        "@hugo_theme_geekdoc//:files",
+    ],
+    theme_name = "hugo-geekdoc",
+)
+
+hugo_site(
+    name = "site",
+    config = "hugo.toml",
+    content = glob(["content/**"]),
+    quiet = False,
+    theme = ":geekdoc",
+)
+
+hugo_serve(
+    name = "serve",
+    dep = [":site"],
+)
+
+sh_test(
+    name = "site_test",
+    srcs = ["site_test.sh"],
+    data = [":site"],
+)

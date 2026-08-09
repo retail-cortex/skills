@@ -5,15 +5,17 @@ package(default_visibility = ["//visibility:public"])
 java_library(
     name = "skills_loader_java",
     srcs = glob(["src/main/java/**/*.java"]),
-    javacopts = ["--release", "17"],
     data = [
         "//:skills_data",
-        "//packages/skills-go:skills_go_data",
-        "//packages/skills-java:skills_java_data",
-        "//packages/skills-python:skills_python_data",
+        "//examples/go/skills:skills_go_data",
+        "//examples/java/skills:skills_java_data",
+        "//examples/python/skills:skills_python_data",
+    ],
+    javacopts = [
+        "--release",
+        "17",
     ],
     deps = [
-        "//api/v1:skills_v1_java_proto",
         "@maven//:com_fasterxml_jackson_core_jackson_annotations",
         "@maven//:com_fasterxml_jackson_core_jackson_core",
         "@maven//:com_fasterxml_jackson_core_jackson_databind",
@@ -32,13 +34,19 @@ java_test(
     name = "skills_loader_java_test",
     size = "small",
     srcs = glob(["src/test/java/**/*.java"]),
-    javacopts = ["--release", "17"],
-    args = ["--select-package", "com.retailcortex.skills.loader"],
+    args = [
+        "--select-package",
+        "com.retailcortex.skills.loader",
+    ],
     data = [
         "//:skills_data",
-        "//packages/skills-go:skills_go_data",
-        "//packages/skills-java:skills_java_data",
-        "//packages/skills-python:skills_python_data",
+        "//examples/go/skills:skills_go_data",
+        "//examples/java/skills:skills_java_data",
+        "//examples/python/skills:skills_python_data",
+    ],
+    javacopts = [
+        "--release",
+        "17",
     ],
     main_class = "org.junit.platform.console.ConsoleLauncher",
     tags = ["local"],

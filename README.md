@@ -2,131 +2,166 @@
 
 [![Coverage](coverage.svg)](https://github.com/retail-cortex/skills)
 
-This registry provides a comprehensive, standardized suite of 33 AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security and performance requirements for the Google Agent Development Kit (ADK).
+This registry provides an enterprise-grade suite of AI Agent Skills and lifecycle tooling built for the **Google Agent Development Kit (ADK)** and autonomous multi-agent ecosystems. While extending the foundational [agentskills.io](https://agentskills.io/specification) standard, this architecture implements strict enterprise governance, multi-modal vector search, and dynamic JIT tool retrieval.
 
-### Enterprise Extensions
-- **Just-in-Time (JIT) Semantic Discovery**: Replaces static loading with RAG-MCP semantic retrieval to prevent LLM context bloat.
-- **Compiled References & Schema Strictness**: Strips verbose natural language into cryptographically hashed, strict JSON Schema constraints (`additionalProperties: false`).
-- **Cryptographic Manifest Locking (`.manifest.lock`)**: Enforces immutable execution parameters preventing prompt-injected payload tampering.
-- **Human-in-the-Loop (HITL) Architecture**: Implements tiered intervention gates and explicit compliance validation components to guarantee Agent-Human Interaction (AHI) safety.
+---
+
+## Enterprise Extensions
+
+* **Multi-Modal Vector Search & Poly-Column Schema**: Dual-tier search powered by PostgreSQL/AlloyDB `pgvector` with dedicated HNSW indexes (`embedding_768`, `embedding_1408`, `embedding_3072`). Indexes textual instructions, Markdown references, and binary media (PNG, JPEG, WebP, PDF, WASM, Protobuf).
+* **Pluggable Soft-Switch Embedding Providers**: Switch dynamically via `.env.toml` (`embedding_provider`) between Vertex AI (`multimodalembedding`, 1408d / `text-embedding-004`, 768d) and in-database AlloyDB AI (`alloydb-ai`, 768d).
+* **JIT Dynamic Pre-Call Retrieval**: Client SDKs and ADK agents query the semantic index on incoming prompts, constraining injected tools to the top $\le 3$ ranked skills to eliminate tool bleed and conserve context window tokens.
+* **Bounded REST Pagination & Protection**: Central `/api/v1/skills` endpoint enforces strict page size bounding ($1 \le \text{page\_size} \le 25$, default $5$) with standard `X-Total-Count`, `X-Page`, `X-Page-Size`, `X-Total-Pages` response headers.
+* **Cryptographic Manifest Locking (`.manifest.lock`)**: Enforces deterministic SHA-256 integrity verification across installed skills.
+* **Human-in-the-Loop (HITL) Policy Gates**: Tiered intervention gates and static compliance validation ensuring safe Agent-Human Interaction (AHI).
 
 ```mermaid
-classDiagram
-direction LR
+graph TD
+    subgraph Central Registry ["Central Backend (skills-service)"]
+        S1["Gin REST API (/api/v1/skills)"]
+        S2["MCP SSE Server (/mcp/sse)"]
+        VEC["pgvector Poly-Column HNSW<br/>(768d / 1408d / 3072d)"]
+        S1 --> VEC
+        S2 --> VEC
+    end
 
-class SkillDefinition {
-  + string name
-  + string description
-  + string instructions
-  + string license
-  + string version
-  + string allowed_tools
-  + List~AuthorDetails~ authors
-  + List~ToolRequirement~ tool_requirements
-  + string category
-  + List~string~ tags
-  + List~string~ trigger_phrases
-  + ExecutionHints execution_hints
-}
+    subgraph Clients ["Polyglot Client SDKs & CLI"]
+        CLI["SKM Standalone CLI (Go)"]
+        PY["Python Client (loader)"]
+        GO["Go Client (skillsloader)"]
+        JV["Java Client (com.retailcortex.skills)"]
+        ADK["ADK Programming Agent"]
+    end
 
-class ManifestLock {
-  + string version
-  + Map~string, ManifestLockEntry~ skills
-}
+    CLI -- "POST /api/v1/skills (Register)<br/>GET /api/v1/skills (Search & List)" --> S1
+    ADK -- "Pre-Call: suggest_skills(prompt, max=3)" --> S1
+    PY -- "JIT Retrieval & PEP 517 Build Hook" --> S1
+    GO -- "SuggestSkills() & go:generate" --> S1
+    JV -- "suggestSkills() & Maven Plugin" --> S1
 ```
 
 ---
 
 ## Quickstart Commands
 
-### 1. SKM (Skill Manager) Go CLI
-Use the standalone `skm` CLI to pull, audit, search, and scaffold skills using `github://`, `mod://`, `maven://`, `pkg://`, and `file://` URIs:
+### 1. Run Standalone `skm` CLI
+The `skm` CLI manages local and remote skill lifecycles:
 
 ```bash
 # Build & run skm CLI via Bazel
-bazel run //:skm -- add github://retail-cortex/skills@main/packages/skills-python
-bazel run //:skm -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
-bazel run //:skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
+bazel run //cmd/skm -- --help
 
-# Recursively audit all skills in directory
-bazel run //:skm -- validate -r ./packages
+# Remote Vector Search against skills-service with pagination
+bazel run //cmd/skm -- search "canvas image rendering raster" --remote --page 1 --max 5
+
+# Remote Server Listing
+bazel run //cmd/skm -- list --remote --page 1 --max 5
+
+# Add skill dependencies from polyglot URIs (creates .manifest.lock)
+bazel run //cmd/skm -- add github://retail-cortex/skills@main/packages/skills-python
+bazel run //cmd/skm -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
+bazel run //cmd/skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
+
+# 5-Point SDLC Quality Audit
+bazel run //cmd/skm -- validate -r ./skills --json
+
+# Verify cryptographic lockfile integrity
+bazel run //cmd/skm -- verify -d .skills
 ```
 
-### 2. Run Native ADK Agent Example
+### 2. Start Central Backend Server (`skills-service`)
 ```bash
-uv run python examples/example-adk/main.py
+# Start dual REST & MCP server on port 8000
+bazel run //:skills-service
 ```
 
-### 3. Run Polyglot Developer Agent CLI
+### 3. Run Native Python ADK Agent
 ```bash
-uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-polyglot-app
+# Run ADK agent with JIT pre-call skill suggestion
+uv run python examples/python/client/main.py
 ```
 
-### 4. Run SDLC 5-Point Skill Validator
+### 4. Run Polyglot Developer CLI
 ```bash
-# via uv
-uv run python -m validator.cli audit
-# or via Bazel
-bazel run //:validate
+uv run python examples/python/polyglot/main.py --target-dir ./scratch/my-app
 ```
 
-### 5. Run Test Suite
+### 5. Execute Full Test Suite
 ```bash
+# All 25 Bazel test targets across Go, Python, Java, and MCP
 bazel test //...
-# or via pytest
-uv run pytest
 ```
 
 ---
 
-## Documentation Sections
+## SKM CLI Command Reference
 
-1. **[Project Overview](https://retail-cortex.github.io/skills/)**: Introduction, features, quickstart guidelines, and workspace structure.
-2. **[Architecture](https://retail-cortex.github.io/skills/architecture/)**: Production engineering standards, Google OAuth2, HTTP 429 backoff resilience, defensive null safety, and Bazel 9.2 standards.
-3. **[Skills Registry](https://retail-cortex.github.io/skills/skills/)**: Specialized domain and technology skills catalog.
-4. **[Packages & Tooling](https://retail-cortex.github.io/skills/packages/)**: Standalone **`skm`** CLI, modular packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`), and Bazel targets.
-5. **[Examples & Demos](https://retail-cortex.github.io/skills/examples/)**: Standalone integration packages (`example-adk` and `polyglot-developer`).
+| Command | Syntax | Description |
+| :--- | :--- | :--- |
+| **`search`** | `skm search <query> [-r] [-p <page>] [-n <max>] [--json]` | Searches skills locally or against remote `skills-service` vector index ($1 \le \text{max} \le 25$). |
+| **`list`** | `skm list [-r] [-p <page>] [-n <max>] [--json]` | Lists skills from local filesystem or central server with pagination metadata. |
+| **`add`** | `skm add <uri> [-d <dir>] [--force] [--manifest-only]` | Resolves and installs skills from `skm://`, `github://`, `mod://`, `maven://`, `pkg://`, or `file://` URIs. |
+| **`register`**| `skm register <source_uri>` | Registers source skill with central `skills-service`, computing multi-modal vector embeddings. |
+| **`login`** | `skm login <email> [app_name]` | Requests developer application registration and sends verification challenge. |
+| **`config`** | `skm config set <server\|api_key\|domain\|org> <val>` | Configures local CLI connection settings in `~/.skm/.env.toml`. |
+| **`config`** | `skm config show` | Displays active CLI configuration and masked credentials. |
+| **`validate`**| `skm validate <path> [-r] [--json]` | Executes 5-point SDLC compliance audit (Frontmatter, Structure, CWE rules, 429 retries, File links). |
+| **`verify`** | `skm verify [-d <dir>] [--json]` | Audits installed skill directory checksums against `.manifest.lock`. |
+| **`compile`** | `skm compile [-d <dir>] [-o <manifest.json>]` | Generates pre-compiled JSON manifest for zero-I/O cold starts. |
+| **`init`** | `skm init <name> [-d <dir>]` | Scaffolds a new skill directory conforming to all SDLC requirements. |
 
 ---
 
-## Documentation Site (MkDocs)
+## Polyglot Client SDKs
 
-The full documentation site is published live at **[https://retail-cortex.github.io/skills/](https://retail-cortex.github.io/skills/)**.
-Source files are organized in the [docs](docs/) directory and powered by MkDocs Material.
+### Python SDK (`loader`)
+* **JIT Pre-Call Retrieval**:
+  ```python
+  from loader import SkillRegistry
 
-### Serving Documentation Locally
+  registry = SkillRegistry()
+  # Queries central vector index, falls back to local TF-IDF discovery
+  suggested_skills = registry.suggest_skills(prompt="render canvas image", max_skills=3)
+  ```
+* **PEP 517 Build Backend**: Declare `build-backend = "loader.build_meta"` in `pyproject.toml` to automatically download and validate skills during `uv build` or `pip install`.
+
+### Go SDK (`skillsloader`)
+* **JIT Dynamic Suggestions**:
+  ```go
+  import "github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+
+  registry, _ := skillsloader.NewSkillRegistry("", nil, nil, "")
+  suggested := registry.SuggestSkills("render canvas image", 3, "http://localhost:8000")
+  ```
+* **Build Directives**: Use `//go:generate skm compile -d ./skills` and `//go:embed skills_manifest.json` for zero-I/O static binary embeds.
+
+### Java SDK (`com.retailcortex.skills`)
+* **JIT Suggestions**:
+  ```java
+  import com.retailcortex.skills.loader.SkillRegistry;
+
+  SkillRegistry registry = new SkillRegistry();
+  var suggested = registry.suggestSkills("render canvas image", 3, "http://localhost:8000");
+  ```
+* **Maven Plugin**: Include `skills-loader-maven-plugin` in `pom.xml` during `generate-resources` to package `skills_manifest.json` into executable JARs.
+
+---
+
+## Documentation Site (Hugo)
+
+Full architectural and API documentation is maintained in the [`docs/`](docs) directory:
 
 ```bash
-# via uv executable script
-uv run serve-docs
-# or via Bazel target
-bazel run //:docs
+# Build documentation static assets
+bazel build //docs:site
 
-# or direct mkdocs CLI
-uv run mkdocs serve
+# Run documentation site integrity test
+bazel test //docs:site_test
 ```
-Access the local documentation server at `http://127.0.0.1:8000`.
-
-### Build Static Site
-
-```bash
-uv run build-docs
-# or via mkdocs CLI
-uv run mkdocs build
-```
-
----
-
-## CI/CD & GitHub Pages Deployment
-
-The repository uses official GitHub Actions workflows for continuous integration and automated GitHub Pages deployment:
-
-- **[Bazel CI Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/bazel-ci.yml)**: Automated build, hermetic testing (`bazel test //...`), and SDLC validation on every `push` and `pull_request` using Node 24 native actions (`bazelbuild/setup-bazelisk@v3`, `astral-sh/setup-uv@v7`, `actions/checkout@v7`, `actions/setup-python@v7`).
-- **[GitHub Pages Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/deploy-docs.yml)**: Automated MkDocs build (`uv run build-docs`) and deployment to GitHub Pages using Node 24 native actions (`actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`, `actions/configure-pages@v6`).
-- **[Release Pipeline Workflow](https://github.com/retail-cortex/skills/blob/main/.github/workflows/release.yml)**: Automated multi-platform build and publishing of independent download assets (`skm` CLI binaries for Linux/macOS/Windows, Java client JAR, Python wheels/sdist, and `SHA256SUMS.txt`) upon pushing `v*` release tags or manual workflow dispatch.
 
 ---
 
 ## License & Legal Notices
 
-This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/retail-cortex/skills/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE](https://github.com/retail-cortex/skills/blob/main/NOTICE).
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for attribution and details.
+

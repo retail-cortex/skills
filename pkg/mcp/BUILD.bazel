@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "mcp",
+    srcs = ["server.go"],
+    importpath = "github.com/retail-cortex/skills/pkg/mcp",
+    deps = [
+        "//pkg/data",
+        "//pkg/model",
+        "//pkg/service",
+        "@com_github_mark3labs_mcp_go//mcp",
+        "@com_github_mark3labs_mcp_go//server",
+    ],
+)
+
+go_test(
+    name = "mcp_test",
+    size = "small",
+    srcs = ["mcp_test.go"],
+    deps = [
+        ":mcp",
+        "//pkg/data",
+        "//pkg/model",
+        "//pkg/service",
+        "@com_github_mark3labs_mcp_go//mcp",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package retailcortex.skills.v1;
+
+option go_package = "github.com/retail-cortex/skills/proto/retailcortex/skills/v1;skillsv1";
+option java_package = "com.retailcortex.skills.proto.retailcortex.skills.v1";
+option java_multiple_files = true;
+
+// ManifestLockEntry records the skill identity, download URI, and calculated SHA-256 hash.
+message ManifestLockEntry {
+  string skill_name = 1;
+  string uri = 2;
+  string sha256 = 3;
+  string compiled_sha256 = 4;
+  bool strict_schema = 5;
+  string hitl_tier = 6;
+}
+
+// ManifestLock represents the .manifest.lock file schema in skill target directories.
+message ManifestLock {
+  string version = 1;
+  map<string, ManifestLockEntry> skills = 2;
+}
+
+// VerificationStatus indicates the integrity audit result for a skill.
+enum VerificationStatus {
+  VERIFICATION_STATUS_UNSPECIFIED = 0;
+  VERIFICATION_STATUS_VERIFIED = 1;
+  VERIFICATION_STATUS_MODIFIED = 2;
+  VERIFICATION_STATUS_MISSING = 3;
+}
+
+// VerificationResult details the verification audit for a single skill.
+message VerificationResult {
+  string skill_name = 1;
+  string uri = 2;
+  VerificationStatus status = 3;
+  string expected_sha256 = 4;
+  string actual_sha256 = 5;
+  string error = 6;
+}
+
+// VerificationReport captures the full audit summary for a target directory.
+message VerificationReport {
+  string target_dir = 1;
+  int32 total_skills = 2;
+  int32 verified_count = 3;
+  int32 modified_count = 4;
+  int32 missing_count = 5;
+  repeated VerificationResult results = 6;
+}
+

@@ -1,0 +1,19 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Multi-Content Encoding Test API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/assets/upload": {
+      "post": {
+        "summary": "Upload multi-content asset",
+        "responses": {
+          "200": {
+            "description": "Asset processed successfully"
+          }
+        }
+      }
+    }
+  }
+}

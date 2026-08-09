@@ -1,0 +1,24 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "polyglot_lib",
+    srcs = ["main.py"],
+    imports = ["."],
+    deps = [
+        "//clients/python:loader_lib",
+        "//examples/go/skills:skills_go",
+        "//examples/java/skills:skills_java",
+        "//examples/python/skills:skills_python",
+    ],
+)
+
+py_test(
+    name = "test_polyglot_developer",
+    size = "small",
+    srcs = ["tests/test_polyglot_developer.py"],
+    imports = ["."],
+    main = "tests/test_polyglot_developer.py",
+    deps = [":polyglot_lib"],
+)

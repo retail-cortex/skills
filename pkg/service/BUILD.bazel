@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "service",
+    srcs = [
+        "apps_service.go",
+        "embedding_service.go",
+        "skills_service.go",
+        "telemetry.go",
+    ],
+    importpath = "github.com/retail-cortex/skills/pkg/service",
+    deps = [
+        "//pkg/data",
+        "//pkg/embedding",
+        "//pkg/embedding/vertex",
+        "//pkg/model",
+        "@io_gorm_gorm//:gorm",
+    ],
+)
+
+go_test(
+    name = "service_test",
+    size = "small",
+    srcs = ["service_test.go"],
+    deps = [
+        ":service",
+        "//pkg/data",
+        "//pkg/model",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

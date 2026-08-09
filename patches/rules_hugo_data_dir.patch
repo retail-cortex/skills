@@ -1,0 +1,17 @@
+--- hugo/internal/hugo_site.bzl
++++ hugo/internal/hugo_site.bzl
+@@ -6,7 +6,7 @@
+             path_list = i.short_path.split("/")
+             if i.short_path.startswith("../"):
+                 # Handle theme files from external repositories with directory prefixes
+-                theme_content_dirs = ["layouts", "assets", "static", "i18n", "archetypes", "images"]
++                theme_content_dirs = ["layouts", "assets", "static", "i18n", "archetypes", "images", "data"]
+ 
+                 # Skip exampleSite files as they are just examples, not actual theme files
+                 if "exampleSite" in path_list:
+@@ -35,4 +35,4 @@
+             else:
+                 # Handle theme files that are in external repositories with directory prefixes
+                 # Find the first directory that contains theme-like content (layouts, assets, etc.)
+-                theme_content_dirs = ["layouts", "assets", "static", "i18n", "archetypes", "images"]
++                theme_content_dirs = ["layouts", "assets", "static", "i18n", "archetypes", "images", "data"]

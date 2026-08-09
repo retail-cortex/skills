@@ -15,6 +15,22 @@ enum DomainVerificationStatus {
   DOMAIN_VERIFICATION_STATUS_REJECTED = 4;         // Domain claim rejected
 }
 
+// AppRole defines Role-Based Access Control (RBAC) authorization tiers.
+enum AppRole {
+  APP_ROLE_UNSPECIFIED = 0;
+  APP_ROLE_OWNER = 1;       // Full administrative access (collaborators, keys, skills)
+  APP_ROLE_EDITOR = 2;      // Skill create/update/delete and developer key provisioning
+  APP_ROLE_VIEWER = 3;      // Read-only inspection and semantic search
+}
+
+// MemberStatus classifies collaborator account lifecycle state.
+enum MemberStatus {
+  MEMBER_STATUS_UNSPECIFIED = 0;
+  MEMBER_STATUS_ACTIVE = 1;
+  MEMBER_STATUS_PENDING_INVITE = 2;
+  MEMBER_STATUS_REVOKED = 3;
+}
+
 // RegisterAppRequest specifies parameters for application registration.
 message RegisterAppRequest {
   string app_name = 1;
@@ -47,26 +63,173 @@ message VerifyAppRequest {
 message VerifyAppResponse {
   string app_id = 1;
   string app_name = 2;
-  string email = 3;
-  bool is_active = 4;
-  string message = 5;
+  string domain = 3;
+  string app_urn = 4;
+  string email = 5;
+  DomainVerificationStatus domain_verification_status = 6;
+  bool is_active = 7;
+  string message = 8;
 }
 
-// AppService provides gRPC and REST methods for application registration and verification.
-//
-// HTTP Endpoints:
-// - POST /api/v1/apps/register -> RegisterApp
-// - GET  /api/v1/apps/verify   -> VerifyApp
+// AppMember represents an individual collaborator assigned an RBAC role.
+message AppMember {
+  string id = 1;
+  string app_id = 2;
+  string email = 3;
+  AppRole role = 4;
+  string invited_by = 5;
+  MemberStatus status = 6;
+  string created_at = 7;
+  string accepted_at = 8;
+}
+
+// AppApiKeySummary represents metadata for a provisioned scoped API key.
+message AppApiKeySummary {
+  string id = 1;
+  string app_id = 2;
+  string member_email = 3;
+  string name = 4;
+  AppRole role = 5;
+  string created_at = 6;
+  string last_used_at = 7;
+  string expires_at = 8;
+  bool is_active = 9;
+}
+
+// ListMembersRequest queries team members for an application.
+message ListMembersRequest {
+  string app_id = 1;
+}
+
+// ListMembersResponse contains the list of active/pending team members.
+message ListMembersResponse {
+  repeated AppMember members = 1;
+}
+
+// InviteMemberRequest initiates a new team invitation.
+message InviteMemberRequest {
+  string email = 1;
+  AppRole role = 2;
+}
+
+// InviteMemberResponse contains invitation details.
+message InviteMemberResponse {
+  AppMember member = 1;
+  string invitation_token = 2;
+  string invitation_url = 3;
+}
+
+// AcceptInvitationRequest accepts a pending invitation.
+message AcceptInvitationRequest {
+  string token = 1;
+}
+
+// AcceptInvitationResponse confirms invitation acceptance.
+message AcceptInvitationResponse {
+  string message = 1;
+  AppMember member = 2;
+}
+
+// UpdateMemberRoleRequest modifies an existing collaborator's role.
+message UpdateMemberRoleRequest {
+  string member_id = 1;
+  AppRole role = 2;
+}
+
+// UpdateMemberRoleResponse returns the updated collaborator.
+message UpdateMemberRoleResponse {
+  AppMember member = 1;
+}
+
+// RemoveMemberRequest removes a collaborator from the application.
+message RemoveMemberRequest {
+  string member_id = 1;
+}
+
+// RemoveMemberResponse confirms collaborator removal.
+message RemoveMemberResponse {
+  string message = 1;
+}
+
+// ListApiKeysRequest queries scoped API keys for an application.
+message ListApiKeysRequest {
+  string app_id = 1;
+}
+
+// ListApiKeysResponse returns all scoped API keys.
+message ListApiKeysResponse {
+  repeated AppApiKeySummary keys = 1;
+}
+
+// CreateApiKeyRequest creates a new scoped API key.
+message CreateApiKeyRequest {
+  string name = 1;
+  AppRole role = 2;
+  int32 expires_in_days = 3;
+}
+
+// CreateApiKeyResponse returns the newly provisioned raw API key.
+message CreateApiKeyResponse {
+  string id = 1;
+  string app_id = 2;
+  string member_email = 3;
+  string name = 4;
+  string api_key = 5;
+  AppRole role = 6;
+  string created_at = 7;
+  string expires_at = 8;
+}
+
+// RevokeApiKeyRequest revokes an API key immediately.
+message RevokeApiKeyRequest {
+  string key_id = 1;
+}
+
+// RevokeApiKeyResponse confirms API key revocation.
+message RevokeApiKeyResponse {
+  string message = 1;
+}
+
+// AppService provides gRPC and REST methods for application registration, verification, and multi-user RBAC.
 service AppService {
-  // Register a new application to acquire API credentials.
+  // Register a new application to acquire initial owner credentials.
   // HTTP: POST /api/v1/apps/register
   rpc RegisterApp (RegisterAppRequest) returns (RegisterAppResponse);
 
   // Verify an application using email verification token.
   // HTTP: GET /api/v1/apps/verify?token={verification_token}
   rpc VerifyApp (VerifyAppRequest) returns (VerifyAppResponse);
+
+  // List all registered collaborators for the application.
+  // HTTP: GET /api/v1/apps/members
+  rpc ListMembers (ListMembersRequest) returns (ListMembersResponse);
+
+  // Invite a new collaborator with an assigned RBAC role.
+  // HTTP: POST /api/v1/apps/members/invite
+  rpc InviteMember (InviteMemberRequest) returns (InviteMemberResponse);
+
+  // Accept a collaborator invitation using an invitation token.
+  // HTTP: GET /api/v1/apps/members/accept?token={token}
+  // HTTP: POST /api/v1/apps/members/accept
+  rpc AcceptInvitation (AcceptInvitationRequest) returns (AcceptInvitationResponse);
+
+  // Update an existing collaborator's RBAC role.
+  // HTTP: PATCH /api/v1/apps/members/{member_id}
+  rpc UpdateMemberRole (UpdateMemberRoleRequest) returns (UpdateMemberRoleResponse);
+
+  // Remove a collaborator from the application.
+  // HTTP: DELETE /api/v1/apps/members/{member_id}
+  rpc RemoveMember (RemoveMemberRequest) returns (RemoveMemberResponse);
+
+  // List all scoped API keys for the application.
+  // HTTP: GET /api/v1/apps/keys
+  rpc ListApiKeys (ListApiKeysRequest) returns (ListApiKeysResponse);
+
+  // Create a new scoped API key with assigned role and expiration.
+  // HTTP: POST /api/v1/apps/keys
+  rpc CreateApiKey (CreateApiKeyRequest) returns (CreateApiKeyResponse);
+
+  // Revoke a scoped API key immediately.
+  // HTTP: DELETE /api/v1/apps/keys/{key_id}
+  rpc RevokeApiKey (RevokeApiKeyRequest) returns (RevokeApiKeyResponse);
 }
-
-
-
-

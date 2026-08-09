@@ -37,6 +37,11 @@ var (
 	ErrAppNotVerified           = errors.New("application is pending email verification")
 	ErrFreemailDomainProhibited = errors.New("freemail accounts (e.g. @gmail.com) cannot claim enterprise domain names")
 	ErrInvalidRegistrationEmail = errors.New("invalid email address format for registration")
+	ErrMemberAlreadyExists      = errors.New("collaborator already exists in this application")
+	ErrMemberNotFound           = errors.New("collaborator not found")
+	ErrKeyNotFound              = errors.New("scoped API key not found")
+	ErrInsufficientPermission   = errors.New("insufficient role permission for this operation")
+	ErrInvalidInvitationToken   = errors.New("invalid or expired invitation token")
 )
 
 var freemailDomains = map[string]bool{
@@ -50,12 +55,25 @@ var freemailDomains = map[string]bool{
 	"zoho.com":       true,
 }
 
-// AppRepository defines the contract for application registration, verification, and authentication.
+// AppRepository defines the contract for application registration, verification, and multi-user RBAC.
 type AppRepository interface {
 	HashAPIKey(apiKey string) string
 	RegisterApp(db *gorm.DB, req model.AppRegisterRequest, baseURL string) (*model.AppRegisterResponse, error)
 	VerifyApp(db *gorm.DB, token string) (*model.AppVerifyResponse, error)
 	AuthenticateAPIKey(db *gorm.DB, apiKey string) (*model.RegisteredApp, error)
+	AuthenticateContext(db *gorm.DB, apiKey string) (*model.AuthContext, error)
+
+	// RBAC Collaborator Management
+	InviteMember(db *gorm.DB, appID, inviterEmail, targetEmail string, role model.AppRole, baseURL string) (*model.MemberInviteResponse, error)
+	AcceptInvitation(db *gorm.DB, token string) (*model.AppMember, error)
+	ListMembers(db *gorm.DB, appID string) ([]model.AppMember, error)
+	UpdateMemberRole(db *gorm.DB, appID, memberID string, newRole model.AppRole) (*model.AppMember, error)
+	RemoveMember(db *gorm.DB, appID, memberID string) error
+
+	// Scoped API Key Management
+	CreateScopedAPIKey(db *gorm.DB, appID, memberEmail, keyName string, role model.AppRole, expiresInDays int) (*model.CreateAPIKeyResponse, error)
+	ListAPIKeys(db *gorm.DB, appID string) ([]model.AppAPIKeySummary, error)
+	RevokeAPIKey(db *gorm.DB, appID, keyID string) error
 }
 
 type AppsRepository struct{}
@@ -79,7 +97,7 @@ func (r *AppsRepository) generateAPIKey() (string, error) {
 	return fmt.Sprintf("skm_live_%s", hex.EncodeToString(bytes)), nil
 }
 
-// RegisterApp registers a new application with domain scoping, issuing an API key and email verification token.
+// RegisterApp registers a new application with domain scoping and seeds the creator as OWNER.
 func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, baseURL string) (*model.AppRegisterResponse, error) {
 	emailParts := strings.Split(req.Email, "@")
 	if len(emailParts) != 2 || strings.TrimSpace(emailParts[0]) == "" || strings.TrimSpace(emailParts[1]) == "" {
@@ -122,22 +140,43 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 		dnsChallenge = fmt.Sprintf("skm-domain-verify-%s", uuid.New().String())
 	}
 
+	now := time.Now().UTC()
 	app := model.RegisteredApp{
-		AppID:                  appID,
-		AppName:                req.AppName,
-		Domain:                 requestedDomain,
-		AppURN:                 appURN,
-		OrganizationID:         req.OrganizationID,
-		Email:                  req.Email,
+		AppID:                    appID,
+		AppName:                  req.AppName,
+		Domain:                   requestedDomain,
+		AppURN:                   appURN,
+		OrganizationID:           req.OrganizationID,
+		Email:                    req.Email,
 		DomainVerificationStatus: domainStatus,
-		DNSTXTChallenge:        dnsChallenge,
-		APIKeyHash:             apiKeyHash,
-		IsActive:               false,
-		VerificationToken:      verificationToken,
-		CreatedAt:              time.Now().UTC(),
+		DNSTXTChallenge:          dnsChallenge,
+		APIKeyHash:               apiKeyHash,
+		IsActive:                 false,
+		VerificationToken:        verificationToken,
+		CreatedAt:                now,
 	}
 
-	if err := db.Create(&app).Error; err != nil {
+	ownerMember := model.AppMember{
+		ID:         uuid.New().String(),
+		AppID:      appID,
+		Email:      req.Email,
+		Role:       model.RoleOwner,
+		InvitedBy:  "system_registration",
+		Status:     "ACTIVE",
+		CreatedAt:  now,
+		AcceptedAt: &now,
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&app).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&ownerMember).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -153,17 +192,17 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 	verificationURL := fmt.Sprintf("%s/api/v1/apps/verify?token=%s", hostURL, verificationToken)
 
 	return &model.AppRegisterResponse{
-		AppID:                  app.AppID,
-		AppName:                app.AppName,
-		Domain:                 app.Domain,
-		AppURN:                 app.AppURN,
-		OrganizationID:         app.OrganizationID,
-		Email:                  app.Email,
+		AppID:                    app.AppID,
+		AppName:                  app.AppName,
+		Domain:                   app.Domain,
+		AppURN:                   app.AppURN,
+		OrganizationID:           app.OrganizationID,
+		Email:                    app.Email,
 		DomainVerificationStatus: app.DomainVerificationStatus,
-		DNSTXTChallenge:        app.DNSTXTChallenge,
-		APIKey:                 rawAPIKey,
-		VerificationToken:      app.VerificationToken,
-		VerificationURL:        verificationURL,
+		DNSTXTChallenge:          app.DNSTXTChallenge,
+		APIKey:                   rawAPIKey,
+		VerificationToken:        app.VerificationToken,
+		VerificationURL:          verificationURL,
 	}, nil
 }
 
@@ -184,33 +223,281 @@ func (r *AppsRepository) VerifyApp(db *gorm.DB, token string) (*model.AppVerifyR
 	}
 
 	return &model.AppVerifyResponse{
-		AppID:                  app.AppID,
-		AppName:                app.AppName,
-		Domain:                 app.Domain,
-		AppURN:                 app.AppURN,
-		Email:                  app.Email,
+		AppID:                    app.AppID,
+		AppName:                  app.AppName,
+		Domain:                   app.Domain,
+		AppURN:                   app.AppURN,
+		Email:                    app.Email,
 		DomainVerificationStatus: app.DomainVerificationStatus,
-		IsActive:               app.IsActive,
-		Message:                "Application email verified successfully. Account is now active.",
+		IsActive:                 app.IsActive,
+		Message:                  "Application email verified successfully. Account is now active.",
 	}, nil
 }
 
 // AuthenticateAPIKey validates API key and ensures the associated application is active.
 func (r *AppsRepository) AuthenticateAPIKey(db *gorm.DB, apiKey string) (*model.RegisteredApp, error) {
+	ctx, err := r.AuthenticateContext(db, apiKey)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.App, nil
+}
+
+// AuthenticateContext validates either root or scoped API key and returns full AuthContext with assigned role.
+func (r *AppsRepository) AuthenticateContext(db *gorm.DB, apiKey string) (*model.AuthContext, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
 
 	keyHash := r.HashAPIKey(apiKey)
+
+	// 1. Check Scoped API Keys (User/Team/Service Keys)
+	var scopedKey model.AppAPIKey
+	if err := db.Where("api_key_hash = ? AND revoked_at IS NULL", keyHash).First(&scopedKey).Error; err == nil {
+		if scopedKey.ExpiresAt != nil && scopedKey.ExpiresAt.Before(time.Now().UTC()) {
+			return nil, ErrInvalidAPIKey
+		}
+
+		var app model.RegisteredApp
+		if err := db.Where("app_id = ?", scopedKey.AppID).First(&app).Error; err != nil {
+			return nil, ErrInvalidAPIKey
+		}
+		if !app.IsActive {
+			return nil, ErrAppNotVerified
+		}
+
+		now := time.Now().UTC()
+		_ = db.Model(&scopedKey).Update("last_used_at", now).Error
+
+		return &model.AuthContext{
+			App:         &app,
+			MemberEmail: scopedKey.MemberEmail,
+			Role:        scopedKey.Role,
+			KeyID:       scopedKey.ID,
+		}, nil
+	}
+
+	// 2. Check Root Application API Key (Full Owner Access)
 	var app model.RegisteredApp
-	err := db.Where("api_key_hash = ?", keyHash).First(&app).Error
+	if err := db.Where("api_key_hash = ?", keyHash).First(&app).Error; err == nil {
+		if !app.IsActive {
+			return nil, ErrAppNotVerified
+		}
+
+		return &model.AuthContext{
+			App:         &app,
+			MemberEmail: app.Email,
+			Role:        model.RoleOwner,
+			KeyID:       "root",
+		}, nil
+	}
+
+	return nil, ErrInvalidAPIKey
+}
+
+// InviteMember creates a new pending collaborator invitation for an application.
+func (r *AppsRepository) InviteMember(
+	db *gorm.DB,
+	appID, inviterEmail, targetEmail string,
+	role model.AppRole,
+	baseURL string,
+) (*model.MemberInviteResponse, error) {
+	targetEmail = strings.ToLower(strings.TrimSpace(targetEmail))
+	if !strings.Contains(targetEmail, "@") {
+		return nil, ErrInvalidRegistrationEmail
+	}
+
+	var existing model.AppMember
+	if err := db.Where("app_id = ? AND email = ?", appID, targetEmail).First(&existing).Error; err == nil {
+		return nil, fmt.Errorf("%w: %s", ErrMemberAlreadyExists, targetEmail)
+	}
+
+	invitationToken := uuid.New().String()
+	now := time.Now().UTC()
+
+	member := model.AppMember{
+		ID:              uuid.New().String(),
+		AppID:           appID,
+		Email:           targetEmail,
+		Role:            role,
+		InvitedBy:       inviterEmail,
+		Status:          "PENDING_INVITE",
+		InvitationToken: invitationToken,
+		CreatedAt:       now,
+	}
+
+	if err := db.Create(&member).Error; err != nil {
+		return nil, err
+	}
+
+	defaultBaseURL := os.Getenv("BASE_URL")
+	if defaultBaseURL == "" {
+		defaultBaseURL = "http://localhost:8000"
+	}
+	hostURL := strings.TrimRight(baseURL, "/")
+	if hostURL == "" {
+		hostURL = strings.TrimRight(defaultBaseURL, "/")
+	}
+	inviteURL := fmt.Sprintf("%s/api/v1/apps/members/accept?token=%s", hostURL, invitationToken)
+
+	return &model.MemberInviteResponse{
+		ID:              member.ID,
+		AppID:           member.AppID,
+		Email:           member.Email,
+		Role:            member.Role,
+		Status:          member.Status,
+		InvitedBy:       member.InvitedBy,
+		InvitationToken: invitationToken,
+		InvitationURL:   inviteURL,
+		CreatedAt:       member.CreatedAt,
+	}, nil
+}
+
+// AcceptInvitation activates an invited collaborator via token.
+func (r *AppsRepository) AcceptInvitation(db *gorm.DB, token string) (*model.AppMember, error) {
+	var member model.AppMember
+	if err := db.Where("invitation_token = ? AND status = 'PENDING_INVITE'", token).First(&member).Error; err != nil {
+		return nil, ErrInvalidInvitationToken
+	}
+
+	now := time.Now().UTC()
+	member.Status = "ACTIVE"
+	member.AcceptedAt = &now
+
+	if err := db.Save(&member).Error; err != nil {
+		return nil, err
+	}
+
+	return &member, nil
+}
+
+// ListMembers lists all registered collaborators for an application.
+func (r *AppsRepository) ListMembers(db *gorm.DB, appID string) ([]model.AppMember, error) {
+	var members []model.AppMember
+	if err := db.Where("app_id = ?", appID).Order("created_at asc").Find(&members).Error; err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
+// UpdateMemberRole updates the RBAC role for an existing collaborator.
+func (r *AppsRepository) UpdateMemberRole(db *gorm.DB, appID, memberID string, newRole model.AppRole) (*model.AppMember, error) {
+	var member model.AppMember
+	if err := db.Where("id = ? AND app_id = ?", memberID, appID).First(&member).Error; err != nil {
+		return nil, ErrMemberNotFound
+	}
+
+	member.Role = newRole
+	if err := db.Save(&member).Error; err != nil {
+		return nil, err
+	}
+	return &member, nil
+}
+
+// RemoveMember revokes and deletes a collaborator from an application.
+func (r *AppsRepository) RemoveMember(db *gorm.DB, appID, memberID string) error {
+	res := db.Where("id = ? AND app_id = ?", memberID, appID).Delete(&model.AppMember{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrMemberNotFound
+	}
+	return nil
+}
+
+// CreateScopedAPIKey provisions a new scoped API key for a team member or automated service.
+func (r *AppsRepository) CreateScopedAPIKey(
+	db *gorm.DB,
+	appID, memberEmail, keyName string,
+	role model.AppRole,
+	expiresInDays int,
+) (*model.CreateAPIKeyResponse, error) {
+	rawKey, err := r.generateAPIKey()
 	if err != nil {
-		return nil, ErrInvalidAPIKey
+		return nil, err
+	}
+	keyHash := r.HashAPIKey(rawKey)
+	now := time.Now().UTC()
+
+	var expiresAt *time.Time
+	if expiresInDays > 0 {
+		exp := now.AddDate(0, 0, expiresInDays)
+		expiresAt = &exp
 	}
 
-	if !app.IsActive {
-		return nil, ErrAppNotVerified
+	if role == "" {
+		role = model.RoleEditor
 	}
 
-	return &app, nil
+	apiKey := model.AppAPIKey{
+		ID:          uuid.New().String(),
+		AppID:       appID,
+		MemberEmail: memberEmail,
+		Name:        keyName,
+		APIKeyHash:  keyHash,
+		Role:        role,
+		CreatedAt:   now,
+		ExpiresAt:   expiresAt,
+	}
+
+	if err := db.Create(&apiKey).Error; err != nil {
+		return nil, err
+	}
+
+	return &model.CreateAPIKeyResponse{
+		ID:          apiKey.ID,
+		AppID:       apiKey.AppID,
+		MemberEmail: apiKey.MemberEmail,
+		Name:        apiKey.Name,
+		APIKey:      rawKey,
+		Role:        apiKey.Role,
+		CreatedAt:   apiKey.CreatedAt,
+		ExpiresAt:   apiKey.ExpiresAt,
+	}, nil
+}
+
+// ListAPIKeys lists all active and revoked scoped API keys for an application.
+func (r *AppsRepository) ListAPIKeys(db *gorm.DB, appID string) ([]model.AppAPIKeySummary, error) {
+	var keys []model.AppAPIKey
+	if err := db.Where("app_id = ?", appID).Order("created_at desc").Find(&keys).Error; err != nil {
+		return nil, err
+	}
+
+	summaries := make([]model.AppAPIKeySummary, 0, len(keys))
+	now := time.Now().UTC()
+	for _, k := range keys {
+		isActive := k.RevokedAt == nil
+		if k.ExpiresAt != nil && k.ExpiresAt.Before(now) {
+			isActive = false
+		}
+		summaries = append(summaries, model.AppAPIKeySummary{
+			ID:          k.ID,
+			AppID:       k.AppID,
+			MemberEmail: k.MemberEmail,
+			Name:        k.Name,
+			Role:        k.Role,
+			CreatedAt:   k.CreatedAt,
+			LastUsedAt:  k.LastUsedAt,
+			ExpiresAt:   k.ExpiresAt,
+			IsActive:    isActive,
+		})
+	}
+	return summaries, nil
+}
+
+// RevokeAPIKey immediately revokes an API key.
+func (r *AppsRepository) RevokeAPIKey(db *gorm.DB, appID, keyID string) error {
+	now := time.Now().UTC()
+	res := db.Model(&model.AppAPIKey{}).
+		Where("id = ? AND app_id = ? AND revoked_at IS NULL", keyID, appID).
+		Update("revoked_at", now)
+
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrKeyNotFound
+	}
+	return nil
 }

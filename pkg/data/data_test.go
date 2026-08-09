@@ -86,7 +86,7 @@ func TestAppsRepository(t *testing.T) {
 	_, err = repo.AuthenticateAPIKey(db, "")
 	assert.ErrorIs(t, err, data.ErrMissingAPIKey)
 
-	// 4. Invalid API Key
+	// Invalid API Key
 	_, err = repo.AuthenticateAPIKey(db, "skm_live_invalid")
 	assert.ErrorIs(t, err, data.ErrInvalidAPIKey)
 
@@ -97,15 +97,113 @@ func TestAppsRepository(t *testing.T) {
 	assert.Equal(t, "example.com", verifyRes.Domain)
 	assert.Equal(t, "urn:skm:app:example.com:test-app", verifyRes.AppURN)
 
-	// 6. Authenticate verified app
+	// 6. Authenticate verified app with root API key
 	app, err := repo.AuthenticateAPIKey(db, res.APIKey)
 	require.NoError(t, err)
 	assert.Equal(t, res.AppID, app.AppID)
 	assert.True(t, app.IsActive)
 
+	// AuthenticateContext with root API key returns OWNER role
+	authCtx, err := repo.AuthenticateContext(db, res.APIKey)
+	require.NoError(t, err)
+	assert.Equal(t, res.AppID, authCtx.App.AppID)
+	assert.Equal(t, model.RoleOwner, authCtx.Role)
+	assert.Equal(t, "test@example.com", authCtx.MemberEmail)
+
 	// 7. Invalid token verify
 	_, err = repo.VerifyApp(db, "invalid-token")
 	assert.ErrorIs(t, err, data.ErrInvalidVerificationToken)
+
+	// ------------------------------------------------------------------------
+	// 8. Collaborator Management & RBAC
+	// ------------------------------------------------------------------------
+
+	// Creator should be listed as ACTIVE OWNER
+	members, err := repo.ListMembers(db, res.AppID)
+	require.NoError(t, err)
+	require.Len(t, members, 1)
+	assert.Equal(t, "test@example.com", members[0].Email)
+	assert.Equal(t, model.RoleOwner, members[0].Role)
+	assert.Equal(t, "ACTIVE", members[0].Status)
+
+	// Invite a new collaborator as EDITOR
+	inviteRes, err := repo.InviteMember(db, res.AppID, "test@example.com", "alice@example.com", model.RoleEditor, "http://localhost:8000")
+	require.NoError(t, err)
+	assert.Equal(t, "alice@example.com", inviteRes.Email)
+	assert.Equal(t, model.RoleEditor, inviteRes.Role)
+	assert.Equal(t, "PENDING_INVITE", inviteRes.Status)
+	assert.NotEmpty(t, inviteRes.InvitationToken)
+
+	// Duplicate invite fails
+	_, err = repo.InviteMember(db, res.AppID, "test@example.com", "alice@example.com", model.RoleEditor, "http://localhost:8000")
+	assert.ErrorIs(t, err, data.ErrMemberAlreadyExists)
+
+	// Accept invitation
+	accepted, err := repo.AcceptInvitation(db, inviteRes.InvitationToken)
+	require.NoError(t, err)
+	assert.Equal(t, "ACTIVE", accepted.Status)
+	assert.NotNil(t, accepted.AcceptedAt)
+
+	// Accept with invalid token fails
+	_, err = repo.AcceptInvitation(db, "invalid-invite-token")
+	assert.ErrorIs(t, err, data.ErrInvalidInvitationToken)
+
+	// Update collaborator role to VIEWER
+	updatedMember, err := repo.UpdateMemberRole(db, res.AppID, accepted.ID, model.RoleViewer)
+	require.NoError(t, err)
+	assert.Equal(t, model.RoleViewer, updatedMember.Role)
+
+	// Update non-existent member fails
+	_, err = repo.UpdateMemberRole(db, res.AppID, "non-existent-id", model.RoleEditor)
+	assert.ErrorIs(t, err, data.ErrMemberNotFound)
+
+	// ------------------------------------------------------------------------
+	// 9. Scoped API Keys
+	// ------------------------------------------------------------------------
+
+	// Provision scoped EDITOR API key for Alice
+	keyRes, err := repo.CreateScopedAPIKey(db, res.AppID, "alice@example.com", "Alice CI Key", model.RoleEditor, 30)
+	require.NoError(t, err)
+	assert.NotEmpty(t, keyRes.APIKey)
+	assert.Equal(t, model.RoleEditor, keyRes.Role)
+	assert.Equal(t, "Alice CI Key", keyRes.Name)
+	assert.NotNil(t, keyRes.ExpiresAt)
+
+	// Authenticate with Alice's scoped key -> role is EDITOR
+	aliceCtx, err := repo.AuthenticateContext(db, keyRes.APIKey)
+	require.NoError(t, err)
+	assert.Equal(t, res.AppID, aliceCtx.App.AppID)
+	assert.Equal(t, "alice@example.com", aliceCtx.MemberEmail)
+	assert.Equal(t, model.RoleEditor, aliceCtx.Role)
+	assert.True(t, aliceCtx.Role.HasPermission(model.RoleEditor))
+	assert.False(t, aliceCtx.Role.HasPermission(model.RoleOwner))
+
+	// List API keys
+	keys, err := repo.ListAPIKeys(db, res.AppID)
+	require.NoError(t, err)
+	require.Len(t, keys, 1)
+	assert.Equal(t, "Alice CI Key", keys[0].Name)
+	assert.True(t, keys[0].IsActive)
+
+	// Revoke scoped API key
+	err = repo.RevokeAPIKey(db, res.AppID, keyRes.ID)
+	require.NoError(t, err)
+
+	// Authenticating with revoked key fails
+	_, err = repo.AuthenticateContext(db, keyRes.APIKey)
+	assert.ErrorIs(t, err, data.ErrInvalidAPIKey)
+
+	// Revoking already revoked / non-existent key fails
+	err = repo.RevokeAPIKey(db, res.AppID, keyRes.ID)
+	assert.ErrorIs(t, err, data.ErrKeyNotFound)
+
+	// Remove collaborator
+	err = repo.RemoveMember(db, res.AppID, accepted.ID)
+	require.NoError(t, err)
+
+	membersAfterDelete, err := repo.ListMembers(db, res.AppID)
+	require.NoError(t, err)
+	assert.Len(t, membersAfterDelete, 1)
 }
 
 func TestSkillsRepository(t *testing.T) {

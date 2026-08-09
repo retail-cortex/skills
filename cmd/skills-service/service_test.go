@@ -398,3 +398,159 @@ func TestAppsAndSkillsRESTWorkflow(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 }
+
+func TestRBACCollaboratorsAndScopedKeysREST(t *testing.T) {
+	router, _ := setupTestRouter()
+
+	// 1. Register App
+	regPayload := model.AppRegisterRequest{
+		AppName: "rbac-app",
+		Domain:  "enterprise.com",
+		Email:   "owner@enterprise.com",
+	}
+	body, _ := json.Marshal(regPayload)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/v1/apps/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var appResp model.AppRegisterResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &appResp))
+
+	// Verify App
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/apps/verify?token="+appResp.VerificationToken, nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// 2. List Members (Owner only)
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/apps/members", nil)
+	req.Header.Set("X-API-Key", appResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var members []model.AppMember
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &members))
+	require.Len(t, members, 1)
+	assert.Equal(t, "owner@enterprise.com", members[0].Email)
+	assert.Equal(t, model.RoleOwner, members[0].Role)
+
+	// 3. Invite Editor & Viewer
+	inviteEditorReq := model.MemberInviteRequest{
+		Email: "editor@enterprise.com",
+		Role:  model.RoleEditor,
+	}
+	invBody, _ := json.Marshal(inviteEditorReq)
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/apps/members/invite", bytes.NewBuffer(invBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", appResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var editorInvite model.MemberInviteResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &editorInvite))
+	assert.Equal(t, "editor@enterprise.com", editorInvite.Email)
+	assert.Equal(t, model.RoleEditor, editorInvite.Role)
+
+	// Accept Editor Invitation
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/apps/members/accept?token="+editorInvite.InvitationToken, nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// 4. Create Scoped API Keys
+	// Create Editor API Key
+	createKeyReq := model.CreateAPIKeyRequest{
+		Name:          "Editor Deployment Key",
+		Role:          model.RoleEditor,
+		ExpiresInDays: 30,
+	}
+	keyBody, _ := json.Marshal(createKeyReq)
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/apps/keys", bytes.NewBuffer(keyBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", appResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var editorKeyResp model.CreateAPIKeyResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &editorKeyResp))
+	assert.NotEmpty(t, editorKeyResp.APIKey)
+	assert.Equal(t, model.RoleEditor, editorKeyResp.Role)
+
+	// Create Viewer API Key
+	createViewerKeyReq := model.CreateAPIKeyRequest{
+		Name:          "Viewer Analytics Key",
+		Role:          model.RoleViewer,
+		ExpiresInDays: 30,
+	}
+	vKeyBody, _ := json.Marshal(createViewerKeyReq)
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/apps/keys", bytes.NewBuffer(vKeyBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", appResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var viewerKeyResp model.CreateAPIKeyResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &viewerKeyResp))
+
+	// 5. Test RBAC Permissions on Skill Operations
+	// Editor creates skill -> 201 Created
+	skillCreateReq := model.SkillCreateRequest{
+		Name:         "rbac-skill",
+		Description:  "Skill testing RBAC",
+		Instructions: "Ensure permission gates work",
+	}
+	skillBody, _ := json.Marshal(skillCreateReq)
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/api/v1/skills", bytes.NewBuffer(skillBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", editorKeyResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var createdSkill model.SkillResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &createdSkill))
+
+	// Viewer can read skill -> 200 OK
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/api/v1/skills/"+createdSkill.ID, nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// Viewer tries to mutate skill -> 403 Forbidden
+	newDesc := "Viewer modification"
+	updBody, _ := json.Marshal(model.SkillUpdateRequest{Description: &newDesc})
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("PATCH", "/api/v1/skills/"+createdSkill.ID, bytes.NewBuffer(updBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", viewerKeyResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusForbidden, w.Code)
+
+	// Viewer tries to delete skill -> 403 Forbidden
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/api/v1/skills/"+createdSkill.ID, nil)
+	req.Header.Set("X-API-Key", viewerKeyResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusForbidden, w.Code)
+
+	// 6. Revoke Viewer Key
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/api/v1/apps/keys/"+viewerKeyResp.ID, nil)
+	req.Header.Set("X-API-Key", appResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// Revoked key fails authentication -> 401 Unauthorized
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("PATCH", "/api/v1/skills/"+createdSkill.ID, bytes.NewBuffer(updBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", viewerKeyResp.APIKey)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+}

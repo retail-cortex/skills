@@ -209,6 +209,32 @@ Every language standardizes on **Bazel** for hermetic CI/CD and monorepo executi
 
 ---
 
-## 9. Protocol Buffer Architecture Contracts (`proto/`)
+## 9. Role-Based Access Control (RBAC) & Collaborator Model
+
+The enterprise registry enforces multi-tenant Role-Based Access Control at the application level via [`pkg/model/app.go`](file:///Users/rmcguinness/Projects/skill-builder/pkg/model/app.go) and [`pkg/data/apps_repository.go`](file:///Users/rmcguinness/Projects/skill-builder/pkg/data/apps_repository.go).
+
+### Permission Hierarchy
+
+| Role | Scope | Permitted Operations |
+|---|---|---|
+| **`OWNER`** | Full Administrative | Invite/remove collaborators, assign roles, provision/revoke API keys, transfer app ownership, create/update/delete skills, read skills. |
+| **`EDITOR`** | Engineering / CI-CD | Create, update, replace, and delete skills owned by the application. Provision developer scoped keys. Read skills. |
+| **`VIEWER`** | Read-Only / Analytics | List and retrieve skills, read metadata, execute semantic search queries. Prohibited from mutating skills. |
+
+### REST Management Endpoints
+
+- **`GET /api/v1/apps/members`**: List registered collaborators and their statuses (`ACTIVE`, `PENDING_INVITE`).
+- **`POST /api/v1/apps/members/invite`**: Issue an email invitation with a specific role (`OWNER`, `EDITOR`, `VIEWER`).
+- **`GET /api/v1/apps/members/accept?token=...`**: Token-based invitation verification and activation.
+- **`PATCH /api/v1/apps/members/:member_id`**: Update collaborator role (requires `OWNER`).
+- **`DELETE /api/v1/apps/members/:member_id`**: Revoke and delete a collaborator (requires `OWNER`).
+- **`GET /api/v1/apps/keys`**: List active and revoked scoped API keys.
+- **`POST /api/v1/apps/keys`**: Provision a dedicated, expiration-bounded API key for developers or CI/CD pipelines.
+- **`DELETE /api/v1/apps/keys/:key_id`**: Instantly revoke an API key.
+
+---
+
+## 10. Protocol Buffer Architecture Contracts (`proto/`)
 
 The core domain model (`SkillDefinition`, `SkillSummary`, `RegisterSkillRequest`, `AppDefinition`) is formally defined in Protocol Buffers (`proto/retailcortex/skills/v1/skill.proto` and `proto/retailcortex/skills/v1/skill_service.proto`).
+

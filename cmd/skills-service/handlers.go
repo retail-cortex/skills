@@ -104,10 +104,10 @@ func (h *ServerHandlers) VerifyApp(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-func (h *ServerHandlers) authenticateCurrentApp(c *gin.Context) (*model.RegisteredApp, bool) {
+func (h *ServerHandlers) authenticateContext(c *gin.Context, requiredRole model.AppRole) (*model.AuthContext, bool) {
 	apiKey := c.GetHeader("X-API-Key")
 	db := data.GetDB()
-	app, err := h.appsService.AuthenticateAPIKey(db, apiKey)
+	authCtx, err := h.appsService.AuthenticateContext(db, apiKey)
 	if err != nil {
 		if errors.Is(err, data.ErrMissingAPIKey) || errors.Is(err, data.ErrInvalidAPIKey) {
 			c.JSON(http.StatusUnauthorized, gin.H{"detail": err.Error()})
@@ -120,8 +120,224 @@ func (h *ServerHandlers) authenticateCurrentApp(c *gin.Context) (*model.Register
 		c.JSON(http.StatusUnauthorized, gin.H{"detail": err.Error()})
 		return nil, false
 	}
-	return app, true
+
+	if requiredRole != "" && !authCtx.Role.HasPermission(requiredRole) {
+		c.JSON(http.StatusForbidden, gin.H{"detail": "insufficient role permission for this operation"})
+		return nil, false
+	}
+
+	return authCtx, true
 }
+
+func (h *ServerHandlers) authenticateCurrentApp(c *gin.Context) (*model.RegisteredApp, bool) {
+	authCtx, ok := h.authenticateContext(c, model.RoleViewer)
+	if !ok {
+		return nil, false
+	}
+	return authCtx.App, true
+}
+
+// ----------------------------------------------------------------------------
+// RBAC Collaborator Endpoints
+// ----------------------------------------------------------------------------
+
+func (h *ServerHandlers) ListMembers(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleViewer)
+	if !ok {
+		return
+	}
+
+	db := data.GetDB()
+	members, err := h.appsService.ListMembers(db, authCtx.App.AppID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, members)
+}
+
+func (h *ServerHandlers) InviteMember(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleOwner)
+	if !ok {
+		return
+	}
+
+	var req model.MemberInviteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+		return
+	}
+
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	db := data.GetDB()
+	res, err := h.appsService.InviteMember(db, authCtx.App.AppID, authCtx.MemberEmail, req.Email, req.Role, baseURL)
+	if err != nil {
+		if errors.Is(err, data.ErrMemberAlreadyExists) || errors.Is(err, data.ErrInvalidRegistrationEmail) {
+			c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, res)
+}
+
+func (h *ServerHandlers) AcceptInvitation(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		var req model.MemberAcceptRequest
+		if err := c.ShouldBindJSON(&req); err == nil {
+			token = req.Token
+		}
+	}
+
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Missing invitation token."})
+		return
+	}
+
+	db := data.GetDB()
+	member, err := h.appsService.AcceptInvitation(db, token)
+	if err != nil {
+		if errors.Is(err, data.ErrInvalidInvitationToken) {
+			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Invitation accepted successfully. You are now an active collaborator.",
+		"member":  member,
+	})
+}
+
+func (h *ServerHandlers) UpdateMemberRole(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleOwner)
+	if !ok {
+		return
+	}
+
+	memberID := c.Param("member_id")
+	var req model.MemberUpdateRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+		return
+	}
+
+	db := data.GetDB()
+	updated, err := h.appsService.UpdateMemberRole(db, authCtx.App.AppID, memberID, req.Role)
+	if err != nil {
+		if errors.Is(err, data.ErrMemberNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, updated)
+}
+
+func (h *ServerHandlers) RemoveMember(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleOwner)
+	if !ok {
+		return
+	}
+
+	memberID := c.Param("member_id")
+	db := data.GetDB()
+	err := h.appsService.RemoveMember(db, authCtx.App.AppID, memberID)
+	if err != nil {
+		if errors.Is(err, data.ErrMemberNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Collaborator removed successfully."})
+}
+
+// ----------------------------------------------------------------------------
+// Scoped API Key Endpoints
+// ----------------------------------------------------------------------------
+
+func (h *ServerHandlers) ListAPIKeys(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleOwner)
+	if !ok {
+		return
+	}
+
+	db := data.GetDB()
+	keys, err := h.appsService.ListAPIKeys(db, authCtx.App.AppID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, keys)
+}
+
+func (h *ServerHandlers) CreateScopedAPIKey(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleEditor)
+	if !ok {
+		return
+	}
+
+	var req model.CreateAPIKeyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+		return
+	}
+
+	// Non-owners cannot create keys with higher permissions than their own
+	if authCtx.Role != model.RoleOwner && req.Role == model.RoleOwner {
+		c.JSON(http.StatusForbidden, gin.H{"detail": "Cannot provision API key with higher role than caller"})
+		return
+	}
+
+	db := data.GetDB()
+	res, err := h.appsService.CreateScopedAPIKey(db, authCtx.App.AppID, authCtx.MemberEmail, req.Name, req.Role, req.ExpiresInDays)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, res)
+}
+
+func (h *ServerHandlers) RevokeAPIKey(c *gin.Context) {
+	authCtx, ok := h.authenticateContext(c, model.RoleOwner)
+	if !ok {
+		return
+	}
+
+	keyID := c.Param("key_id")
+	db := data.GetDB()
+	err := h.appsService.RevokeAPIKey(db, authCtx.App.AppID, keyID)
+	if err != nil {
+		if errors.Is(err, data.ErrKeyNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "API key revoked successfully."})
+}
+
+// ----------------------------------------------------------------------------
+// Skills Endpoints
+// ----------------------------------------------------------------------------
 
 func (h *ServerHandlers) ListSkills(c *gin.Context) {
 	query := c.Query("s")
@@ -167,7 +383,7 @@ func (h *ServerHandlers) ListSkills(c *gin.Context) {
 		return
 	}
 
-	// Default JSON response is the paged slice of skills (backwards compatible with array-decoding clients)
+	// Default JSON response is the paged slice of skills
 	c.JSON(http.StatusOK, res.Items)
 }
 
@@ -187,7 +403,7 @@ func (h *ServerHandlers) GetSkill(c *gin.Context) {
 }
 
 func (h *ServerHandlers) RegisterSkill(c *gin.Context) {
-	app, ok := h.authenticateCurrentApp(c)
+	authCtx, ok := h.authenticateContext(c, model.RoleEditor)
 	if !ok {
 		return
 	}
@@ -199,7 +415,7 @@ func (h *ServerHandlers) RegisterSkill(c *gin.Context) {
 	}
 
 	db := data.GetDB()
-	res, err := h.skillsService.CreateSkill(db, app.AppID, req)
+	res, err := h.skillsService.CreateSkill(db, authCtx.App.AppID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
 		return
@@ -208,7 +424,7 @@ func (h *ServerHandlers) RegisterSkill(c *gin.Context) {
 }
 
 func (h *ServerHandlers) ReplaceSkill(c *gin.Context) {
-	app, ok := h.authenticateCurrentApp(c)
+	authCtx, ok := h.authenticateContext(c, model.RoleEditor)
 	if !ok {
 		return
 	}
@@ -221,7 +437,7 @@ func (h *ServerHandlers) ReplaceSkill(c *gin.Context) {
 	}
 
 	db := data.GetDB()
-	res, err := h.skillsService.UpdateSkill(db, skillID, app.AppID, req, true)
+	res, err := h.skillsService.UpdateSkill(db, skillID, authCtx.App.AppID, req, true)
 	if err != nil {
 		if errors.Is(err, data.ErrSkillNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
@@ -238,7 +454,7 @@ func (h *ServerHandlers) ReplaceSkill(c *gin.Context) {
 }
 
 func (h *ServerHandlers) UpdateSkill(c *gin.Context) {
-	app, ok := h.authenticateCurrentApp(c)
+	authCtx, ok := h.authenticateContext(c, model.RoleEditor)
 	if !ok {
 		return
 	}
@@ -251,7 +467,7 @@ func (h *ServerHandlers) UpdateSkill(c *gin.Context) {
 	}
 
 	db := data.GetDB()
-	res, err := h.skillsService.UpdateSkill(db, skillID, app.AppID, req, false)
+	res, err := h.skillsService.UpdateSkill(db, skillID, authCtx.App.AppID, req, false)
 	if err != nil {
 		if errors.Is(err, data.ErrSkillNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
@@ -268,14 +484,14 @@ func (h *ServerHandlers) UpdateSkill(c *gin.Context) {
 }
 
 func (h *ServerHandlers) DeleteSkill(c *gin.Context) {
-	app, ok := h.authenticateCurrentApp(c)
+	authCtx, ok := h.authenticateContext(c, model.RoleEditor)
 	if !ok {
 		return
 	}
 
 	skillID := strings.TrimPrefix(c.Param("skill_id"), "/")
 	db := data.GetDB()
-	res, err := h.skillsService.DeleteSkill(db, skillID, app.AppID)
+	res, err := h.skillsService.DeleteSkill(db, skillID, authCtx.App.AppID)
 	if err != nil {
 		if errors.Is(err, data.ErrSkillNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})

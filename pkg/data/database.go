@@ -82,6 +82,8 @@ func InitDB(databaseURL ...string) (*gorm.DB, error) {
 
 	err = db.AutoMigrate(
 		&model.RegisteredApp{},
+		&model.AppMember{},
+		&model.AppAPIKey{},
 		&model.Skill{},
 		&model.SkillVersion{},
 		&model.SkillMetadata{},

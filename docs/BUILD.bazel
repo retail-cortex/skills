@@ -26,6 +26,7 @@ hugo_serve(
 
 sh_test(
     name = "site_test",
+    size = "small",
     srcs = ["site_test.sh"],
     data = [":site"],
 )

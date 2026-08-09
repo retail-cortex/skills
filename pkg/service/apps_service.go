@@ -45,3 +45,39 @@ func (s *AppsService) VerifyApp(db *gorm.DB, token string) (*model.AppVerifyResp
 func (s *AppsService) AuthenticateAPIKey(db *gorm.DB, apiKey string) (*model.RegisteredApp, error) {
 	return s.repo.AuthenticateAPIKey(db, apiKey)
 }
+
+func (s *AppsService) AuthenticateContext(db *gorm.DB, apiKey string) (*model.AuthContext, error) {
+	return s.repo.AuthenticateContext(db, apiKey)
+}
+
+func (s *AppsService) InviteMember(db *gorm.DB, appID, inviterEmail, targetEmail string, role model.AppRole, baseURL string) (*model.MemberInviteResponse, error) {
+	return s.repo.InviteMember(db, appID, inviterEmail, targetEmail, role, baseURL)
+}
+
+func (s *AppsService) AcceptInvitation(db *gorm.DB, token string) (*model.AppMember, error) {
+	return s.repo.AcceptInvitation(db, token)
+}
+
+func (s *AppsService) ListMembers(db *gorm.DB, appID string) ([]model.AppMember, error) {
+	return s.repo.ListMembers(db, appID)
+}
+
+func (s *AppsService) UpdateMemberRole(db *gorm.DB, appID, memberID string, newRole model.AppRole) (*model.AppMember, error) {
+	return s.repo.UpdateMemberRole(db, appID, memberID, newRole)
+}
+
+func (s *AppsService) RemoveMember(db *gorm.DB, appID, memberID string) error {
+	return s.repo.RemoveMember(db, appID, memberID)
+}
+
+func (s *AppsService) CreateScopedAPIKey(db *gorm.DB, appID, memberEmail, keyName string, role model.AppRole, expiresInDays int) (*model.CreateAPIKeyResponse, error) {
+	return s.repo.CreateScopedAPIKey(db, appID, memberEmail, keyName, role, expiresInDays)
+}
+
+func (s *AppsService) ListAPIKeys(db *gorm.DB, appID string) ([]model.AppAPIKeySummary, error) {
+	return s.repo.ListAPIKeys(db, appID)
+}
+
+func (s *AppsService) RevokeAPIKey(db *gorm.DB, appID, keyID string) error {
+	return s.repo.RevokeAPIKey(db, appID, keyID)
+}

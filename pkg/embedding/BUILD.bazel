@@ -10,6 +10,7 @@ go_library(
 
 go_test(
     name = "embedding_test",
+    size = "small",
     srcs = ["provider_test.go"],
     deps = [
         ":embedding",

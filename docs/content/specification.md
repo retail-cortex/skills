@@ -102,6 +102,28 @@ Every application registered with `skills-service` MUST be bound to a verified d
 2. **Freemail Prohibition (`ErrFreemailDomainProhibited`)**: Public freemail provider addresses (`gmail.com`, `yahoo.com`, `outlook.com`, `hotmail.com`, `icloud.com`, etc.) are explicitly forbidden from claiming corporate domain namespaces.
 3. **DNS Challenge Fallback (`PENDING_DNS`)**: Claiming a custom third-party domain generates a DNS TXT challenge token (`skm-domain-verify-<uuid>`) that must be published under `_skm-challenge.<domain>` before activation.
 
+### 6.3 Multi-User Role-Based Access Control (RBAC) & Collaborator Model
+Applications support multi-user collaboration and scoped API credentials governed by strict permission tiers:
+
+| Role | Hierarchy Level | Capabilities |
+| :--- | :--- | :--- |
+| **`OWNER`** | Administrative (Tier 3) | Full administrative control. Invite/remove members, update roles, provision/revoke API keys, and manage skills. |
+| **`EDITOR`** | Engineering (Tier 2) | Create, update, replace, and delete application skills. Provision non-owner developer/CI keys. |
+| **`VIEWER`** | Read-Only (Tier 1) | Read-only inspection of application skills, metadata, and search endpoints. Prohibited from mutating skills. |
+
+#### REST & gRPC Contract Specifications ([`proto/retailcortex/registration/v1/registration_service.proto`](file:///Users/rmcguinness/Projects/skill-builder/proto/retailcortex/registration/v1/registration_service.proto))
+
+| Endpoint | Method | gRPC RPC | Required Role | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/apps/members` | `GET` | `ListMembers` | `VIEWER` | List team collaborators |
+| `/api/v1/apps/members/invite` | `POST` | `InviteMember` | `OWNER` | Invite user with `OWNER`, `EDITOR`, or `VIEWER` role |
+| `/api/v1/apps/members/accept` | `GET`/`POST` | `AcceptInvitation` | *Public Token* | Activate pending invitation token |
+| `/api/v1/apps/members/{member_id}` | `PATCH` | `UpdateMemberRole` | `OWNER` | Change collaborator role |
+| `/api/v1/apps/members/{member_id}` | `DELETE` | `RemoveMember` | `OWNER` | Revoke collaborator access |
+| `/api/v1/apps/keys` | `GET` | `ListApiKeys` | `OWNER` | List active & revoked scoped API keys |
+| `/api/v1/apps/keys` | `POST` | `CreateApiKey` | `EDITOR` | Provision scoped API key with expiration |
+| `/api/v1/apps/keys/{key_id}` | `DELETE` | `RevokeApiKey` | `OWNER` | Instantly revoke scoped API key |
+
 ---
 
 ## 7. Multi-Modal Vector Embedding & Poly-Column Indexing

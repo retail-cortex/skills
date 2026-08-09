@@ -30,6 +30,7 @@ go_binary(
 
 go_test(
     name = "client_test",
+    size = "small",
     srcs = ["main_test.go"],
     data = ["configs/.env.toml"],
     embed = [":client_lib"],

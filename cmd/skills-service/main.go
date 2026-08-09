@@ -85,6 +85,19 @@ func SetupAppEngine(cfg *Config) *gin.Engine {
 		{
 			apps.POST("/register", handlers.RegisterApp)
 			apps.GET("/verify", handlers.VerifyApp)
+
+			// RBAC Member Management
+			apps.GET("/members", handlers.ListMembers)
+			apps.POST("/members/invite", handlers.InviteMember)
+			apps.GET("/members/accept", handlers.AcceptInvitation)
+			apps.POST("/members/accept", handlers.AcceptInvitation)
+			apps.PATCH("/members/:member_id", handlers.UpdateMemberRole)
+			apps.DELETE("/members/:member_id", handlers.RemoveMember)
+
+			// Scoped API Key Management
+			apps.GET("/keys", handlers.ListAPIKeys)
+			apps.POST("/keys", handlers.CreateScopedAPIKey)
+			apps.DELETE("/keys/:key_id", handlers.RevokeAPIKey)
 		}
 
 		skills := v1.Group("/skills")

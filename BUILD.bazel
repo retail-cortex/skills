@@ -71,6 +71,11 @@ alias(
 )
 
 alias(
+    name = "validate",
+    actual = "//cmd/skm",
+)
+
+alias(
     name = "diagrams",
     actual = "//tools/proto_diagrams",
 )

@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "client_lib",
     srcs = ["main.py"],
-    data = [".env"],
     imports = ["."],
     deps = [
         "//clients/python:loader_lib",

@@ -22,31 +22,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
+      - name: Set up Bazelisk / Bazel
+        uses: bazelbuild/setup-bazelisk@v3
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
+      - name: Build Hugo Documentation Site via Bazel
+        run: bazel build //docs:site
 
-      - name: Install dependencies with uv
-        run: uv sync
+      - name: Stage Documentation Output
+        run: |
+          mkdir -p site
+          cp -rL bazel-bin/docs/site/* site/
 
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
-
-      - name: Build MkDocs Site
-        env:
-          PYTHONPATH: packages/loader/src:packages/validator/src
-        run: uv run build-docs
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
@@ -61,4 +54,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4

@@ -568,10 +568,12 @@ func (r *SkillsRepository) ListSkills(
 			})
 		}
 
-		// Prune results with low semantic similarity
-		threshold := 0.30
+		// Prune results with low semantic similarity while preserving valid lexical/keyword matches
+		threshold := 0.10
 		if maxScore > 0.45 {
-			threshold = maxScore - 0.15
+			threshold = maxScore - 0.20
+		} else if maxScore > 0 {
+			threshold = maxScore * 0.4
 		}
 
 		filtered := make([]ScoredSkill, 0, len(scored))

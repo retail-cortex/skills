@@ -13,3 +13,14 @@ test_suite(
         "//tests/e2e:test_skills_e2e",
     ],
 )
+
+test_suite(
+    name = "integration",
+    tags = [
+        "integration",
+        "manual",
+    ],
+    tests = [
+        "//pkg/embedding:embedding_integration_test",
+    ],
+)

@@ -26,17 +26,18 @@ import (
 	"github.com/retail-cortex/skills/pkg/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) {
+func setupTestDB(t *testing.T) *gorm.DB {
 	data.ResetEngine()
-	_, err := data.InitDB(filepath.Join(t.TempDir(), "test.db"))
+	db, err := data.InitDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
+	return db
 }
 
 func TestAppsService(t *testing.T) {
-	setupTestDB(t)
-	db := data.GetDB()
+	db := setupTestDB(t)
 	customRepo := data.NewAppsRepository()
 	svc := service.NewAppsService(customRepo)
 
@@ -58,8 +59,7 @@ func TestAppsService(t *testing.T) {
 }
 
 func TestSkillsService(t *testing.T) {
-	setupTestDB(t)
-	db := data.GetDB()
+	db := setupTestDB(t)
 	appsSvc := service.NewAppsService()
 	customSkillsRepo := data.NewSkillsRepository()
 	skillsSvc := service.NewSkillsService(customSkillsRepo)

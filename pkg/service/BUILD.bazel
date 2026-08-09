@@ -30,5 +30,6 @@ go_test(
         "//pkg/model",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
+        "@io_gorm_gorm//:gorm",
     ],
 )

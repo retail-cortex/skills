@@ -17,6 +17,7 @@ package embedding_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -47,6 +48,10 @@ type GroundTruthCase struct {
 }
 
 func TestEmbeddingProvidersHarness(t *testing.T) {
+	if os.Getenv("ENV") != "integration" && os.Getenv("MODENV_ENV") != "integration" && os.Getenv("APP_ENV") != "integration" {
+		t.Skip("Skipping integration test: set ENV=integration to run against live AlloyDB/Vertex instance")
+	}
+
 	ctx := context.Background()
 
 	// Initialize Candidate Providers

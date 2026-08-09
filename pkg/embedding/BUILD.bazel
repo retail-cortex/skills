@@ -10,7 +10,22 @@ go_library(
 
 go_test(
     name = "embedding_test",
+    srcs = ["provider_test.go"],
+    deps = [
+        ":embedding",
+        "//pkg/model",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)
+
+go_test(
+    name = "embedding_integration_test",
     srcs = ["harness_test.go"],
+    tags = [
+        "integration",
+        "manual",
+    ],
     deps = [
         ":embedding",
         "//pkg/embedding/alloydb",

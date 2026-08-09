@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -23,7 +24,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -103,17 +103,17 @@ func TestInvalidAPIKeySkillOps(t *testing.T) {
 	}
 }
 
-func TestMainFunc(t *testing.T) {
-	t.Setenv("PORT", "8999")
-	t.Setenv("DATABASE_URL", "file::memory:?cache=shared")
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		p, err := os.FindProcess(os.Getpid())
-		if err == nil {
-			_ = p.Signal(syscall.SIGINT)
-		}
-	}()
-	main()
+func TestStartServer(t *testing.T) {
+	cfg := &Config{
+		Host:        "127.0.0.1",
+		Port:        0,
+		DatabaseURL: filepath.Join(t.TempDir(), "test_main.db"),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	err := StartServer(ctx, cfg)
+	assert.NoError(t, err)
 }
 
 func TestAppsAndSkillsRESTWorkflow(t *testing.T) {

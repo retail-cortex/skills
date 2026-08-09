@@ -61,6 +61,13 @@ func LoadConfig() *Config {
 		}
 	}
 
+	// Map ENV or APP_ENV to MODENV_ENV if set
+	if env := os.Getenv("ENV"); env != "" && os.Getenv("MODENV_ENV") == "" {
+		_ = os.Setenv("MODENV_ENV", env)
+	} else if appEnv := os.Getenv("APP_ENV"); appEnv != "" && os.Getenv("MODENV_ENV") == "" {
+		_ = os.Setenv("MODENV_ENV", appEnv)
+	}
+
 	// Load hierarchical configuration using modenv (.env.toml, .env.<runtime>.toml, .env.local.toml)
 	if _, err := modenv.Load(cfg); err != nil {
 		log.Printf("modenv load notice: %v (using defaults/env vars)", err)

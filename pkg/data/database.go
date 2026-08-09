@@ -50,8 +50,11 @@ func InitDB(databaseURL ...string) (*gorm.DB, error) {
 		url = databaseURL[0]
 	}
 
+	isPostgres := strings.HasPrefix(url, "postgres://") || strings.HasPrefix(url, "postgresql://") ||
+		strings.Contains(url, "host=") || strings.Contains(url, "user=") || strings.Contains(url, "port=")
+
 	var dialector gorm.Dialector
-	if strings.HasPrefix(url, "postgres://") || strings.HasPrefix(url, "postgresql://") {
+	if isPostgres {
 		dialector = postgres.Open(url)
 	} else {
 		dialector = sqlite.Open(url)
@@ -66,7 +69,7 @@ func InitDB(databaseURL ...string) (*gorm.DB, error) {
 
 	if db.Migrator().HasTable(&model.Skill{}) {
 		// Clean up duplicate legacy rows keeping only newest record per (app_id, category, name)
-		if strings.HasPrefix(url, "postgres://") || strings.HasPrefix(url, "postgresql://") {
+		if isPostgres {
 			_ = db.Exec(`
 				DELETE FROM skills a USING skills b 
 				WHERE a.created_at < b.created_at 
@@ -90,9 +93,11 @@ func InitDB(databaseURL ...string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// For PostgreSQL and AlloyDB, initialize pgvector extension and HNSW indexes
-	if strings.HasPrefix(url, "postgres://") || strings.HasPrefix(url, "postgresql://") {
+	// For PostgreSQL and AlloyDB, initialize vector/alloydb_scann/google_ml extensions and HNSW indexes
+	if isPostgres {
 		_ = db.Exec("CREATE EXTENSION IF NOT EXISTS vector;")
+		_ = db.Exec("CREATE EXTENSION IF NOT EXISTS alloydb_scann;")
+		_ = db.Exec("CREATE EXTENSION IF NOT EXISTS google_ml CASCADE;")
 		_ = db.Exec("ALTER TABLE skill_embeddings ADD COLUMN IF NOT EXISTS embedding_768 vector(768);")
 		_ = db.Exec("ALTER TABLE skill_embeddings ADD COLUMN IF NOT EXISTS embedding_1408 vector(1408);")
 		_ = db.Exec("ALTER TABLE skill_embeddings ADD COLUMN IF NOT EXISTS embedding_3072 vector(3072);")

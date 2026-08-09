@@ -40,10 +40,10 @@ Each supported language ecosystem features a standalone client integration examp
 
 Explore dedicated integration guides for each language ecosystem:
 
-- 🐹 **[Go Client & Skills Examples](go.md)**: Standalone Go module integration with `modenv` property loading and Go skill collections.
-- 🐍 **[Python Client, Polyglot & Skills Examples](python.md)**: `uv` and `python-dotenv` client setup, Polyglot Monorepo Scaffolding Agent, and Python skill packages.
-- ☕ **[Java Client & Maven Plugin Examples](java.md)**: Maven POM configuration, `skills-loader-maven-plugin` execution, System Properties resolution, and Java skill packages.
-- 📚 **[Enterprise Skills Registry Catalog](skills.md)**: Full index of 23 enterprise AI Agent Skills distributed across language skill packages and standalone markdown definitions.
+- 🐹 **[Go Client & Skills Examples](go/)**: Standalone Go module integration with `modenv` property loading and Go skill collections.
+- 🐍 **[Python Client, Polyglot & Skills Examples](python/)**: `uv` and `python-dotenv` client setup, Polyglot Monorepo Scaffolding Agent, and Python skill packages.
+- ☕ **[Java Client & Maven Plugin Examples](java/)**: Maven POM configuration, `skills-loader-maven-plugin` execution, System Properties resolution, and Java skill packages.
+- 📚 **[Enterprise Skills Registry Catalog](skills/)**: Full index of 23 enterprise AI Agent Skills distributed across language skill packages and standalone markdown definitions.
 
 ---
 

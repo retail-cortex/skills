@@ -53,15 +53,14 @@ uv run python examples/polyglot-developer/main.py --target-dir ./scratch/my-poly
 
 This documentation site is organized into logical sections:
 
-- [Project Overview](index.md): Introduction, quickstart commands, repository layout, and licensing.
-- [Specification](specification.md): Enterprise AI Agent Skills Specification (v1.0.0), frontmatter schema, 5-point SDLC compliance, `.manifest.lock` cryptographic integrity, and polyglot URI resolution.
-- [Architecture](architecture.md): Engineering standards, Google OAuth2 integration, HTTP 429 rate limit resilience, and multi-language defensive safety.
-- [Critical Analysis](analysis.md): Comparative analysis against agentskills.io specification and ecosystem showcase clients.
-- [Skills Registry](examples/skills.md): Specialized domain and technology enterprise skills catalog.
-
-- [CLI Client (skm)](cli.md): Standalone `skm` Go CLI client manual, cross-platform builds, polyglot URI resolution, subcommands, and Oh My Zsh plugin.
-- [Packages](packages.md): Modular Python workspace packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`) and Bazel targets.
-- [Examples](examples/_index.md): Standalone integration packages, polyglot clients, web servers, and setup guides for Go, Python, and Java.
+- [Project Overview](./): Introduction, quickstart commands, repository layout, and licensing.
+- [Specification](specification/): Enterprise AI Agent Skills Specification (v1.0.0), frontmatter schema, 5-point SDLC compliance, `.manifest.lock` cryptographic integrity, and polyglot URI resolution.
+- [Architecture](architecture/): Engineering standards, Google OAuth2 integration, HTTP 429 rate limit resilience, and multi-language defensive safety.
+- [Critical Analysis](analysis/): Comparative analysis against agentskills.io specification and ecosystem showcase clients.
+- [Skills Registry](examples/skills/): Specialized domain and technology enterprise skills catalog.
+- [CLI Client (skm)](cli/): Standalone `skm` Go CLI client manual, cross-platform builds, polyglot URI resolution, subcommands, and Oh My Zsh plugin.
+- [Packages](packages/): Modular Python workspace packages (`skills-loader`, `skills-a2a`, `skills-a2ui`, `skills-bazel`, `skills-python`, `skills-go`, `skills-java`, `skills-protobuf`, `skills-frontend`, `skills-devops`, `skills-database`, `skills-google-adk-skill-builder`, `validator`) and Bazel targets.
+- [Examples](examples/): Standalone integration packages, polyglot clients, web servers, and setup guides for Go, Python, and Java.
 
 
 
@@ -69,7 +68,7 @@ This documentation site is organized into logical sections:
 
 ## Workspace Directory Layout
 
-The project is governed by a root [MODULE.bazel]({{ config.repo_url }}/blob/main/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
+The project is governed by a root [MODULE.bazel](https://github.com/retail-cortex/skills/blob/main/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
 
 ```text
 skill-builder/
@@ -115,4 +114,4 @@ skill-builder/
 
 ## License & Legal Notices
 
-This project is licensed under the Apache License, Version 2.0. See [LICENSE]({{ config.repo_url }}/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE]({{ config.repo_url }}/blob/main/NOTICE).
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/retail-cortex/skills/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE](https://github.com/retail-cortex/skills/blob/main/NOTICE).

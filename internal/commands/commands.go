@@ -1,16 +1,35 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package commands
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/retail-cortex/skills/internal/installer"
 	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/skills/internal/installer"
+	"github.com/retail-cortex/skills/pkg/model"
 	"github.com/retail-cortex/skills/pkg/validator"
 )
 
@@ -20,7 +39,7 @@ var (
 	BuildDate = "unknown"
 )
 
-// Execute runs the skai CLI logic with provided args, stdout, and stderr.
+// Execute runs the skm CLI logic with provided args, stdout, and stderr.
 func Execute(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 1 {
 		printUsage(stdout)
@@ -112,7 +131,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if len(uris) == 0 {
-		fmt.Fprintf(stderr, "Error: missing skill URI (e.g. github://..., pkg://..., file://...)\n")
+		fmt.Fprintf(stderr, "Error: missing skill URI (e.g. skm://..., github://..., pkg://..., file://...)\n")
 		return 1
 	}
 
@@ -209,9 +228,93 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+type RemoteSkillsResult struct {
+	Items      []*model.SkillResponse
+	TotalCount int64
+	Page       int
+	PageSize   int
+	TotalPages int
+}
+
+func fetchRemoteSkills(serverURL string, query string, page int, pageSize int) (*RemoteSkillsResult, error) {
+	baseURL := strings.TrimRight(serverURL, "/") + "/api/v1/skills"
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	if strings.TrimSpace(query) != "" {
+		q.Set("s", query)
+	}
+	if page > 0 {
+		q.Set("page", strconv.Itoa(page))
+	}
+	if pageSize > 0 {
+		q.Set("page_size", strconv.Itoa(pageSize))
+	}
+	u.RawQuery = q.Encode()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var results []*model.SkillResponse
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, err
+	}
+
+	totalCount := int64(len(results))
+	if tcHeader := resp.Header.Get("X-Total-Count"); tcHeader != "" {
+		if tc, err := strconv.ParseInt(tcHeader, 10, 64); err == nil {
+			totalCount = tc
+		}
+	}
+
+	pageVal := 1
+	if pHeader := resp.Header.Get("X-Page"); pHeader != "" {
+		if p, err := strconv.Atoi(pHeader); err == nil {
+			pageVal = p
+		}
+	}
+
+	pageSizeVal := len(results)
+	if psHeader := resp.Header.Get("X-Page-Size"); psHeader != "" {
+		if ps, err := strconv.Atoi(psHeader); err == nil {
+			pageSizeVal = ps
+		}
+	}
+
+	totalPagesVal := 1
+	if tpHeader := resp.Header.Get("X-Total-Pages"); tpHeader != "" {
+		if tp, err := strconv.Atoi(tpHeader); err == nil {
+			totalPagesVal = tp
+		}
+	}
+
+	return &RemoteSkillsResult{
+		Items:      results,
+		TotalCount: totalCount,
+		Page:       pageVal,
+		PageSize:   pageSizeVal,
+		TotalPages: totalPagesVal,
+	}, nil
+}
+
 func runList(args []string, stdout, stderr io.Writer) int {
 	var scanDir = ""
 	var jsonOutput = false
+	var isRemote = false
+	var serverURL = ""
+	var page = 1
+	var pageSize = 5
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -225,7 +328,85 @@ func runList(args []string, stdout, stderr io.Writer) int {
 			scanDir = strings.TrimPrefix(arg, "-d=")
 		case arg == "--json":
 			jsonOutput = true
+		case arg == "-r" || arg == "--remote":
+			isRemote = true
+		case arg == "-s" || arg == "--server":
+			isRemote = true
+			if i+1 < len(args) {
+				serverURL = args[i+1]
+				i++
+			}
+		case strings.HasPrefix(arg, "--server="):
+			isRemote = true
+			serverURL = strings.TrimPrefix(arg, "--server=")
+		case arg == "-p" || arg == "--page":
+			if i+1 < len(args) {
+				if p, err := strconv.Atoi(args[i+1]); err == nil && p >= 1 {
+					page = p
+				}
+				i++
+			}
+		case strings.HasPrefix(arg, "--page="):
+			if p, err := strconv.Atoi(strings.TrimPrefix(arg, "--page=")); err == nil && p >= 1 {
+				page = p
+			}
+		case arg == "-n" || arg == "--max" || arg == "--page-size" || arg == "--limit":
+			if i+1 < len(args) {
+				if ps, err := strconv.Atoi(args[i+1]); err == nil && ps >= 1 {
+					pageSize = ps
+				}
+				i++
+			}
+		case strings.HasPrefix(arg, "--max=") || strings.HasPrefix(arg, "--page-size=") || strings.HasPrefix(arg, "--limit="):
+			for _, prefix := range []string{"--max=", "--page-size=", "--limit="} {
+				if strings.HasPrefix(arg, prefix) {
+					if ps, err := strconv.Atoi(strings.TrimPrefix(arg, prefix)); err == nil && ps >= 1 {
+						pageSize = ps
+					}
+					break
+				}
+			}
 		}
+	}
+
+	if isRemote {
+		if serverURL == "" {
+			cfg, _ := LoadCLIConfig()
+			serverURL = cfg.ServerURL
+		}
+		if serverURL == "" {
+			serverURL = "http://localhost:8000"
+		}
+		res, err := fetchRemoteSkills(serverURL, "", page, pageSize)
+		if err != nil {
+			fmt.Fprintf(stderr, "Failed to list remote skills from %s: %v\n", serverURL, err)
+			return 1
+		}
+		if jsonOutput {
+			bytes, _ := json.MarshalIndent(res.Items, "", "  ")
+			fmt.Fprintln(stdout, string(bytes))
+			return 0
+		}
+		pageSummary := ""
+		if res.TotalPages > 1 || res.TotalCount > int64(len(res.Items)) {
+			pageSummary = fmt.Sprintf(" (Page %d of %d, %d of %d total on %s)", res.Page, res.TotalPages, len(res.Items), res.TotalCount, serverURL)
+		} else {
+			pageSummary = fmt.Sprintf(" (%d found on %s)", len(res.Items), serverURL)
+		}
+		fmt.Fprintf(stdout, "\nSKM Server Skills%s\n", pageSummary)
+		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 75))
+		for _, s := range res.Items {
+			cat := "general"
+			if s.Category != nil && *s.Category != "" {
+				cat = *s.Category
+			}
+			fmt.Fprintf(stdout, "- %-25s v:%-6s cat:%-10s uri:%s\n", s.Name, s.Version, cat, s.URI)
+			if s.Description != "" {
+				fmt.Fprintf(stdout, "  %s\n", s.Description)
+			}
+		}
+		fmt.Fprintln(stdout)
+		return 0
 	}
 
 	if scanDir == "" {
@@ -257,19 +438,15 @@ func runList(args []string, stdout, stderr io.Writer) int {
 	})
 
 	if jsonOutput {
-		bytes, err := json.MarshalIndent(summaries, "", "  ")
-		if err != nil {
-			fmt.Fprintf(stderr, "Failed to output JSON: %v\n", err)
-			return 1
-		}
+		bytes, _ := json.MarshalIndent(summaries, "", "  ")
 		fmt.Fprintln(stdout, string(bytes))
 		return 0
 	}
 
-	fmt.Fprintf(stdout, "\nSKM Registered Skills (%d found in %s)\n", len(summaries), scanDir)
+	fmt.Fprintf(stdout, "\nDiscovered %d skills in '%s':\n", len(summaries), scanDir)
 	fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 75))
 	for _, s := range summaries {
-		fmt.Fprintf(stdout, "- %-25s refs:%-2d ex:%-2d path:%s\n", s.Name, s.ReferenceCount, s.ExampleCount, s.Path)
+		fmt.Fprintf(stdout, "- %-25s refs:%-2d examples:%-2d path:%s\n", s.Name, s.ReferenceCount, s.ExampleCount, s.Path)
 		if s.Description != "" {
 			fmt.Fprintf(stdout, "  %s\n", s.Description)
 		}
@@ -280,7 +457,12 @@ func runList(args []string, stdout, stderr io.Writer) int {
 
 func runSearch(args []string, stdout, stderr io.Writer) int {
 	var scanDir = ""
+	var isRemote = false
+	var serverURL = ""
+	var jsonOutput = false
 	var queryTerms []string
+	var page = 1
+	var pageSize = 5
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -292,6 +474,46 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 			}
 		case strings.HasPrefix(arg, "-d="):
 			scanDir = strings.TrimPrefix(arg, "-d=")
+		case arg == "--json":
+			jsonOutput = true
+		case arg == "-r" || arg == "--remote":
+			isRemote = true
+		case arg == "-s" || arg == "--server":
+			isRemote = true
+			if i+1 < len(args) {
+				serverURL = args[i+1]
+				i++
+			}
+		case strings.HasPrefix(arg, "--server="):
+			isRemote = true
+			serverURL = strings.TrimPrefix(arg, "--server=")
+		case arg == "-p" || arg == "--page":
+			if i+1 < len(args) {
+				if p, err := strconv.Atoi(args[i+1]); err == nil && p >= 1 {
+					page = p
+				}
+				i++
+			}
+		case strings.HasPrefix(arg, "--page="):
+			if p, err := strconv.Atoi(strings.TrimPrefix(arg, "--page=")); err == nil && p >= 1 {
+				page = p
+			}
+		case arg == "-n" || arg == "--max" || arg == "--page-size" || arg == "--limit":
+			if i+1 < len(args) {
+				if ps, err := strconv.Atoi(args[i+1]); err == nil && ps >= 1 {
+					pageSize = ps
+				}
+				i++
+			}
+		case strings.HasPrefix(arg, "--max=") || strings.HasPrefix(arg, "--page-size=") || strings.HasPrefix(arg, "--limit="):
+			for _, prefix := range []string{"--max=", "--page-size=", "--limit="} {
+				if strings.HasPrefix(arg, prefix) {
+					if ps, err := strconv.Atoi(strings.TrimPrefix(arg, prefix)); err == nil && ps >= 1 {
+						pageSize = ps
+					}
+					break
+				}
+			}
 		default:
 			if !strings.HasPrefix(arg, "-") {
 				queryTerms = append(queryTerms, arg)
@@ -304,7 +526,53 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	query := strings.ToLower(strings.Join(queryTerms, " "))
+	query := strings.Join(queryTerms, " ")
+
+	if isRemote {
+		if serverURL == "" {
+			cfg, _ := LoadCLIConfig()
+			serverURL = cfg.ServerURL
+		}
+		if serverURL == "" {
+			serverURL = "http://localhost:8000"
+		}
+		res, err := fetchRemoteSkills(serverURL, query, page, pageSize)
+		if err != nil {
+			fmt.Fprintf(stderr, "Failed to search remote skills from %s: %v\n", serverURL, err)
+			return 1
+		}
+		if jsonOutput {
+			bytes, _ := json.MarshalIndent(res.Items, "", "  ")
+			fmt.Fprintln(stdout, string(bytes))
+			return 0
+		}
+		pageSummary := ""
+		if res.TotalPages > 1 || res.TotalCount > int64(len(res.Items)) {
+			pageSummary = fmt.Sprintf(" (Page %d of %d, %d of %d matches on %s)", res.Page, res.TotalPages, len(res.Items), res.TotalCount, serverURL)
+		} else {
+			pageSummary = fmt.Sprintf(" (%d matches on %s)", len(res.Items), serverURL)
+		}
+		fmt.Fprintf(stdout, "\nSKM Remote Search Results for '%s'%s\n", query, pageSummary)
+		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 75))
+		for _, s := range res.Items {
+			scoreStr := ""
+			if s.SimilarityScore != nil {
+				scoreStr = fmt.Sprintf(" [score: %.2f]", *s.SimilarityScore)
+			}
+			chunkStr := ""
+			if s.MatchingChunk != nil && *s.MatchingChunk != "" {
+				chunkStr = fmt.Sprintf(" (match: %s)", *s.MatchingChunk)
+			}
+			fmt.Fprintf(stdout, "- %-25s v:%-6s uri:%s%s%s\n", s.Name, s.Version, s.URI, scoreStr, chunkStr)
+			if s.Description != "" {
+				fmt.Fprintf(stdout, "  %s\n", s.Description)
+			}
+		}
+		fmt.Fprintln(stdout)
+		return 0
+	}
+
+	queryLower := strings.ToLower(query)
 	if scanDir == "" {
 		if isDir(".skills") {
 			scanDir = ".skills"
@@ -321,9 +589,9 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 
 	var matches []*skillsloader.SkillDefinition
 	for _, s := range skills {
-		if strings.Contains(strings.ToLower(s.Name), query) ||
-			strings.Contains(strings.ToLower(s.Description), query) ||
-			strings.Contains(strings.ToLower(s.Instructions), query) {
+		if strings.Contains(strings.ToLower(s.Name), queryLower) ||
+			strings.Contains(strings.ToLower(s.Description), queryLower) ||
+			strings.Contains(strings.ToLower(s.Instructions), queryLower) {
 			matches = append(matches, s)
 		}
 	}
@@ -681,8 +949,10 @@ Options for 'validate':
   --json                  Output audit summary as structured JSON
 
 Options for 'list' and 'search':
-  -d <path>               Target directory to scan/search
-  --json                  Output list in JSON format
+  -r, --remote            Query the central SKM server (configured via skm login / config)
+  -s, --server <URL>      Target server URL for remote query
+  -d <path>               Target directory to scan/search locally
+  --json                  Output list/search results in JSON format
 
 Options for 'compile':
   -d, --dir <path>        Target directory to scan (default: workspace root)

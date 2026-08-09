@@ -13,6 +13,8 @@ go_library(
     importpath = "github.com/retail-cortex/skills/pkg/service",
     deps = [
         "//pkg/data",
+        "//pkg/embedding",
+        "//pkg/embedding/vertex",
         "//pkg/model",
         "@io_gorm_gorm//:gorm",
     ],

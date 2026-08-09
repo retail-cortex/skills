@@ -182,55 +182,80 @@ class SkillLoaderTest {
 
 ---
 
-## 5. Integrating Skills with Google ADK Agents
+## 5. JIT Dynamic Pre-Call Retrieval (`suggestSkills`)
 
-Loaded `SkillDefinition` records map directly to Google ADK system instructions and agent prompt configurations. Server connection properties are loaded via Java System properties (`System.getProperty`) with environment variable fallbacks:
+The Java client provides dynamic pre-call tool suggestions for autonomous agents, bounding candidates to the top $\le 3$ skills:
 
 ```java
 package com.company.agent;
 
-import com.retailcortex.skills.loader.SkillLoader;
+import com.retailcortex.skills.loader.SkillRegistry;
 import com.retailcortex.skills.loader.SkillDefinition;
 
-import com.google.adk.agent.Agent;
+import java.util.List;
 
-import java.io.InputStream;
-import java.util.Map;
+public class SkillSuggester {
+    public static void main(String[] args) {
+        SkillRegistry registry = new SkillRegistry();
 
-public class ADKAgentRunner {
-    public static void main(String[] args) throws Exception {
-        // 1. Resolve server and authentication System properties (-Dskm.server.url=... -Dskm.api.key=...)
-        String serverUrl = System.getProperty("skm.server.url",
-                System.getenv().getOrDefault("SKM_SERVER_URL", "http://localhost:8080"));
-        String apiKey = System.getProperty("skm.api.key",
-                System.getenv().getOrDefault("SKM_API_KEY", ""));
+        // Retrieve top 3 skills ranked by vector relevance
+        List<SkillDefinition> suggested = registry.suggestSkills(
+                "Generate BigQuery SQL analytics statement for retail orders",
+                3,
+                "http://localhost:8000"
+        );
 
-        // 2. Load skill definition from classpath manifest or remote SKM server
-        Map<String, SkillDefinition> skills;
-        try (InputStream is = ADKAgentRunner.class.getResourceAsStream("/skills_manifest.json")) {
-            if (is != null) {
-                skills = SkillLoader.loadSkillsFromStream(is);
-            } else {
-                skills = SkillLoader.loadSkillsFromSKMServer("sk-9b1deb4d", null, serverUrl, apiKey);
-            }
+        for (SkillDefinition s : suggested) {
+            System.out.printf("- %s: %s%n", s.getName(), s.getDescription());
         }
-
-        SkillDefinition skill = skills.get("gemini-api");
-
-        // 3. Instantiate Google ADK Agent grounded in skill instructions
-        Agent agent = Agent.builder()
-                .name(skill.name())
-                .model("gemini-2.0-flash")
-                .systemInstruction(skill.instructions())
-                .build();
-
-        // 4. Execute ADK agent request
-        String response = agent.execute("Generate BigQuery analytics statement for retail orders");
-        System.out.println("ADK Agent Response:\n" + response);
     }
 }
 ```
 
+---
+
+## 6. Integrating Skills with Google ADK Agents
+
+Loaded `SkillDefinition` records map directly to Google ADK system instructions and agent prompt configurations.
+
+```java
+package com.company.agent;
+
+import com.retailcortex.skills.loader.SkillRegistry;
+import com.retailcortex.skills.loader.SkillDefinition;
+import com.google.adk.agent.Agent;
+
+import java.util.List;
+
+public class ADKAgentRunner {
+    public static void main(String[] args) throws Exception {
+        String serverUrl = System.getProperty("skm.server.url",
+                System.getenv().getOrDefault("SKM_SERVER_URL", "http://localhost:8000"));
+
+        SkillRegistry registry = new SkillRegistry();
+
+        // 1. Pre-call prompt grounding: retrieve top 3 skills dynamically
+        String prompt = "Generate BigQuery analytics statement for retail orders";
+        List<SkillDefinition> skills = registry.suggestSkills(prompt, 3, serverUrl);
+
+        StringBuilder instructions = new StringBuilder("You are an enterprise AI coding agent.\n");
+        for (SkillDefinition skill : skills) {
+            instructions.append(String.format("%n### %s%n%s%n", skill.getName(), skill.getInstructions()));
+        }
+
+        // 2. Instantiate Google ADK Agent grounded in suggested skill instructions
+        Agent agent = Agent.builder()
+                .name("retail-coding-agent")
+                .model("gemini-2.0-flash")
+                .systemInstruction(instructions.toString())
+                .build();
+
+        // 3. Execute ADK agent request
+        String response = agent.execute(prompt);
+        System.out.println("ADK Agent Response:\n" + response);
+    }
+}
+```
 
 ---
 
@@ -238,5 +263,7 @@ public class ADKAgentRunner {
 
 1. **Logging Compliance**: `SkillLoader` strictly utilizes `SLF4J` for all diagnostic logging. Never use `e.printStackTrace()` or stdout for error logging.
 2. **Immutable Thread Safety**: `SkillDefinition` objects are immutable Java records, enabling safe multi-threaded sharing across Spring Singletons and Weld CDI beans.
-3. **Fail-Fast Build Integrity**: Configure `<failOnError>true</failOnError>` in the plugin to ensure corrupt skill definitions abort CI/CD pipelines before deployment.
+3. **JIT Dynamic Grounding**: Use `registry.suggestSkills(prompt, 3, serverUrl)` to avoid blowing up agent context windows.
+4. **Fail-Fast Build Integrity**: Configure `<failOnError>true</failOnError>` in the plugin to ensure corrupt skill definitions abort CI/CD pipelines before deployment.
+
 

@@ -6,7 +6,6 @@ module(
 bazel_dep(name = "rules_python", version = "1.7.0")
 bazel_dep(name = "apple_support", version = "1.11.1")
 bazel_dep(name = "rules_shell", version = "0.6.1")
-
 bazel_dep(name = "rules_hugo", version = "0.3.0")
 git_override(
     module_name = "rules_hugo",
@@ -18,13 +17,10 @@ git_override(
 hugo_deps = use_extension("@rules_hugo//hugo:extensions.bzl", "hugo_deps")
 use_repo(hugo_deps, "hugo", "hugo_theme_geekdoc")
 
-
-
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     python_version = "3.13",
 )
-
 
 # --- Go & Proto Language Rules ---
 bazel_dep(name = "rules_cc", version = "0.2.17")
@@ -32,8 +28,6 @@ bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "protobuf", version = "33.4")
 bazel_dep(name = "rules_go", version = "0.61.1")
 bazel_dep(name = "gazelle", version = "0.51.3")
-
-
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.26.5")
@@ -52,6 +46,7 @@ use_repo(
     "com_github_rrmcguinness_modenv",
     "com_github_stretchr_testify",
     "in_gopkg_yaml_v3",
+    "io_gorm_driver_postgres",
     "io_gorm_driver_sqlite",
     "io_gorm_gorm",
 )

@@ -7,7 +7,6 @@ filegroup(
     srcs = glob(["src/**"]),
 )
 
-
 py_library(
     name = "skills_java",
     srcs = glob(["src/retailcortex_skills_java/**/*.py"]),

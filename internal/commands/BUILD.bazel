@@ -19,7 +19,6 @@ go_library(
     ],
 )
 
-
 go_test(
     name = "commands_test",
     size = "small",

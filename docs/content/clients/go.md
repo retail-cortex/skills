@@ -110,9 +110,43 @@ func TestSkillsIntegrity(t *testing.T) {
 }
 ```
 
-## 4. Integrating Skills with Google ADK Agents
+## 4. JIT Dynamic Pre-Call Retrieval (`SuggestSkills`)
 
-Loaded `SkillDefinition` objects map directly to Google ADK Agent system instructions, prompt guidelines, and executable tools. Environment and server properties are loaded via `modenv` (`github.com/rrmcguinness/modenv/pkg/modenv`):
+The Go client provides dynamic semantic tool retrieval for autonomous agents to limit active tools to the top $\le 3$ ranked skills:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+)
+
+func main() {
+	// Initialize registry from local workspace or embedded assets
+	registry, err := skillsloader.NewSkillRegistry("", nil, nil, "")
+	if err != nil {
+		log.Fatalf("Failed to initialize registry: %v", err)
+	}
+
+	// Suggest top 3 skills for user prompt via remote vector search (fallback to local keyword search)
+	suggested := registry.SuggestSkills("raster image canvas drawing 2d", 3, "http://localhost:8000")
+
+	fmt.Printf("Dynamically suggested %d skills:\n", len(suggested))
+	for _, s := range suggested {
+		fmt.Printf("- %s: %s\n", s.Name, s.Description)
+	}
+}
+```
+
+---
+
+## 5. Integrating Skills with Google ADK Agents
+
+Loaded `SkillDefinition` objects map directly to Google ADK Agent system instructions, prompt guidelines, and executable tools.
 
 ```go
 package main
@@ -137,7 +171,7 @@ type AppConfig struct {
 func main() {
 	ctx := context.Background()
 
-	// 1. Load application properties from cascading TOML configuration using modenv
+	// 1. Load application configuration using modenv
 	var cfg AppConfig
 	if _, err := modenv.Load(&cfg); err != nil {
 		log.Printf("Warning: failed to load modenv configuration: %v", err)
@@ -145,25 +179,29 @@ func main() {
 
 	serverURL := cfg.SKM.ServerURL
 	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+		serverURL = "http://localhost:8000"
 	}
 
-	// 2. Load skill definition from central SKM server using loaded modenv properties
-	skills, err := skillsloader.LoadSkillsFromSKMServer("sk-9b1deb4d", nil, serverURL, cfg.SKM.APIKey)
-	if err != nil {
-		log.Fatalf("Failed to load skill: %v", err)
-	}
-	skill := skills["gemini-api"]
+	registry, _ := skillsloader.NewSkillRegistry("", nil, nil, "")
 
-	// 3. Instantiate Google ADK Agent grounded in skill instructions
+	// 2. Pre-call prompt grounding: retrieve top 3 skills dynamically
+	prompt := "Synthesize demand forecasting query for store #42"
+	skills := registry.SuggestSkills(prompt, 3, serverURL)
+
+	instructions := "You are an enterprise AI coding agent.\n"
+	for _, skill := range skills {
+		instructions += fmt.Sprintf("\n### %s\n%s\n", skill.Name, skill.Instructions)
+	}
+
+	// 3. Instantiate Google ADK Agent grounded in suggested skill instructions
 	adkAgent := agent.New(agent.Config{
-		Name:               skill.Name,
+		Name:               "retail-coding-agent",
 		Model:              "gemini-2.0-flash",
-		SystemInstructions: skill.Instructions,
+		SystemInstructions: instructions,
 	})
 
 	// 4. Run prompt through ADK agent pipeline
-	res, err := adkAgent.Run(ctx, "Synthesize demand forecasting query for store #42")
+	res, err := adkAgent.Run(ctx, prompt)
 	if err != nil {
 		log.Fatalf("ADK execution error: %v", err)
 	}
@@ -172,12 +210,12 @@ func main() {
 }
 ```
 
-
 ---
 
 ## Best Practices for Go Services
 
 1. **Distroless Packaging**: Statically link Go binaries (`CGO_ENABLED=0`) with embedded skill manifests for deployment in minimal `scratch` or `distroless` container images.
-2. **Runtime Fallback**: Configure runtime fallback to `LoadSkillsFromSKMServer` if local embedded skills are missing.
+2. **JIT Dynamic Retrieval**: Use `registry.SuggestSkills(prompt, 3, serverURL)` to prevent LLM context saturation.
 3. **Hermetic Testing**: Mock external HTTP requests in unit tests using `httptest.NewServer`.
+
 

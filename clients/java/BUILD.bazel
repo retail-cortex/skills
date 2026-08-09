@@ -10,7 +10,6 @@ java_library(
         "//examples/go/skills:skills_go_data",
         "//examples/java/skills:skills_java_data",
         "//examples/python/skills:skills_python_data",
-
     ],
     javacopts = [
         "--release",
@@ -44,7 +43,6 @@ java_test(
         "//examples/go/skills:skills_go_data",
         "//examples/java/skills:skills_java_data",
         "//examples/python/skills:skills_python_data",
-
     ],
     javacopts = [
         "--release",

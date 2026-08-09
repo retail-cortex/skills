@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
+  <rect width="400" height="200" fill="#f8fafc" rx="8"/>
+  <rect x="20" y="40" width="100" height="120" rx="6" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="70" y="105" fill="#ffffff" font-family="system-ui, sans-serif" font-size="14" font-weight="bold" text-anchor="middle">Input File</text>
+  <path d="M 130 100 L 170 100" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="180" y="40" width="100" height="120" rx="6" fill="#10b981" stroke="#047857" stroke-width="2"/>
+  <text x="230" y="105" fill="#ffffff" font-family="system-ui, sans-serif" font-size="14" font-weight="bold" text-anchor="middle">SKM Encoder</text>
+  <path d="M 290 100 L 330 100" stroke="#64748b" stroke-width="3"/>
+  <rect x="340" y="40" width="40" height="120" rx="6" fill="#8b5cf6" stroke="#6d28d9" stroke-width="2"/>
+  <text x="360" y="105" fill="#ffffff" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" transform="rotate(-90,360,105)">DB</text>
+</svg>

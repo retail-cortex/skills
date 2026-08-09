@@ -1,9 +1,24 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package service_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/retail-cortex/skills/pkg/data"
@@ -15,7 +30,7 @@ import (
 
 func setupTestDB(t *testing.T) {
 	data.ResetEngine()
-	_, err := data.InitDB("file::memory:?cache=shared")
+	_, err := data.InitDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 }
 
@@ -72,12 +87,14 @@ func TestSkillsService(t *testing.T) {
 
 	list, err := skillsSvc.ListSkills(db, "svc-skill")
 	require.NoError(t, err)
-	assert.Len(t, list, 1)
+	assert.Equal(t, int64(1), list.TotalCount)
+	assert.Len(t, list.Items, 1)
 
 	// List with empty query
 	emptyList, err := skillsSvc.ListSkills(db, "   ")
 	require.NoError(t, err)
-	assert.Len(t, emptyList, 1)
+	assert.Equal(t, int64(1), emptyList.TotalCount)
+	assert.Len(t, emptyList.Items, 1)
 
 	// Update Skill with instructions and trigger phrases
 	newDesc := "Updated service desc"
@@ -103,7 +120,7 @@ func TestSkillsService(t *testing.T) {
 
 func TestEmbeddingService(t *testing.T) {
 	embSvc := service.NewEmbeddingService()
-	assert.Equal(t, "text-embedding-004", embSvc.ModelName)
+	assert.Equal(t, "multimodalembedding", embSvc.ModelName())
 
 	// Cosine similarity
 	sim := embSvc.CosineSimilarity([]float64{1.0, 0.0}, []float64{1.0, 0.0})
@@ -113,7 +130,7 @@ func TestEmbeddingService(t *testing.T) {
 	vec := embSvc.GenerateEmbedding("")
 	assert.Nil(t, vec)
 
-	// Mock HTTP Server success
+	// Mock HTTP Server success (Gemini developer API)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
 			"embedding": map[string]interface{}{
@@ -125,15 +142,43 @@ func TestEmbeddingService(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	mockSvc := &service.EmbeddingService{
+	mockSvc := service.NewEmbeddingService(service.EmbeddingConfig{
 		ModelName:    "text-embedding-004",
 		GeminiAPIKey: "mock-key",
 		BaseURL:      ts.URL,
-	}
+	})
 
 	embeddings := mockSvc.GenerateEmbedding("query text")
 	require.NotNil(t, embeddings)
 	assert.Equal(t, []float64{0.1, 0.2, 0.3}, embeddings)
+
+	// Mock Vertex AI Prediction HTTP Server
+	tsVertex := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "Bearer mock-token", r.Header.Get("Authorization"))
+		resp := map[string]interface{}{
+			"predictions": []map[string]interface{}{
+				{
+					"embeddings": map[string]interface{}{
+						"values": []float64{0.7, 0.8, 0.9},
+					},
+				},
+			},
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer tsVertex.Close()
+
+	t.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", "mock-token")
+	vertexSvc := service.NewEmbeddingService(service.EmbeddingConfig{
+		ModelName: "text-embedding-004",
+		ProjectID: "test-gcp-project",
+		Region:    "us-central1",
+		BaseURL:   tsVertex.URL,
+	})
+	vEmbeddings := vertexSvc.GenerateEmbedding("vertex query text")
+	require.NotNil(t, vEmbeddings)
+	assert.Equal(t, []float64{0.7, 0.8, 0.9}, vEmbeddings)
 
 	// Mock HTTP Server 500 Error
 	tsErr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,11 +187,11 @@ func TestEmbeddingService(t *testing.T) {
 	}))
 	defer tsErr.Close()
 
-	mockErrSvc := &service.EmbeddingService{
+	mockErrSvc := service.NewEmbeddingService(service.EmbeddingConfig{
 		ModelName:    "text-embedding-004",
 		GeminiAPIKey: "mock-key",
 		BaseURL:      tsErr.URL,
-	}
+	})
 	assert.Nil(t, mockErrSvc.GenerateEmbedding("query text"))
 }
 

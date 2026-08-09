@@ -33,7 +33,7 @@ Developers register an application by providing an application name, domain auth
 2. **Domain Verification Status**:
    - **`VERIFIED_SSO`**: Set automatically when the developer's email domain matches the requested domain.
    - **`PENDING_DNS`**: Set when claiming a custom third-party domain, issuing a DNS challenge string (`skm-domain-verify-<uuid>`).
-3. **API Key Generation & Hashing**: Generates a secure random API key (`sk_live_...`) and computes its SHA-256 hash (`api_key_hash`) for DB storage.
+3. **API Key Generation & Hashing**: Generates a secure random API key (`skm_live_...`) and computes its SHA-256 hash (`api_key_hash`) for DB storage.
 4. **Terminal Response**: Returns the raw `api_key` in the `201 Created` payload so the developer can configure it locally.
 
 ### Response Payload (`201 Created`)
@@ -47,7 +47,7 @@ Developers register an application by providing an application name, domain auth
   "organization_id": "team-checkout",
   "email": "developer@retailcortex.com",
   "domain_verification_status": "VERIFIED_SSO",
-  "api_key": "sk_live_YOUR_API_KEY_HERE",
+  "api_key": "skm_live_YOUR_API_KEY_HERE",
   "verification_token": "e4d3c2b1-5678-90ab-cdef-1234567890ab",
   "verification_url": "http://localhost:8000/api/v1/apps/verify?token=e4d3c2b1-5678-90ab-cdef-1234567890ab"
 }
@@ -92,7 +92,7 @@ Configure `skm` settings persisted in `~/.skm/.env.toml`:
 skm config set server http://localhost:8000
 
 # Store issued API key
-skm config set api_key sk_live_YOUR_API_KEY_HERE
+skm config set api_key skm_live_YOUR_API_KEY_HERE
 
 # Store domain & organization defaults
 skm config set domain retailcortex.com
@@ -107,7 +107,7 @@ skm config show
 ```toml
 # SKM Enterprise CLI Configuration
 SKM_SERVER_URL="http://localhost:8000"
-SKM_API_KEY="sk_live_YOUR_API_KEY_HERE"
+SKM_API_KEY="skm_live_YOUR_API_KEY_HERE"
 SKM_DOMAIN="retailcortex.com"
 SKM_ORGANIZATION_ID="team-checkout"
 ```
@@ -136,7 +136,7 @@ sequenceDiagram
     Server->>DB: Update is_active = true
     Server-->>Dev: 200 OK (Account Active)
 
-    Dev->>CLI: skm config set api_key <sk_live_...>
+    Dev->>CLI: skm config set api_key <skm_live_...>
     CLI->>Server: POST /api/v1/skills (Header: X-API-Key)
     Server->>DB: Interceptor: Lookup SHA256(X-API-Key) & Check is_active == true
     alt Valid Key and is_active == true

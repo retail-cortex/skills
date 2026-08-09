@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package model
 
 import (
@@ -7,15 +21,16 @@ import (
 // Skill is the primary skill persistence record linked to a registered app.
 type Skill struct {
 	ID                 string    `gorm:"primaryKey;column:id" json:"id"`
-	AppID              string    `gorm:"index;column:app_id" json:"app_id"`
-	Name               string    `gorm:"index;column:name" json:"name"`
+	AppID              string    `gorm:"uniqueIndex:idx_skills_app_cat_name;column:app_id" json:"app_id"`
+	Category           *string   `gorm:"uniqueIndex:idx_skills_app_cat_name;column:category" json:"category,omitempty"`
+	Name               string    `gorm:"uniqueIndex:idx_skills_app_cat_name;column:name" json:"name"`
 	URI                string    `gorm:"index;column:uri" json:"uri"`
+	LatestVersion      string    `gorm:"column:latest_version;default:'1.0.0'" json:"latest_version"`
 	SourceURI          string    `gorm:"column:source_uri" json:"source_uri"`
 	Description        string    `gorm:"column:description" json:"description"`
 	Instructions       string    `gorm:"column:instructions" json:"instructions"`
 	License            *string   `gorm:"column:license" json:"license,omitempty"`
 	Author             *string   `gorm:"column:author" json:"author,omitempty"`
-	Category           *string   `gorm:"index;column:category" json:"category,omitempty"`
 	SHA256Hash         string    `gorm:"index;column:sha256_hash" json:"sha256_hash"`
 	HitlTier           string    `gorm:"column:hitl_tier;default:'TIER_1_AUTO_READ'" json:"hitl_tier"`
 	TagsJSON           string    `gorm:"column:tags_json;default:'[]'" json:"tags_json"`
@@ -29,8 +44,9 @@ func (Skill) TableName() string { return "skills" }
 // SkillVersion is a historical version entry for a skill.
 type SkillVersion struct {
 	ID             string    `gorm:"primaryKey;column:id" json:"id"`
-	SkillID        string    `gorm:"index;column:skill_id" json:"skill_id"`
-	Version        string    `gorm:"index;column:version" json:"version"`
+	SkillID        string    `gorm:"uniqueIndex:idx_skill_versions_skill_ver;column:skill_id" json:"skill_id"`
+	Version        string    `gorm:"uniqueIndex:idx_skill_versions_skill_ver;column:version" json:"version"`
+	URI            string    `gorm:"index;column:uri" json:"uri"`
 	JSONSchemaJSON string    `gorm:"column:json_schema_json" json:"json_schema_json"`
 	SHA256Hash     string    `gorm:"column:sha256_hash" json:"sha256_hash"`
 	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at"`
@@ -68,16 +84,30 @@ type SkillExample struct {
 
 func (SkillExample) TableName() string { return "skill_examples" }
 
-// SkillEmbedding represents a vector embedding record for semantic search.
+// SkillEmbedding represents a vector embedding record for semantic search across skill chunks.
 type SkillEmbedding struct {
 	ID            string    `gorm:"primaryKey;column:id" json:"id"`
 	SkillID       string    `gorm:"index;column:skill_id" json:"skill_id"`
+	TargetType    string    `gorm:"index;column:target_type;default:'skill'" json:"target_type"` // "skill", "reference", "example", "script"
+	TargetName    string    `gorm:"index;column:target_name" json:"target_name,omitempty"`       // e.g. "SKILL.md", "references/canvas.png", "examples/client.go"
 	EmbeddingJSON string    `gorm:"column:embedding_json" json:"embedding_json"`
-	ModelName     string    `gorm:"column:model_name;default:'text-embedding-004'" json:"model_name"`
+	Embedding768  *string   `gorm:"column:embedding_768" json:"embedding_768,omitempty"`
+	Embedding1408 *string   `gorm:"column:embedding_1408" json:"embedding_1408,omitempty"`
+	Embedding3072 *string   `gorm:"column:embedding_3072" json:"embedding_3072,omitempty"`
+	ModelName     string    `gorm:"column:model_name;default:'multimodalembedding'" json:"model_name"`
+	Dimension     int       `gorm:"column:dimension" json:"dimension"`
 	CreatedAt     time.Time `gorm:"column:created_at" json:"created_at"`
 }
 
 func (SkillEmbedding) TableName() string { return "skill_embeddings" }
+
+// SkillEmbeddingChunk represents a generated vector chunk for multi-modal embedding.
+type SkillEmbeddingChunk struct {
+	TargetType string    `json:"target_type"`
+	TargetName string    `json:"target_name"`
+	Vector     []float64 `json:"vector"`
+	ModelName  string    `json:"model_name"`
+}
 
 // DTOs
 
@@ -136,5 +166,6 @@ type SkillResponse struct {
 	CreatedAt       time.Time              `json:"created_at"`
 	UpdatedAt       time.Time              `json:"updated_at"`
 	SimilarityScore *float64               `json:"similarity_score,omitempty"`
+	MatchingChunk   *string                `json:"matching_chunk,omitempty"`
 }
 

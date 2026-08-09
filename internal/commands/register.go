@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package commands
 
 import (
@@ -41,41 +55,53 @@ func runRegister(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// Resolve local or remote skills at source URI
-	skills, err := installer.ResolveFileSkills(sourceURI, nil)
-	if err != nil || len(skills) == 0 {
-		// Fallback to installer URI resolution
-		results, loadErr := installer.AddSkills([]string{sourceURI}, ".tmp_skm_register", nil, force)
+	// Resolve local skills first
+	resolvedSkills, err := installer.ResolveFileSkills(sourceURI, nil)
+	if err != nil || len(resolvedSkills) == 0 {
+		// If remote or package URI, fetch into temporary directory
+		tmpDir, tmpErr := os.MkdirTemp("", "skm_reg_*")
+		if tmpErr != nil {
+			fmt.Fprintf(stderr, "Error creating temp dir: %v\n", tmpErr)
+			return 1
+		}
+		defer os.RemoveAll(tmpDir)
+
+		results, loadErr := installer.AddSkills([]string{sourceURI}, tmpDir, nil, force)
 		if loadErr != nil || len(results) == 0 {
 			fmt.Fprintf(stderr, "Error loading skill from source URI %s: %v\n", sourceURI, loadErr)
 			return 1
 		}
-		_ = os.RemoveAll(".tmp_skm_register")
+
+		resolvedSkills, err = installer.ResolveFileSkills(tmpDir, nil)
+		if err != nil || len(resolvedSkills) == 0 {
+			fmt.Fprintf(stderr, "Failed to resolve valid skill from %s: %v\n", sourceURI, err)
+			return 1
+		}
 	}
 
-	// Resolve skill definitions
-	resolvedSkills, err := installer.ResolveFileSkills(sourceURI, nil)
-	if err != nil || len(resolvedSkills) == 0 {
-		fmt.Fprintf(stderr, "Failed to resolve valid skill at %s: %v\n", sourceURI, err)
-		return 1
-	}
-
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 	serverURL := strings.TrimRight(cfg.ServerURL, "/") + "/api/v1/skills"
 	registeredCount := 0
 
 	for _, skillDef := range resolvedSkills {
+		var cat *string
+		if skillDef.Category != "" {
+			cat = &skillDef.Category
+		}
 		reqPayload := model.SkillCreateRequest{
-			Name:         skillDef.Name,
-			SourceURI:    sourceURI,
-			Description:  skillDef.Description,
-			Instructions: skillDef.Instructions,
-			License:      &skillDef.License,
-			Author:       &skillDef.Author,
-			Version:      &skillDef.Version,
-			Metadata:     skillDef.Metadata,
-			References:   skillDef.References,
-			Examples:     skillDef.Examples,
+			Name:           skillDef.Name,
+			SourceURI:      sourceURI,
+			Description:    skillDef.Description,
+			Instructions:   skillDef.Instructions,
+			License:        &skillDef.License,
+			Author:         &skillDef.Author,
+			Version:        &skillDef.Version,
+			Category:       cat,
+			Tags:           skillDef.Tags,
+			TriggerPhrases: skillDef.TriggerPhrases,
+			Metadata:       skillDef.Metadata,
+			References:     skillDef.References,
+			Examples:       skillDef.Examples,
 		}
 
 		payloadBytes, err := json.Marshal(reqPayload)

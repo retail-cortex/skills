@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asset-encoding-engine
+  labels:
+    app.kubernetes.io/name: asset-encoder
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: asset-encoder
+  template:
+    metadata:
+      labels:
+        app: asset-encoder
+    spec:
+      containers:
+      - name: encoder
+        image: gcr.io/retail-cortex/asset-encoder:1.0.0
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

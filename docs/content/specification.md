@@ -97,3 +97,33 @@ Every application registered with `skills-service` MUST be bound to a verified d
 2. **Freemail Prohibition (`ErrFreemailDomainProhibited`)**: Public freemail provider addresses (`gmail.com`, `yahoo.com`, `outlook.com`, `hotmail.com`, `icloud.com`, etc.) are explicitly forbidden from claiming corporate domain namespaces.
 3. **DNS Challenge Fallback (`PENDING_DNS`)**: Claiming a custom third-party domain generates a DNS TXT challenge token (`skm-domain-verify-<uuid>`) that must be published under `_skm-challenge.<domain>` before activation.
 
+---
+
+## 7. Multi-Modal Vector Embedding & Poly-Column Indexing
+
+Central registries MUST compute and maintain multi-modal semantic embeddings for registered skills:
+
+1. **Poly-Column Dimensions**:
+   - `embedding_768`: 768-dimensional float32 vector for standard text embedding models (`text-embedding-004`, `alloydb-ai`).
+   - `embedding_1408`: 1408-dimensional float32 vector for multi-modal image and media models (`multimodalembedding`).
+   - `embedding_3072`: 3072-dimensional float32 vector for high-dimensional models.
+2. **HNSW Acceleration**: PostgreSQL/AlloyDB indexes MUST utilize HNSW (`m=16`, `ef_construction=64`) over `vector_cosine_ops`.
+3. **Dual-Tier Resolution**: Skill metadata and individual progressive disclosure reference assets MUST be embedded independently to support precise RAG retrieval.
+
+---
+
+## 8. Bounded REST Pagination Protocol
+
+All REST list and search endpoints (`/api/v1/skills`) MUST enforce strict request bounding:
+
+1. **Parameter Constraints**:
+   - `page`: Integer $\ge 1$ (default: `1`).
+   - `page_size` / `max`: Integer $1 \le \text{page\_size} \le 25$ (default: `5`).
+2. **Mandatory Response Headers**:
+   - `X-Total-Count`: Total matched entities across the entire dataset.
+   - `X-Page`: Current page index.
+   - `X-Page-Size`: Effective bounded page size.
+   - `X-Total-Pages`: Total calculated page count ($\lceil \text{Total} / \text{PageSize} \rceil$).
+3. **Optional Envelope Parameter**: If `?envelope=true` is set, the server MUST wrap items in `{ "items": [...], "total_count": N, "page": P, "page_size": S, "total_pages": T }`.
+
+

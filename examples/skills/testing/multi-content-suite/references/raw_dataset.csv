@@ -1,0 +1,4 @@
+id,asset_type,mime_type,byte_size,checksum_sha256
+1,vector_graphic,image/svg+xml,1024,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2,bitmap_image,image/png,68,8a5c3e7f2b9102456d98c0b29841f3e1a0b89cd4f2719a823e59012a67bc34e1
+3,document_stream,application/pdf,420,7d1a29f8c091e2b45a67c8d9e012f345a6b7c8d9e012a3b4c5d6e7f8a9b0c1d2

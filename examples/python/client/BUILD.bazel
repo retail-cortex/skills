@@ -20,4 +20,3 @@ py_test(
     main = "test_client.py",
     deps = [":client_lib"],
 )
-

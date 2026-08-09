@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -6,7 +6,17 @@ go_library(
     name = "model",
     srcs = [
         "app.go",
+        "pagination.go",
         "skill.go",
     ],
     importpath = "github.com/retail-cortex/skills/pkg/model",
+)
+
+go_test(
+    name = "model_test",
+    srcs = ["pagination_test.go"],
+    deps = [
+        ":model",
+        "@com_github_stretchr_testify//assert",
+    ],
 )

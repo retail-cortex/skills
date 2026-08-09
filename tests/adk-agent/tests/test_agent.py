@@ -1,3 +1,17 @@
+# Copyright 2026 Ryan McGuinness
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Unit tests for ADK programming agent and toolset."""
 
 import asyncio
@@ -52,6 +66,10 @@ class TestADKAgent(unittest.TestCase):
 
         search_res = toolset.search_skills("terraform")
         self.assertTrue(len(search_res) > 0)
+
+        # Test suggest_skills with default max of 3
+        suggested = toolset.suggest_skills("python pytest database testing")
+        self.assertTrue(0 < len(suggested) <= 3)
 
         guidance = toolset.generate_guidance("go-lang microservices")
         self.assertIn("go-lang", guidance.lower())

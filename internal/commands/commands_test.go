@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package commands
 
 import (
@@ -452,6 +466,41 @@ func TestExecute_Config(t *testing.T) {
 	assert.Contains(t, out3.String(), "secr...2345")
 }
 
+func TestExecute_SearchMissingQuery(t *testing.T) {
+	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
+	code := Execute([]string{"search"}, out, errOut)
+	assert.Equal(t, 1, code)
+	assert.Contains(t, errOut.String(), "search query required")
+}
+
+func TestExecute_SearchAndListPaginationFlags(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "skm-page-test-*")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create 3 dummy skills
+	for _, name := range []string{"skill-alpha", "skill-beta", "skill-gamma"} {
+		sDir := filepath.Join(tmpDir, name)
+		_ = os.MkdirAll(sDir, 0755)
+		content := "name: " + name + "\ndescription: Description for " + name + "\nversion: 1.0.0\n"
+		_ = os.WriteFile(filepath.Join(sDir, "SKILL.md"), []byte(content), 0644)
+	}
+
+	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
+	code := Execute([]string{"list", "-d", tmpDir, "--page", "1", "--page-size", "2"}, out, errOut)
+	assert.Equal(t, 0, code)
+	assert.Contains(t, out.String(), "Discovered 3 skills")
+
+	searchOut := &bytes.Buffer{}
+	searchErr := &bytes.Buffer{}
+	code = Execute([]string{"search", "alpha", "-d", tmpDir, "-p", "1", "-n", "5"}, searchOut, searchErr)
+	assert.Equal(t, 0, code)
+	assert.Contains(t, searchOut.String(), "1 matches in")
+	assert.Contains(t, searchOut.String(), "skill-alpha")
+}
+
 func TestExecute_RegisterMissingArgs(t *testing.T) {
 	out := &bytes.Buffer{}
 	errOut := &bytes.Buffer{}
@@ -467,6 +516,3 @@ func TestExecute_LoginMissingEmail(t *testing.T) {
 	assert.Equal(t, 1, code)
 	assert.Contains(t, errOut.String(), "email address required for registration")
 }
-
-
-

@@ -1,3 +1,17 @@
+# Copyright 2026 Ryan McGuinness
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Dynamic skill scanner and loader for enterprise AI agent skills compatible with Google ADK."""
 
 import hashlib
@@ -1053,6 +1067,92 @@ class SkillRegistry:
         ]
         self._domain_cache[domain_norm] = res
         return res
+
+    def suggest_skills(
+        self,
+        prompt: str,
+        max_skills: int = 3,
+        server_url: Optional[str] = None,
+    ) -> List[SkillDefinition]:
+        """Dynamically suggests the top-k most relevant skills for an agent prompt using remote vector search with local fallback."""
+        if not prompt or not prompt.strip():
+            return list(self._skills.values())[:max_skills]
+
+        bounded_max = min(max(1, max_skills), 25)
+        clean_prompt = prompt.strip()
+
+        # 1. Try remote skills-service vector search if server_url is provided or configured in env
+        target_server = (
+            server_url
+            or os.environ.get("SKILLS_SERVER_URL")
+            or os.environ.get("SKM_SERVER_URL")
+        )
+
+        if target_server:
+            try:
+                import urllib.parse
+                import urllib.request
+                import json
+
+                encoded_query = urllib.parse.quote(clean_prompt)
+                url = f"{target_server.rstrip('/')}/api/v1/skills?s={encoded_query}&page_size={bounded_max}"
+                req = urllib.request.Request(url, headers={"User-Agent": "skills-loader/1.0.0"})
+                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                    if resp.status == 200:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        items = data.get("items", data) if isinstance(data, dict) else data
+                        remote_skills: List[SkillDefinition] = []
+                        for item in items:
+                            name = item.get("name")
+                            if name and name in self._skills:
+                                remote_skills.append(self._skills[name])
+                            elif name:
+                                remote_skills.append(
+                                    SkillDefinition(
+                                        name=name,
+                                        description=item.get("description", ""),
+                                        instructions=item.get("instructions", ""),
+                                        version=item.get("version"),
+                                        category=item.get("category"),
+                                        tags=item.get("tags") or [],
+                                        path=item.get("uri", ""),
+                                    )
+                                )
+                        if remote_skills:
+                            return remote_skills[:bounded_max]
+            except Exception:
+                pass
+
+        # 2. Local search optimization fallback using JIT discovery engine (TF-IDF vector matching)
+        try:
+            discovery_res = self.discovery_engine.search_skills(clean_prompt, top_k=bounded_max)
+            if discovery_res and discovery_res.matches:
+                local_matches: List[SkillDefinition] = []
+                for match in discovery_res.matches:
+                    s = self.get(match.skill_name)
+                    if s:
+                        local_matches.append(s)
+                if local_matches:
+                    return local_matches[:bounded_max]
+        except Exception:
+            pass
+
+        # 3. Fallback to substring keyword search
+        keyword_matches = self.search(clean_prompt)
+        if keyword_matches:
+            return keyword_matches[:bounded_max]
+
+        # Domain fallback
+        words = clean_prompt.lower().split()
+        domain_matches: List[SkillDefinition] = []
+        for word in words:
+            for s in self.get_domain_skills(word):
+                if s not in domain_matches:
+                    domain_matches.append(s)
+        if domain_matches:
+            return domain_matches[:bounded_max]
+
+        return list(self._skills.values())[:bounded_max]
 
 
 def calculate_skill_checksum(skill_dir: Union[Path, str]) -> str:

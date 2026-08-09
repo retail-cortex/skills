@@ -1,11 +1,11 @@
 ---
-title: "Python Client & PEP 517 Build Integration"
+title: "Python Client & Build Integration"
 weight: 30
 ---
 
 # Python Client & `uv` Build Integration (`loader.build_meta`)
 
-The Python client (`retailcortex-loader`) implements a **PEP 517/518 build backend wrapper** (`loader.build_meta`).
+The Python client (`retailcortex-loader`) implements a **PEP 517/518 build backend wrapper** (`loader.build_meta`) alongside high-performance **JIT Dynamic Pre-Call Retrieval** for Google ADK agents.
 
 By declaring `loader.build_meta` in your project's `pyproject.toml`, native Python package managers (`uv build`, `pip install .`, `build`) execute pre-build hooks that download, audit, and stage skill dependencies into the package tree prior to generating wheels (`.whl`) or source distributions (`.tar.gz`).
 
@@ -52,7 +52,69 @@ dependencies = [
 
 ---
 
-## 2. Hermetic Bazel Build Integration (`rules_python`)
+## 2. JIT Dynamic Pre-Call Retrieval (`suggest_skills`)
+
+In autonomous ADK agent workflows, loading all tools statically can cause context window bloat and tool hallucinations. `SkillRegistry.suggest_skills()` performs JIT semantic retrieval to rank and bound relevant skills to at most $k \le 3$:
+
+```python
+from loader import SkillRegistry
+
+# Initialize registry from workspace or embedded package tree
+registry = SkillRegistry()
+
+# Dynamically retrieve top 3 skills ranked by vector relevance
+suggested = registry.suggest_skills(
+    prompt="Generate BigQuery SQL analytics statement for customer churn",
+    max_skills=3,
+    server_url="http://localhost:8000"
+)
+
+for skill in suggested:
+    print(f"Loaded Skill: {skill.name} ({skill.description})")
+```
+
+### Fallback Resilience Strategy
+1. **Remote Vector Search**: Dispatches `GET /api/v1/skills?s={query}&page_size=3` to the central `skills-service`.
+2. **Local Vector Search**: If offline or unreachable, executes local TF-IDF cosine similarity search via `DiscoveryEngine`.
+3. **Keyword & Substring Fallback**: Falls back to tokenized keyword matching and domain heuristics.
+
+---
+
+## 3. Grounding Google ADK Agents with Dynamic Skills
+
+```python
+import asyncio
+from google.adk.agent import Agent
+from loader import SkillRegistry
+
+class EnterpriseCodingAgent:
+    def __init__(self, registry: SkillRegistry) -> None:
+        self.registry = registry
+
+    async def handle_prompt(self, user_prompt: str) -> str:
+        # Pre-call optimization: retrieve top 3 most relevant skills
+        relevant_skills = self.registry.suggest_skills(user_prompt, max_skills=3)
+        
+        # Synthesize system instructions and tools
+        system_instructions = "You are an enterprise software engineering agent.\n"
+        tools = []
+        for skill in relevant_skills:
+            system_instructions += f"\n### Skill: {skill.name}\n{skill.instructions}\n"
+            tools.extend(skill.to_adk_tools())
+
+        agent = Agent(
+            name="enterprise-programmer",
+            model="gemini-2.0-flash",
+            instructions=system_instructions,
+            tools=tools,
+        )
+
+        return await agent.run_async(user_prompt)
+```
+
+---
+
+## 4. Hermetic Bazel Build Integration (`rules_python`)
 
 In `BUILD.bazel`:
 
@@ -74,70 +136,8 @@ py_binary(
 
 ---
 
-## 3. Zero-I/O Cold-Start Loading in Python Runtimes
-
-Because skills are staged directly inside the installed Python package tree, your application loads skills with **zero network overhead**:
-
-```python
-import importlib.resources
-import os
-from loader import load_skills_from_dir, load_skills_from_manifest
-
-def init_agent_skills():
-    # Resolve staged skills directory inside installed package
-    package_skills_dir = importlib.resources.files("my_enterprise_agent").joinpath(".skills")
-    
-    if package_skills_dir.is_dir():
-        skills = load_skills_from_dir(str(package_skills_dir))
-        print(f"Instantly loaded {len(skills)} skills from package tree.")
-        return skills
-    
-    # Fallback to pre-compiled manifest
-    return load_skills_from_manifest("skills_manifest.json")
-```
-
----
-
-## 4. Grounding Google ADK Agents with Staged Skills
-
-Environment and connection properties are loaded using `python-dotenv` (`load_dotenv()`):
-
-```python
-import os
-import importlib.resources
-from dotenv import load_dotenv
-from google.adk.agent import Agent
-from loader import load_skills, load_skills_from_dir
-
-# 1. Load environment properties from .env file
-load_dotenv()
-
-server_url = os.getenv("SKM_SERVER_URL", "http://localhost:8080")
-api_key = os.getenv("SKM_API_KEY")
-
-# 2. Load staged skills from package or remote SKM server
-skills_path = importlib.resources.files("my_enterprise_agent").joinpath(".skills")
-if skills_path.is_dir():
-    skills = load_skills_from_dir(str(skills_path))
-else:
-    skills = load_skills("skm://skills/sk-9b1deb4d", server_url=server_url, api_key=api_key)
-
-gemini_skill = skills.get("gemini-api")
-
-# 3. Instantiate ADK Agent grounded in validated skill instructions
-agent = Agent(
-    name="retail-assistant",
-    model="gemini-2.0-flash",
-    instructions=gemini_skill.instructions,
-    tools=gemini_skill.to_adk_tools(),
-)
-```
-
-
----
-
 ## Recommended Python Standards
 
 1. **Virtual Environment Isolation**: Always manage dependencies using `uv` and run scripts via `uv run python main.py`. Never run global `pip install`.
-2. **Type Safety**: Apply strict type hints across custom tools (`def my_tool(param: str) -> dict[str, Any]:`).
+2. **Type Safety**: Apply strict type hints across custom tools (`def my_tool(param: str) -> dict[str, Any]:`). No `Any` unless unavoidable.
 3. **Async Parameter Handling**: Await asynchronous parameter resolution in Next.js / FastAPI API route handlers.

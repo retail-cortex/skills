@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package installer
 
 import (
@@ -63,6 +77,26 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 		case "skm", "skms":
 			serverURL := os.Getenv("SKM_SERVER_URL")
 			apiKey := os.Getenv("SKM_API_KEY")
+			if serverURL == "" || apiKey == "" {
+				if home, err := os.UserHomeDir(); err == nil {
+					cfgPath := filepath.Join(home, ".skm", ".env.toml")
+					if content, err := os.ReadFile(cfgPath); err == nil {
+						for _, line := range strings.Split(string(content), "\n") {
+							parts := strings.SplitN(line, "=", 2)
+							if len(parts) == 2 {
+								k := strings.TrimSpace(parts[0])
+								v := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
+								if serverURL == "" && (k == "SKM_SERVER_URL" || k == "server_url" || k == "SERVER_URL") {
+									serverURL = v
+								}
+								if apiKey == "" && (k == "SKM_API_KEY" || k == "api_key" || k == "API_KEY") {
+									apiKey = v
+								}
+							}
+						}
+					}
+				}
+			}
 			skills, loadErr = skillsloader.LoadSkillsFromSKMServer(target, filter, serverURL, apiKey)
 		case "file":
 			skills, loadErr = ResolveFileSkills(target, filter)
@@ -154,6 +188,9 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 func ResolveFileSkills(target string, filter []string) (map[string]*skillsloader.SkillDefinition, error) {
 	// Expand path
 	path := target
+	if strings.HasPrefix(path, "file://") {
+		path = strings.TrimPrefix(path, "file://")
+	}
 	if strings.HasPrefix(path, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
 			path = filepath.Join(home, path[2:])

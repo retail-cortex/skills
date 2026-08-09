@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -7,19 +21,24 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/retail-cortex/skills/pkg/data"
+	"github.com/retail-cortex/skills/pkg/embedding"
+	"github.com/retail-cortex/skills/pkg/embedding/alloydb"
+	"github.com/retail-cortex/skills/pkg/embedding/vertex"
 	"github.com/retail-cortex/skills/pkg/mcp"
 	"github.com/retail-cortex/skills/pkg/service"
 )
 
 func SetupAppEngine(cfg *Config) *gin.Engine {
-	log.Println("Initializing database tables...")
-	if _, err := data.InitDB(cfg.DatabaseURL); err != nil {
+	log.Printf("Initializing database tables on target: %s", cfg.DatabaseURL)
+	db, err := data.InitDB(cfg.DatabaseURL)
+	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -30,8 +49,26 @@ func SetupAppEngine(cfg *Config) *gin.Engine {
 		GCPProjectID:    cfg.GCPProjectID,
 	})
 
+	// Instantiate configured embedding provider
+	var embProvider embedding.Provider
+	switch strings.ToLower(strings.TrimSpace(cfg.EmbeddingProvider)) {
+	case "alloydb", "alloydb-ai":
+		log.Printf("Initializing AlloyDB AI in-database embedding provider (model: text-embedding-004, dimension: 768)...")
+		embProvider = alloydb.NewProvider(alloydb.Config{
+			DB:        db,
+			ModelName: "text-embedding-004",
+			Dimension: 768,
+		})
+	default:
+		log.Printf("Initializing Vertex AI multimodal embedding provider (model: multimodalembedding, dimension: 1408)...")
+		embProvider = vertex.NewProvider(vertex.Config{
+			ProjectID: cfg.GCPProjectID,
+			ModelName: "multimodalembedding",
+		})
+	}
+
 	appsSvc := service.NewAppsService()
-	skillsSvc := service.NewSkillsService()
+	skillsSvc := service.NewSkillsServiceWithProvider(embProvider)
 	handlers := NewServerHandlers(appsSvc, skillsSvc)
 
 	mcpServer := mcp.NewMCPServer(appsSvc, skillsSvc)
@@ -54,11 +91,11 @@ func SetupAppEngine(cfg *Config) *gin.Engine {
 		skills := v1.Group("/skills")
 		{
 			skills.GET("", handlers.ListSkills)
-			skills.GET("/:skill_id_or_name", handlers.GetSkill)
+			skills.GET("/*skill_id_or_name", handlers.GetSkill)
 			skills.POST("", handlers.RegisterSkill)
-			skills.PUT("/:skill_id", handlers.ReplaceSkill)
-			skills.PATCH("/:skill_id", handlers.UpdateSkill)
-			skills.DELETE("/:skill_id", handlers.DeleteSkill)
+			skills.PUT("/*skill_id", handlers.ReplaceSkill)
+			skills.PATCH("/*skill_id", handlers.UpdateSkill)
+			skills.DELETE("/*skill_id", handlers.DeleteSkill)
 		}
 	}
 

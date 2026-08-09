@@ -1,6 +1,21 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package data_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/retail-cortex/skills/pkg/data"
@@ -11,7 +26,7 @@ import (
 
 func setupTestDB(t *testing.T) {
 	data.ResetEngine()
-	db, err := data.InitDB("file::memory:?cache=shared")
+	db, err := data.InitDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	require.NotNil(t, db)
 }
@@ -71,8 +86,8 @@ func TestAppsRepository(t *testing.T) {
 	_, err = repo.AuthenticateAPIKey(db, "")
 	assert.ErrorIs(t, err, data.ErrMissingAPIKey)
 
-	// Invalid API Key
-	_, err = repo.AuthenticateAPIKey(db, "sk_live_invalid")
+	// 4. Invalid API Key
+	_, err = repo.AuthenticateAPIKey(db, "skm_live_invalid")
 	assert.ErrorIs(t, err, data.ErrInvalidAPIKey)
 
 	// 5. Verify App
@@ -121,11 +136,16 @@ func TestSkillsRepository(t *testing.T) {
 	}
 
 	// 1. Create Skill
-	skillRes, err := skillsRepo.CreateSkill(db, appRes.AppID, createReq, []float64{0.1, 0.2, 0.3}, "text-embedding-004")
+	testChunks := []model.SkillEmbeddingChunk{
+		{TargetType: "skill", TargetName: "SKILL.md", Vector: []float64{0.1, 0.2, 0.3}, ModelName: "multimodalembedding"},
+		{TargetType: "reference", TargetName: "ref1", Vector: []float64{0.4, 0.5, 0.6}, ModelName: "multimodalembedding"},
+	}
+	skillRes, err := skillsRepo.CreateSkill(db, appRes.AppID, createReq, testChunks)
 	require.NoError(t, err)
 	assert.Equal(t, "test-skill", skillRes.Name)
 	assert.Equal(t, appRes.AppID, skillRes.AppID)
 	assert.Equal(t, "1.0.0", skillRes.Version)
+	assert.Equal(t, "skm://skills/example.com/testing/test-skill/1.0.0", skillRes.URI)
 	assert.Equal(t, "value", skillRes.Metadata["key"])
 	assert.Equal(t, "content1", skillRes.References["ref1"])
 	assert.Equal(t, "example1", skillRes.Examples["ex1"])
@@ -139,27 +159,39 @@ func TestSkillsRepository(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, skillRes.ID, fetchedByName.ID)
 
+	fetchedByURI, err := skillsRepo.GetSkill(db, "skm://skills/example.com/testing/test-skill/1.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, skillRes.ID, fetchedByURI.ID)
+
 	// Non-existent skill get -> error
 	_, err = skillsRepo.GetSkill(db, "non-existent-skill")
 	assert.ErrorIs(t, err, data.ErrSkillNotFound)
 
-	// 3. List Skills
-	skills, err := skillsRepo.ListSkills(db, "", nil)
+	// 3. Idempotent Upsert (New Version 1.1.0 on same skill)
+	ver11 := "1.1.0"
+	createReq.Version = &ver11
+	skillResV11, err := skillsRepo.CreateSkill(db, appRes.AppID, createReq, nil)
 	require.NoError(t, err)
-	assert.Len(t, skills, 1)
+	assert.Equal(t, skillRes.ID, skillResV11.ID) // Same root Skill ID
+	assert.Equal(t, "1.1.0", skillResV11.Version)
+	assert.Equal(t, "skm://skills/example.com/testing/test-skill/1.1.0", skillResV11.URI)
 
-	// Keyword search
-	matched, err := skillsRepo.ListSkills(db, "testing", nil)
+	// 4. List Skills (should still only be 1 root skill)
+	list, err := skillsRepo.ListSkills(db, "", nil)
 	require.NoError(t, err)
-	assert.Len(t, matched, 1)
+	assert.Equal(t, int64(1), list.TotalCount)
+	assert.Len(t, list.Items, 1)
 
-	// Vector search
-	vectorMatches, err := skillsRepo.ListSkills(db, "testing", []float64{0.1, 0.2, 0.3})
+	// List Skills by semantic query
+	listSem, err := skillsRepo.ListSkills(db, "unit test", []float64{0.1, 0.2, 0.3})
 	require.NoError(t, err)
-	assert.Len(t, vectorMatches, 1)
-	assert.NotNil(t, vectorMatches[0].SimilarityScore)
+	assert.Equal(t, int64(1), listSem.TotalCount)
+	assert.Len(t, listSem.Items, 1)
+	assert.NotNil(t, listSem.Items[0].SimilarityScore)
+	assert.NotNil(t, listSem.Items[0].MatchingChunk)
+	assert.Equal(t, "SKILL.md", *listSem.Items[0].MatchingChunk)
 
-	// 4. Update Skill (partial)
+	// Update Skill
 	newDesc := "Updated description"
 	newVer := "1.1.0"
 	newMeta := map[string]string{"newkey": "newval"}
@@ -172,7 +204,10 @@ func TestSkillsRepository(t *testing.T) {
 		References:  &newRefs,
 		Examples:    &newExs,
 	}
-	updated, err := skillsRepo.UpdateSkill(db, skillRes.ID, appRes.AppID, updateReq, false, []float64{0.4, 0.5, 0.6}, "text-embedding-004")
+	updChunks := []model.SkillEmbeddingChunk{
+		{TargetType: "skill", TargetName: "SKILL.md", Vector: []float64{0.4, 0.5, 0.6}, ModelName: "multimodalembedding"},
+	}
+	updated, err := skillsRepo.UpdateSkill(db, skillRes.ID, appRes.AppID, updateReq, false, updChunks)
 	require.NoError(t, err)
 	assert.Equal(t, "Updated description", updated.Description)
 	assert.Equal(t, "1.1.0", updated.Version)
@@ -183,16 +218,16 @@ func TestSkillsRepository(t *testing.T) {
 	fullReq := model.SkillUpdateRequest{
 		Description: &fullReplaceDesc,
 	}
-	fullUpdated, err := skillsRepo.UpdateSkill(db, skillRes.ID, appRes.AppID, fullReq, true, nil, "")
+	fullUpdated, err := skillsRepo.UpdateSkill(db, skillRes.ID, appRes.AppID, fullReq, true, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "Full replace desc", fullUpdated.Description)
 
 	// Update non-existent skill
-	_, err = skillsRepo.UpdateSkill(db, "non-existent", appRes.AppID, updateReq, false, nil, "")
+	_, err = skillsRepo.UpdateSkill(db, "non-existent", appRes.AppID, updateReq, false, nil)
 	assert.ErrorIs(t, err, data.ErrSkillNotFound)
 
 	// Update with wrong app ID
-	_, err = skillsRepo.UpdateSkill(db, skillRes.ID, "wrong-app", updateReq, false, nil, "")
+	_, err = skillsRepo.UpdateSkill(db, skillRes.ID, "wrong-app", updateReq, false, nil)
 	assert.ErrorIs(t, err, data.ErrUnauthorizedSkillAccess)
 
 	// 5. Delete Skill with wrong app ID

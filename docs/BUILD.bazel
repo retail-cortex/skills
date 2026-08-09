@@ -5,10 +5,10 @@ package(default_visibility = ["//visibility:public"])
 
 hugo_theme(
     name = "geekdoc",
-    theme_name = "hugo-geekdoc",
     srcs = [
         "@hugo_theme_geekdoc//:files",
     ],
+    theme_name = "hugo-geekdoc",
 )
 
 hugo_site(

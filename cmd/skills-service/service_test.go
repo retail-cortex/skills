@@ -1,12 +1,28 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
@@ -25,7 +41,7 @@ func setupTestRouter() (*gin.Engine, *Config) {
 	cfg := &Config{
 		Host:        "localhost",
 		Port:        8000,
-		DatabaseURL: "file::memory:?cache=shared",
+		DatabaseURL: filepath.Join(os.TempDir(), fmt.Sprintf("skills_srv_test_%d.db", time.Now().UnixNano())),
 	}
 
 	router := SetupAppEngine(cfg)
@@ -81,7 +97,7 @@ func TestInvalidAPIKeySkillOps(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest(ep.method, ep.url, bytes.NewBuffer([]byte("{}")))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-API-Key", "sk_live_invalidkey")
+		req.Header.Set("X-API-Key", "skm_live_invalidkey")
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	}
@@ -255,13 +271,27 @@ func TestAppsAndSkillsRESTWorkflow(t *testing.T) {
 
 	// 5. List Skills
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/api/v1/skills?s=rest", nil)
+	req, _ = http.NewRequest("GET", "/api/v1/skills?s=rest&page=1&page_size=5", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "1", w.Header().Get("X-Total-Count"))
+	assert.Equal(t, "1", w.Header().Get("X-Page"))
+	assert.Equal(t, "5", w.Header().Get("X-Page-Size"))
+	assert.Equal(t, "1", w.Header().Get("X-Total-Pages"))
 	var listResp []model.SkillResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &listResp))
 	assert.Len(t, listResp, 1)
+
+	// List Skills with envelope format
+	wEnv := httptest.NewRecorder()
+	reqEnv, _ := http.NewRequest("GET", "/api/v1/skills?s=rest&envelope=true", nil)
+	router.ServeHTTP(wEnv, reqEnv)
+	assert.Equal(t, http.StatusOK, wEnv.Code)
+	var envResp model.PaginatedSkillResponse
+	require.NoError(t, json.Unmarshal(wEnv.Body.Bytes(), &envResp))
+	assert.Equal(t, int64(1), envResp.TotalCount)
+	assert.Len(t, envResp.Items, 1)
 
 	// 6. Get Skill by ID
 	w = httptest.NewRecorder()

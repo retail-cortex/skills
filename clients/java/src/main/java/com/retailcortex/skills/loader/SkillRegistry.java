@@ -1,3 +1,17 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.retailcortex.skills.loader;
 
 import java.nio.file.Path;
@@ -95,6 +109,31 @@ public class SkillRegistry {
                         || (s.getDescription() != null && s.getDescription().toLowerCase().contains(domainNorm)))
                 .sorted(Comparator.comparing(SkillDefinition::getName))
                 .collect(Collectors.toList());
+    }
+
+    public List<SkillDefinition> suggestSkills(String prompt, int maxSkills, String serverUrl) {
+        if (prompt == null || prompt.isBlank()) {
+            return skills.values().stream().limit(Math.max(1, maxSkills)).collect(Collectors.toList());
+        }
+        int boundedMax = Math.min(Math.max(1, maxSkills), 25);
+        List<SkillDefinition> matches = search(prompt);
+        if (!matches.isEmpty()) {
+            return matches.stream().limit(boundedMax).collect(Collectors.toList());
+        }
+        String[] words = prompt.toLowerCase().split("\\s+");
+        Set<String> seen = new HashSet<>();
+        List<SkillDefinition> domainMatches = new ArrayList<>();
+        for (String w : words) {
+            for (SkillDefinition s : getDomainSkills(w)) {
+                if (seen.add(s.getName())) {
+                    domainMatches.add(s);
+                }
+            }
+        }
+        if (!domainMatches.isEmpty()) {
+            return domainMatches.stream().limit(boundedMax).collect(Collectors.toList());
+        }
+        return skills.values().stream().limit(boundedMax).collect(Collectors.toList());
     }
 
     public Path getRoot() {

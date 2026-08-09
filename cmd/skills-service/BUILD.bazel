@@ -12,6 +12,9 @@ go_library(
     importpath = "github.com/retail-cortex/skills/cmd/skills-service",
     deps = [
         "//pkg/data",
+        "//pkg/embedding",
+        "//pkg/embedding/alloydb",
+        "//pkg/embedding/vertex",
         "//pkg/mcp",
         "//pkg/model",
         "//pkg/service",
@@ -23,6 +26,7 @@ go_library(
 
 go_binary(
     name = "skills-service",
+    data = [".env.toml"],
     embed = [":skills-service_lib"],
 )
 
@@ -30,6 +34,7 @@ go_test(
     name = "skills-service_test",
     size = "small",
     srcs = ["service_test.go"],
+    data = [".env.toml"],
     embed = [":skills-service_lib"],
     deps = [
         "//pkg/data",
@@ -39,4 +44,3 @@ go_test(
         "@com_github_stretchr_testify//require",
     ],
 )
-

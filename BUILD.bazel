@@ -20,7 +20,6 @@ filegroup(
     ],
 )
 
-
 alias(
     name = "start-agent",
     actual = "//tests/adk-agent:start_agent",
@@ -71,12 +70,10 @@ alias(
     actual = "//docs:site",
 )
 
-
 alias(
     name = "diagrams",
     actual = "//tools/proto_diagrams",
 )
-
 
 test_suite(
     name = "test-e2e",
@@ -94,6 +91,3 @@ test_suite(
         "//tests/e2e:test_skills_e2e",
     ],
 )
-
-
-

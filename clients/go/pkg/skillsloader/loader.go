@@ -1,13 +1,29 @@
+// Copyright 2026 Ryan McGuinness
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package skillsloader
 
 import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,7 +31,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -298,6 +314,50 @@ func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 	return "file", clean, "", ""
 }
 
+// readSkillFileContent reads file content, preserving text as-is and encoding binary files as Data URIs.
+func readSkillFileContent(filePath string) (string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	// If valid UTF-8 and does not contain raw null byte, return as plain text
+	if utf8.Valid(data) && !bytes.Contains(data, []byte{0}) {
+		return string(data), nil
+	}
+	// Fallback to Data URI with MIME detection for binary formats
+	mimeType := http.DetectContentType(data)
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".pdf":
+		mimeType = "application/pdf"
+	case ".svg":
+		mimeType = "image/svg+xml"
+	case ".png":
+		mimeType = "image/png"
+	case ".jpg", ".jpeg":
+		mimeType = "image/jpeg"
+	case ".webp":
+		mimeType = "image/webp"
+	case ".gif":
+		mimeType = "image/gif"
+	case ".ico":
+		mimeType = "image/x-icon"
+	case ".wasm":
+		mimeType = "application/wasm"
+	case ".wav":
+		mimeType = "audio/wav"
+	case ".mp3":
+		mimeType = "audio/mpeg"
+	case ".zip":
+		mimeType = "application/zip"
+	case ".db", ".sqlite":
+		mimeType = "application/x-sqlite3"
+	case ".pb", ".bin":
+		mimeType = "application/octet-stream"
+	}
+	return fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(data)), nil
+}
+
 // LoadSkillFromDir loads a single skill definition from its directory, enforcing boundary checks.
 func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 	skillMD := filepath.Join(skillDir, "SKILL.md")
@@ -395,11 +455,11 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 	if isDir(refDir) {
 		entries, _ := os.ReadDir(refDir)
 		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+			if !entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 				refPath := filepath.Join(refDir, entry.Name())
 				if isWithinBaseDir(skillDir, refPath) {
-					if refContent, err := os.ReadFile(refPath); err == nil {
-						references[entry.Name()] = string(refContent)
+					if refContent, err := readSkillFileContent(refPath); err == nil {
+						references[entry.Name()] = refContent
 					}
 				}
 			}
@@ -414,8 +474,8 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 			if !entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 				exPath := filepath.Join(exDir, entry.Name())
 				if isWithinBaseDir(skillDir, exPath) {
-					if exContent, err := os.ReadFile(exPath); err == nil {
-						examples[entry.Name()] = string(exContent)
+					if exContent, err := readSkillFileContent(exPath); err == nil {
+						examples[entry.Name()] = exContent
 					}
 				}
 			}
@@ -1410,6 +1470,111 @@ func (r *SkillRegistry) GetDomainSkills(domain string) []*SkillDefinition {
 	return results
 }
 
+// SuggestSkills dynamically suggests the top-k most relevant skills for an agent prompt using remote vector search with local fallback.
+func (r *SkillRegistry) SuggestSkills(prompt string, maxSkills int, serverURL string) []*SkillDefinition {
+	if strings.TrimSpace(prompt) == "" {
+		all := make([]*SkillDefinition, 0, len(r.skills))
+		for _, s := range r.skills {
+			all = append(all, s)
+			if len(all) >= maxSkills {
+				break
+			}
+		}
+		return all
+	}
+
+	boundedMax := maxSkills
+	if boundedMax <= 0 {
+		boundedMax = 3
+	}
+	if boundedMax > 25 {
+		boundedMax = 25
+	}
+
+	targetServer := serverURL
+	if targetServer == "" {
+		targetServer = os.Getenv("SKILLS_SERVER_URL")
+		if targetServer == "" {
+			targetServer = os.Getenv("SKM_SERVER_URL")
+		}
+	}
+
+	if targetServer != "" {
+		endpoint := fmt.Sprintf("%s/api/v1/skills?s=%s&page_size=%d", strings.TrimRight(targetServer, "/"), url.QueryEscape(prompt), boundedMax)
+		client := &http.Client{Timeout: 3 * time.Second}
+		if resp, err := client.Get(endpoint); err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			var items []struct {
+				Name        string   `json:"name"`
+				Description string   `json:"description"`
+				Version     string   `json:"version"`
+				URI         string   `json:"uri"`
+				Tags        []string `json:"tags"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&items); err == nil && len(items) > 0 {
+				remoteMatches := make([]*SkillDefinition, 0, len(items))
+				for _, item := range items {
+					if localSkill, exists := r.skills[item.Name]; exists {
+						remoteMatches = append(remoteMatches, localSkill)
+					} else {
+						remoteMatches = append(remoteMatches, &SkillDefinition{
+							Name:        item.Name,
+							Description: item.Description,
+							Version:     item.Version,
+							Path:        item.URI,
+							Tags:        item.Tags,
+						})
+					}
+				}
+				if len(remoteMatches) > 0 {
+					if len(remoteMatches) > boundedMax {
+						return remoteMatches[:boundedMax]
+					}
+					return remoteMatches
+				}
+			}
+		}
+	}
+
+	// Local fallback: search matching keywords
+	localMatches := r.Search(prompt)
+	if len(localMatches) > 0 {
+		if len(localMatches) > boundedMax {
+			return localMatches[:boundedMax]
+		}
+		return localMatches
+	}
+
+	// Domain fallback
+	words := strings.Fields(strings.ToLower(prompt))
+	domainMatches := make([]*SkillDefinition, 0)
+	seen := make(map[string]bool)
+	for _, w := range words {
+		for _, s := range r.GetDomainSkills(w) {
+			if !seen[s.Name] {
+				seen[s.Name] = true
+				domainMatches = append(domainMatches, s)
+			}
+		}
+	}
+	if len(domainMatches) > 0 {
+		if len(domainMatches) > boundedMax {
+			return domainMatches[:boundedMax]
+		}
+		return domainMatches
+	}
+
+	// Return first available skills up to boundedMax
+	fallback := make([]*SkillDefinition, 0, boundedMax)
+	for _, s := range r.skills {
+		fallback = append(fallback, s)
+		if len(fallback) >= boundedMax {
+			break
+		}
+	}
+	return fallback
+}
+
 // --- Helper Functions ---
 
 func isDir(path string) bool {
@@ -1768,13 +1933,31 @@ func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, a
 
 	skillMDContent := fmt.Sprintf("---\nname: %s\ndescription: %s\nlicense: %s\nauthor: %s\nversion: %s\n---\n\n# %s\n\n%s\n",
 		s.Name, s.Description, s.License, s.Author, s.Version, s.Name, s.Instructions)
+	if strings.HasPrefix(strings.TrimSpace(s.Instructions), "---") || strings.HasPrefix(strings.TrimSpace(s.Instructions), "# ") {
+		skillMDContent = s.Instructions
+	}
 	_ = os.WriteFile(filepath.Join(tmpDir, "SKILL.md"), []byte(skillMDContent), 0644)
+
+	writeFilePayload := func(destPath string, content string) error {
+		var data []byte
+		if strings.HasPrefix(content, "data:") && strings.Contains(content, ";base64,") {
+			parts := strings.SplitN(content, ";base64,", 2)
+			if decoded, err := base64.StdEncoding.DecodeString(parts[1]); err == nil {
+				data = decoded
+			} else {
+				data = []byte(content)
+			}
+		} else {
+			data = []byte(content)
+		}
+		return os.WriteFile(destPath, data, 0644)
+	}
 
 	if len(s.References) > 0 {
 		refDir := filepath.Join(tmpDir, "references")
 		_ = os.MkdirAll(refDir, 0755)
 		for name, content := range s.References {
-			_ = os.WriteFile(filepath.Join(refDir, name), []byte(content), 0644)
+			_ = writeFilePayload(filepath.Join(refDir, name), content)
 		}
 	}
 
@@ -1782,7 +1965,7 @@ func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, a
 		exDir := filepath.Join(tmpDir, "examples")
 		_ = os.MkdirAll(exDir, 0755)
 		for name, content := range s.Examples {
-			_ = os.WriteFile(filepath.Join(exDir, name), []byte(content), 0644)
+			_ = writeFilePayload(filepath.Join(exDir, name), content)
 		}
 	}
 

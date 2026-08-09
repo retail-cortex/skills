@@ -13,6 +13,7 @@ go_library(
     deps = [
         "//pkg/model",
         "@com_github_google_uuid//:uuid",
+        "@io_gorm_driver_postgres//:postgres",
         "@io_gorm_driver_sqlite//:sqlite",
         "@io_gorm_gorm//:gorm",
         "@io_gorm_gorm//logger",

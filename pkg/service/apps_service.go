@@ -21,11 +21,11 @@ import (
 )
 
 type AppsService struct {
-	repo *data.AppsRepository
+	repo data.AppRepository
 }
 
-func NewAppsService(repo ...*data.AppsRepository) *AppsService {
-	var r *data.AppsRepository
+func NewAppsService(repo ...data.AppRepository) *AppsService {
+	var r data.AppRepository
 	if len(repo) > 0 && repo[0] != nil {
 		r = repo[0]
 	} else {

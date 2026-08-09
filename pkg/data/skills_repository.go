@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/retail-cortex/skills/pkg/embedding"
 	"github.com/retail-cortex/skills/pkg/model"
 	"gorm.io/gorm"
 )
@@ -34,6 +35,17 @@ var (
 	ErrSkillNotFound           = errors.New("skill not found")
 	ErrUnauthorizedSkillAccess = errors.New("unauthorized: skill belongs to a different application")
 )
+
+// Repository defines the contract for skill storage, indexing, and retrieval.
+type Repository interface {
+	BuildSkillResponse(db *gorm.DB, skill *model.Skill, similarityScore *float64) (*model.SkillResponse, error)
+	CreateSkill(db *gorm.DB, appID string, req model.SkillCreateRequest, embeddingChunks []model.SkillEmbeddingChunk) (*model.SkillResponse, error)
+	GetSkill(db *gorm.DB, skillIDOrNameOrURI string) (*model.SkillResponse, error)
+	ListSkills(db *gorm.DB, query string, queryVector []float64, pagination ...model.PaginationParams) (*model.PaginatedSkillResponse, error)
+	UpdateSkill(db *gorm.DB, skillID string, appID string, req model.SkillUpdateRequest, fullReplace bool, embeddingChunks []model.SkillEmbeddingChunk) (*model.SkillResponse, error)
+	SaveSkillEmbeddings(db *gorm.DB, skillID string, embeddingChunks []model.SkillEmbeddingChunk) error
+	DeleteSkill(db *gorm.DB, skillID string, appID string) (map[string]interface{}, error)
+}
 
 type SkillsRepository struct{}
 
@@ -50,19 +62,7 @@ func ComputeSkillHash(name, description, instructions string) string {
 
 // CosineSimilarity computes cosine similarity between two float64 vectors.
 func CosineSimilarity(vec1, vec2 []float64) float64 {
-	if len(vec1) == 0 || len(vec2) == 0 || len(vec1) != len(vec2) {
-		return 0.0
-	}
-	var dotProduct, norm1, norm2 float64
-	for i := range vec1 {
-		dotProduct += vec1[i] * vec2[i]
-		norm1 += vec1[i] * vec1[i]
-		norm2 += vec2[i] * vec2[i]
-	}
-	if norm1 == 0.0 || norm2 == 0.0 {
-		return 0.0
-	}
-	return dotProduct / (math.Sqrt(norm1) * math.Sqrt(norm2))
+	return embedding.CosineSimilarity(vec1, vec2)
 }
 
 // buildSkillEmbeddingRecord creates a SkillEmbedding model populated with poly-column vectors.

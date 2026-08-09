@@ -1338,6 +1338,16 @@ func LoadSkillsFromManifest(manifestPath string) (map[string]*SkillDefinition, e
 	return loaded, nil
 }
 
+// Registry defines the contract for querying, searching, and evaluating loaded skills.
+type Registry interface {
+	Skills() map[string]*SkillDefinition
+	Get(name string) *SkillDefinition
+	ListSkills() []SkillSummary
+	Search(query string) []*SkillDefinition
+	GetDomainSkills(domain string) []*SkillDefinition
+	SuggestSkills(prompt string, maxSkills int, serverURL string) []*SkillDefinition
+}
+
 // SkillRegistry provides high-performance skill discovery and querying for Go agent applications.
 type SkillRegistry struct {
 	root   string

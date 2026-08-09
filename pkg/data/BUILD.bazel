@@ -11,6 +11,7 @@ go_library(
     ],
     importpath = "github.com/retail-cortex/skills/pkg/data",
     deps = [
+        "//pkg/embedding",
         "//pkg/model",
         "@com_github_google_uuid//:uuid",
         "@io_gorm_driver_postgres//:postgres",

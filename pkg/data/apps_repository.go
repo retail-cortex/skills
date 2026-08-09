@@ -50,6 +50,14 @@ var freemailDomains = map[string]bool{
 	"zoho.com":       true,
 }
 
+// AppRepository defines the contract for application registration, verification, and authentication.
+type AppRepository interface {
+	HashAPIKey(apiKey string) string
+	RegisterApp(db *gorm.DB, req model.AppRegisterRequest, baseURL string) (*model.AppRegisterResponse, error)
+	VerifyApp(db *gorm.DB, token string) (*model.AppVerifyResponse, error)
+	AuthenticateAPIKey(db *gorm.DB, apiKey string) (*model.RegisteredApp, error)
+}
+
 type AppsRepository struct{}
 
 func NewAppsRepository() *AppsRepository {

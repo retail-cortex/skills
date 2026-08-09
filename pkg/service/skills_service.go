@@ -39,30 +39,18 @@ type embeddingJob struct {
 }
 
 type SkillsService struct {
-	repo         *data.SkillsRepository
+	repo         data.Repository
 	provider     embedding.Provider
 	embedJobChan chan embeddingJob
 	workerOnce   sync.Once
 }
 
-func NewSkillsService(repo ...*data.SkillsRepository) *SkillsService {
-	var r *data.SkillsRepository
-	if len(repo) > 0 && repo[0] != nil {
-		r = repo[0]
-	} else {
-		r = data.NewSkillsRepository()
-	}
-	svc := &SkillsService{
-		repo:         r,
-		provider:     vertex.NewProvider(),
-		embedJobChan: make(chan embeddingJob, 100),
-	}
-	svc.startBackgroundWorkers(4)
-	return svc
+func NewSkillsService(repo ...data.Repository) *SkillsService {
+	return NewSkillsServiceWithProvider(vertex.NewProvider(), repo...)
 }
 
-func NewSkillsServiceWithProvider(provider embedding.Provider, repo ...*data.SkillsRepository) *SkillsService {
-	var r *data.SkillsRepository
+func NewSkillsServiceWithProvider(provider embedding.Provider, repo ...data.Repository) *SkillsService {
+	var r data.Repository
 	if len(repo) > 0 && repo[0] != nil {
 		r = repo[0]
 	} else {
@@ -80,13 +68,7 @@ func NewSkillsServiceWithProvider(provider embedding.Provider, repo ...*data.Ski
 	return svc
 }
 
-func NewSkillsServiceWithConfig(cfg EmbeddingConfig, repo ...*data.SkillsRepository) *SkillsService {
-	var r *data.SkillsRepository
-	if len(repo) > 0 && repo[0] != nil {
-		r = repo[0]
-	} else {
-		r = data.NewSkillsRepository()
-	}
+func NewSkillsServiceWithConfig(cfg EmbeddingConfig, repo ...data.Repository) *SkillsService {
 	vCfg := vertex.Config{
 		ModelName:    cfg.ModelName,
 		ProjectID:    cfg.ProjectID,
@@ -94,13 +76,7 @@ func NewSkillsServiceWithConfig(cfg EmbeddingConfig, repo ...*data.SkillsReposit
 		GeminiAPIKey: cfg.GeminiAPIKey,
 		BaseURL:      cfg.BaseURL,
 	}
-	svc := &SkillsService{
-		repo:         r,
-		provider:     vertex.NewProvider(vCfg),
-		embedJobChan: make(chan embeddingJob, 100),
-	}
-	svc.startBackgroundWorkers(4)
-	return svc
+	return NewSkillsServiceWithProvider(vertex.NewProvider(vCfg), repo...)
 }
 
 func (s *SkillsService) startBackgroundWorkers(concurrency int) {

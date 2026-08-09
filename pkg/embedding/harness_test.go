@@ -220,5 +220,5 @@ func TestEmbeddingProvidersHarness(t *testing.T) {
 		fmt.Printf("%-18s | %-9d | %8.1f ms  | %8.1f ms  | %10.1f ms   | %7.1f %%  | %5.2f\n",
 			m.ProviderName, m.Dimension, m.AvgTextLatencyMS, m.P95TextLatencyMS, m.SkillEmbeddingMS, m.Top1RecallAccuracy, m.MRR)
 	}
-	fmt.Println("=========================================================================================\n")
+	fmt.Println(strings.Repeat("=", 92))
 }

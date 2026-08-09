@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skill-service-config
+  namespace: skill-builder
+data:
+  APP_ENV: "qa"
+  MODENV_ENV: "qa"
+  EMBEDDING_PROVIDER: "alloydb-ai"
+  OTEL_SERVICE_NAME: "skills-service-qa"

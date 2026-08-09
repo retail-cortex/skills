@@ -1,3 +1,8 @@
+---
+title: "Comparative Analysis"
+weight: 80
+---
+
 # Critical Comparison: Enterprise Skills Implementation vs. `agentskills.io` Standard
 
 This document provides a comprehensive critical comparison between the local polyglot enterprise skills implementation (`skill-builder`) and the open [Agent Skills Specification](https://agentskills.io/specification), the [Client Implementation Guide](https://agentskills.io/client-implementation/adding-skills-support), and ecosystem clients listed on [Agent Skills Clients](https://agentskills.io/clients).

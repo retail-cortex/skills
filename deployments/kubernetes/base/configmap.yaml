@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skill-service-config
+  namespace: skill-builder
+data:
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  ENABLE_OPENTELEMETRY: "true"
+  OTEL_SERVICE_NAME: "skills-service"
+  EMBEDDING_PROVIDER: "vertex-gemini"
+  GCP_REGION: "us-central1"

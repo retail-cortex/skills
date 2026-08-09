@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skill-service-config
+  namespace: skill-builder
+data:
+  APP_ENV: "production"
+  MODENV_ENV: "production"
+  EMBEDDING_PROVIDER: "vertex-gemini"
+  OTEL_SERVICE_NAME: "skills-service-prod"

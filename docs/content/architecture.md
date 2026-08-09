@@ -1,3 +1,8 @@
+---
+title: "Architecture"
+weight: 30
+---
+
 # Engineering Standards & Architecture
 
 Every skill in this registry enforces a complete, production-grade Software Development Lifecycle (SDLC) with zero-tolerance security, Google OAuth2 authentication, multi-modal vector search, and HTTP 429 rate limit resilience.
@@ -68,20 +73,76 @@ WITH (m = 16, ef_construction = 64);
 
 ## 3. Pluggable Soft-Switch Embedding Providers
 
-The embedding layer defines a decoupled Go interface (`pkg/embedding.EmbeddingProvider`):
+The embedding layer standardizes on a decoupled Go provider interface ([`pkg/embedding.Provider`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L26-L50)):
 
 ```go
-type EmbeddingProvider interface {
+type Provider interface {
+    // Name returns the provider identifier (e.g. "vertex-gemini", "alloydb-ai").
+    Name() string
+
+    // Dimension returns the vector dimension produced by this provider.
     Dimension() int
-    EmbedText(ctx context.Context, text string) ([]float32, error)
-    EmbedAsset(ctx context.Context, data []byte, mimeType string) ([]float32, error)
-    BatchEmbedText(ctx context.Context, texts []string) ([][]float32, error)
+
+    // GenerateEmbedding generates a vector embedding for a single text input.
+    GenerateEmbedding(ctx context.Context, text string) ([]float64, error)
+
+    // GenerateImageEmbedding generates a vector embedding for a base64-encoded image input.
+    GenerateImageEmbedding(ctx context.Context, base64Image string) ([]float64, error)
+
+    // GenerateSkillEmbeddings decomposes and generates granular multi-chunk embeddings for an entire skill.
+    GenerateSkillEmbeddings(
+        ctx context.Context,
+        name, description, instructions string,
+        triggers []string,
+        references map[string]string,
+        examples map[string]string,
+    ) ([]model.SkillEmbeddingChunk, error)
+
+    // CosineSimilarity computes the cosine similarity between two vector embeddings.
+    CosineSimilarity(a, b []float64) float64
 }
 ```
 
-Configured dynamically in `cmd/skills-service/.env.toml` via `embedding_provider`:
-- **`vertex-gemini`**: Google Vertex AI `multimodalembedding` (1408d) and `text-embedding-004` (768d).
-- **`alloydb-ai`**: Native in-database Google AlloyDB AI embedding functions (`embedding(model_id, text)`).
+### Supported Concrete Providers
+
+Configured dynamically in `cmd/skills-service/.env.toml` via `embedding_provider` or environment variable `EMBEDDING_PROVIDER`:
+
+#### 1. Google Vertex AI & Gemini Provider ([`pkg/embedding/vertex`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/vertex/vertex.go))
+- **Provider Identifier**: `"vertex-gemini"` (default)
+- **Supported Models**: `multimodalembedding` (1408 dimensions, default) and `text-embedding-004` (768 dimensions).
+- **Authentication**: Supports Google Cloud Application Default Credentials (ADC) OAuth2 access token caching (`gcloud auth print-access-token` / GCP metadata server) or Gemini Developer API keys (`GEMINI_API_KEY`).
+- **Configuration Variables**:
+  - `GCP_PROJECT_ID` / `GOOGLE_CLOUD_PROJECT`: Target Google Cloud Project ID.
+  - `GCP_REGION`: Target GCP Region (defaults to `us-central1`).
+  - `GEMINI_API_KEY`: API key for Gemini Developer API endpoints.
+  - `VERTEX_AI_BASE_URL`: Custom proxy or emulator endpoint.
+- **Offline Fallback**: Implements deterministic, normalized vector generation ([`embedding.GenerateDeterministicVector`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L128)) when credentials are not configured, enabling zero-network local development.
+
+#### 2. AlloyDB AI In-Database Provider ([`pkg/embedding/alloydb`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/alloydb/alloydb.go))
+- **Provider Identifier**: `"alloydb-ai"` or `"alloydb"`
+- **Supported Models**: `text-embedding-004` (768 dimensions, default).
+- **Execution Mechanism**: Invokes native in-database PostgreSQL functions directly over the active database connection:
+  ```sql
+  SELECT embedding('text-embedding-004', $1)::text;
+  -- Fallback to Google ML extension:
+  SELECT google_ml.embedding('text-embedding-004', $1)::text;
+  ```
+- **Driver Support**: Interfaces via GORM `*gorm.DB` or standard `database/sql.DB`.
+
+### Asynchronous Ingestion & Multi-Chunk Decomposition
+
+During skill registration, embedding generation is offloaded to non-blocking background workers ([`SkillsService.startBackgroundWorkers`](file:///Users/rmcguinness/Projects/skill-builder/pkg/service/skills_service.go#L106-L129)):
+
+1. **Sliding-Window Chunking**: Long instructions and references are partitioned into $\le 900$-character chunks with an 80-character sliding step overlap ([`embedding.SplitTextIntoChunks`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L70)).
+2. **Multi-Asset Embedding**: Generates distinct chunk embeddings across skill metadata, system instructions, trigger phrases, Markdown references, and code examples.
+3. **Poly-Column Persistence**: Chunks are stored in the `skill_embeddings` table and indexed using pgvector HNSW cosine graphs.
+
+### Evaluation & Benchmark Test Harness ([`pkg/embedding/harness_test.go`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/harness_test.go))
+
+The embedding evaluation test harness benchmarks candidate embedding providers against ground-truth skill corpora to verify:
+- **Mean Reciprocal Rank (MRR)**: Average reciprocal rank of expected skill matches across natural language queries.
+- **Top-1 & Top-3 Recall Accuracy**: Fraction of queries where the relevant skill appears in the top $1$ or $3$ recommendations.
+- **P95 Latency & Throughput**: Text embedding generation latency and batch skill decomposition performance.
 
 ---
 

@@ -1,3 +1,8 @@
+---
+title: "Specification"
+weight: 20
+---
+
 # Enterprise AI Agent Skills Specification (v1.0.0)
 
 ## 1. Overview & Scope
@@ -101,14 +106,30 @@ Every application registered with `skills-service` MUST be bound to a verified d
 
 ## 7. Multi-Modal Vector Embedding & Poly-Column Indexing
 
-Central registries MUST compute and maintain multi-modal semantic embeddings for registered skills:
+Central registries MUST compute, index, and maintain multi-modal semantic embeddings for all registered skills:
 
-1. **Poly-Column Dimensions**:
-   - `embedding_768`: 768-dimensional float32 vector for standard text embedding models (`text-embedding-004`, `alloydb-ai`).
-   - `embedding_1408`: 1408-dimensional float32 vector for multi-modal image and media models (`multimodalembedding`).
-   - `embedding_3072`: 3072-dimensional float32 vector for high-dimensional models.
-2. **HNSW Acceleration**: PostgreSQL/AlloyDB indexes MUST utilize HNSW (`m=16`, `ef_construction=64`) over `vector_cosine_ops`.
-3. **Dual-Tier Resolution**: Skill metadata and individual progressive disclosure reference assets MUST be embedded independently to support precise RAG retrieval.
+1. **Provider Contract & Vector Precision**:
+   - Embedding providers MUST implement the standard [`embedding.Provider`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L26) interface, emitting $L_2$-normalized `[]float64` vectors.
+   - Providers MUST support text embedding (`GenerateEmbedding`), binary image embedding (`GenerateImageEmbedding`), multi-chunk skill decomposition (`GenerateSkillEmbeddings`), and cosine similarity calculation (`CosineSimilarity`).
+2. **Poly-Column Dimensions**:
+   - `embedding_768`: 768-dimensional vector for standard text embedding models (`text-embedding-004`, `alloydb-ai`).
+   - `embedding_1408`: 1408-dimensional vector for multi-modal image and media models (`multimodalembedding`).
+   - `embedding_3072`: 3072-dimensional vector reserved for high-dimensional models.
+3. **Multi-Chunk Sliding-Window Decomposition**:
+   - Skill content MUST be decomposed into granular chunks prior to vectorization to support accurate RAG retrieval across complex technical instructions and code snippets.
+   - Text chunks MUST be capped at at most 900 characters per chunk, with an 80-character sliding step overlap when partitioning large text blocks or code structures.
+   - Itemized chunks MUST be generated across:
+     - Skill summary & metadata (name, description, tags, categories).
+     - System instructions (partitioned into numbered instruction blocks).
+     - Trigger phrases (individual query match phrases).
+     - Markdown references (`references/*.md`).
+     - Executable examples (`examples/*`).
+4. **HNSW Acceleration**:
+   - PostgreSQL/AlloyDB indexes MUST utilize HNSW (`m=16`, `ef_construction=64`) over `vector_cosine_ops` for all active vector columns (`skills_embedding_768_hnsw_idx`, `skills_embedding_1408_hnsw_idx`).
+5. **Deterministic Offline Fallback**:
+   - In environments without live Google Cloud or AlloyDB AI credentials, registries and test runners MUST fall back to deterministic, normalized semantic hashing ([`embedding.GenerateDeterministicVector`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L128)) to maintain hermetic test isolation.
+6. **Benchmark & Recall Evaluation**:
+   - Provider implementations MUST be verifiable against an evaluation test harness ([`pkg/embedding/harness_test.go`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/harness_test.go)) evaluating Mean Reciprocal Rank (MRR $\ge 0.85$), Top-1/Top-3 recall accuracy ($\ge 90\%$), and P95 latency bounds.
 
 ---
 

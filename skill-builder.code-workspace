@@ -1,25 +1,25 @@
 {
 	"folders": [
 		{
+			"name": "skill-builder",
 			"path": "."
 		}
 	],
 	"settings": {
 		"files.exclude": {
-			"**/.DS_Store": true,
-			"**/.DS_Store?": true,
 			"**/.git": true,
-			"**/.hg": true,
 			"**/.svn": true,
+			"**/.hg": true,
 			"**/CVS": true,
+			"**/.DS_Store": true,
 			"**/Thumbs.db": true,
-			"**/bazel-*": true,
-			"**/.bazel-cache": true,
+			"bazel-bin": true,
+			"bazel-out": true,
+			"bazel-testlogs": true,
+			"bazel-skill-builder": true,
+			".bazel-cache": true,
 			"**/.gemini": true,
-			"**/.loader_skills": true,
-			"**/.skills": true,
 			"**/.system_generated": true,
-			"**/scratch": true,
 			"**/.venv": true,
 			"**/__pycache__": true,
 			"**/*.pyc": true,
@@ -33,16 +33,16 @@
 			"**/.next": true,
 			"**/.turbo": true,
 			"**/target": true,
-			"**/dist": true,
-			"**/build": true
+			"**/dist": true
 		},
 		"search.exclude": {
-			"**/bazel-*": true,
-			"**/.bazel-cache": true,
+			"bazel-bin": true,
+			"bazel-out": true,
+			"bazel-testlogs": true,
+			"bazel-skill-builder": true,
+			".bazel-cache": true,
 			"**/.gemini": true,
-			"**/.loader_skills": true,
 			"**/.system_generated": true,
-			"**/scratch": true,
 			"**/.venv": true,
 			"**/__pycache__": true,
 			"**/*.egg-info": true,

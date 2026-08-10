@@ -43,6 +43,10 @@ public class SkillDefinition {
     private Map<String, String> references = new HashMap<>();
     private Map<String, String> examples = new HashMap<>();
     private String path = "";
+    @JsonProperty("source_uri")
+    private String sourceUri = "";
+    @JsonProperty("sha256_hash")
+    private String sha256Hash = "";
 
     public SkillDefinition() {
     }
@@ -50,12 +54,24 @@ public class SkillDefinition {
     public SkillDefinition(String name, String description, String instructions, String license,
                            String author, String version, String compatibility, Map<String, String> metadata,
                            Map<String, String> references, Map<String, String> examples, String path) {
-        this(name, description, instructions, license, author, version, compatibility, null, metadata, references, examples, path);
+        this(name, description, instructions, license, author, version, compatibility, null, metadata, references, examples, path, null, null);
     }
 
     public SkillDefinition(String name, String description, String instructions, String license,
                            String author, String version, String compatibility, String allowedTools,
                            Map<String, String> metadata, Map<String, String> references, Map<String, String> examples, String path) {
+        this(name, description, instructions, license, author, version, compatibility, allowedTools, metadata, references, examples, path, null, null);
+    }
+
+    public SkillDefinition(String name, String description, String instructions, String license,
+                           String author, String version, String compatibility, String allowedTools,
+                           Map<String, String> metadata, Map<String, String> references, Map<String, String> examples, String path, String sourceUri) {
+        this(name, description, instructions, license, author, version, compatibility, allowedTools, metadata, references, examples, path, sourceUri, null);
+    }
+
+    public SkillDefinition(String name, String description, String instructions, String license,
+                           String author, String version, String compatibility, String allowedTools,
+                           Map<String, String> metadata, Map<String, String> references, Map<String, String> examples, String path, String sourceUri, String sha256Hash) {
         this.name = name;
         this.description = description;
         this.instructions = instructions;
@@ -68,6 +84,8 @@ public class SkillDefinition {
         this.references = references != null ? references : new HashMap<>();
         this.examples = examples != null ? examples : new HashMap<>();
         this.path = path != null ? path : "";
+        this.sourceUri = sourceUri != null ? sourceUri : "";
+        this.sha256Hash = sha256Hash != null ? sha256Hash : "";
     }
 
     public String getName() {
@@ -174,6 +192,22 @@ public class SkillDefinition {
         this.path = path;
     }
 
+    public String getSourceUri() {
+        return sourceUri;
+    }
+
+    public void setSourceUri(String sourceUri) {
+        this.sourceUri = sourceUri;
+    }
+
+    public String getSha256Hash() {
+        return sha256Hash;
+    }
+
+    public void setSha256Hash(String sha256Hash) {
+        this.sha256Hash = sha256Hash;
+    }
+
     /**
      * Serializes skill definition to dictionary representation matching Python/Go clients.
      */
@@ -194,6 +228,8 @@ public class SkillDefinition {
         map.put("references", refKeys);
         map.put("examples", exKeys);
         map.put("path", path);
+        map.put("source_uri", sourceUri);
+        map.put("sha256_hash", sha256Hash);
         return map;
     }
 

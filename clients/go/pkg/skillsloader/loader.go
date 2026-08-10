@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -384,24 +385,28 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 
 	metaDict := make(map[string]string)
 	knownKeys := map[string]bool{
-		"name":            true,
-		"description":     true,
-		"license":         true,
-		"author":          true,
-		"version":         true,
-		"compatibility":   true,
-		"allowed-tools":   true,
-		"allowed_tools":   true,
-		"category":        true,
-		"tags":            true,
-		"trigger_phrases": true,
-		"execution_hints": true,
-		"authors":         true,
+		"name":              true,
+		"description":       true,
+		"license":           true,
+		"author":            true,
+		"version":           true,
+		"compatibility":     true,
+		"allowed-tools":     true,
+		"allowed_tools":     true,
+		"category":          true,
+		"tags":              true,
+		"trigger_phrases":   true,
+		"execution_hints":   true,
+		"authors":           true,
 		"tool_requirements": true,
+		"metadata":          true,
+		"source_uri":        true,
+		"src":               true,
+		"source":            true,
 	}
 
 	for k, v := range fmData {
-		if !knownKeys[k] {
+		if !knownKeys[k] && strings.TrimSpace(v) != "" {
 			metaDict[k] = v
 		}
 	}
@@ -422,10 +427,12 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 
 	// Parse structured YAML frontmatter for complex fields
 	var structFm struct {
-		Category       string   `yaml:"category"`
-		Tags           []string `yaml:"tags"`
-		TriggerPhrases []string `yaml:"trigger_phrases"`
-		ExecutionHints *struct {
+		Authors          []AuthorDetails   `yaml:"authors"`
+		ToolRequirements []ToolRequirement `yaml:"tool_requirements"`
+		Category         string            `yaml:"category"`
+		Tags             []string          `yaml:"tags"`
+		TriggerPhrases   []string          `yaml:"trigger_phrases"`
+		ExecutionHints   *struct {
 			PreferredModel        string            `yaml:"preferred_model"`
 			RequiresHumanApproval bool              `yaml:"requires_human_approval"`
 			EnvironmentVariables  []string          `yaml:"environment_variables"`
@@ -448,6 +455,24 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 			TimeoutSeconds:        structFm.ExecutionHints.TimeoutSeconds,
 			CustomHints:           structFm.ExecutionHints.CustomHints,
 		}
+	}
+
+	// Compute relative path against registry root
+	registryRoot := FindRegistryRoot()
+	relPath := skillDir
+	if r, err := filepath.Rel(registryRoot, skillDir); err == nil && !strings.HasPrefix(r, "..") {
+		relPath = r
+	}
+
+	sourceURI := fmData["source_uri"]
+	if sourceURI == "" {
+		sourceURI = fmData["src"]
+	}
+	if sourceURI == "" {
+		sourceURI = fmData["source"]
+	}
+	if sourceURI == "" {
+		sourceURI = fmt.Sprintf("file://%s", relPath)
 	}
 
 	references := make(map[string]string)
@@ -482,23 +507,31 @@ func LoadSkillFromDir(skillDir string) (*SkillDefinition, error) {
 		}
 	}
 
+	payload := fmt.Sprintf("%s:%s:%s:%s", name, version, strings.TrimSpace(body), desc)
+	h := sha256.Sum256([]byte(payload))
+	sha256Hash := hex.EncodeToString(h[:])
+
 	def := &SkillDefinition{
-		Name:           name,
-		Description:    desc,
-		Instructions:   strings.TrimSpace(body),
-		License:        fmData["license"],
-		Author:         author,
-		Version:        version,
-		Compatibility:  fmData["compatibility"],
-		AllowedTools:   allowedTools,
-		Category:       structFm.Category,
-		Tags:           structFm.Tags,
-		TriggerPhrases: structFm.TriggerPhrases,
-		ExecutionHints: execHints,
-		Metadata:       metaDict,
-		References:     references,
-		Examples:       examples,
-		Path:           skillDir,
+		Name:             name,
+		Description:      desc,
+		Instructions:     strings.TrimSpace(body),
+		License:          fmData["license"],
+		Author:           author,
+		Authors:          structFm.Authors,
+		Version:          version,
+		Compatibility:    fmData["compatibility"],
+		AllowedTools:     allowedTools,
+		ToolRequirements: structFm.ToolRequirements,
+		Category:         structFm.Category,
+		Tags:             structFm.Tags,
+		TriggerPhrases:   structFm.TriggerPhrases,
+		ExecutionHints:   execHints,
+		Metadata:         metaDict,
+		References:       references,
+		Examples:         examples,
+		Path:             relPath,
+		SourceURI:        sourceURI,
+		SHA256Hash:       sha256Hash,
 	}
 
 	return def, nil
@@ -1111,15 +1144,27 @@ func LoadSkillsFromGitHub(repo string, ref string, roots []string, filter []stri
 		if rootRel != "." {
 			candidateDir = filepath.Join(repoTargetDir, rootRel)
 		}
+		sourceURIBase := fmt.Sprintf("github://%s@%s", cleanRepo, gitRef)
+		if rootRel != "." && rootRel != "skills" {
+			sourceURIBase = fmt.Sprintf("github://%s@%s/%s", cleanRepo, gitRef, rootRel)
+		}
 		if isDir(candidateDir) {
 			if singleSkill, err := LoadSkillFromDir(candidateDir); err == nil && singleSkill != nil {
 				if !hasFilter || filterSet[singleSkill.Name] {
+					singleSkill.SourceURI = sourceURIBase
 					loadedSkills[singleSkill.Name] = singleSkill
 				}
 			} else {
 				skills, err := LoadAllSkills(candidateDir, selectedSkills)
 				if err == nil {
 					for k, v := range skills {
+						if v.SourceURI == "" || strings.HasPrefix(v.SourceURI, "file://") {
+							if rootRel == "." || rootRel == "skills" {
+								v.SourceURI = fmt.Sprintf("%s/%s", sourceURIBase, v.Name)
+							} else {
+								v.SourceURI = sourceURIBase
+							}
+						}
 						loadedSkills[k] = v
 					}
 				}
@@ -1272,14 +1317,34 @@ func BuildSkillsManifest(skillsRoot string, outputPath string) (string, error) {
 		outFile = filepath.Join(GetLoaderSkillsDir(), "skills_manifest.json")
 	}
 
-	_ = os.MkdirAll(filepath.Dir(outFile), 0755)
+	manifestDir, _ := filepath.Abs(filepath.Dir(outFile))
+	_ = os.MkdirAll(manifestDir, 0755)
+
+	registryRoot := FindRegistryRoot()
 
 	manifestData := make(map[string]map[string]any)
 	for name, s := range skills {
-		manifestData[name] = s.ToMap()
-		// Overwrite references and examples in raw map with content maps for full serialization
-		manifestData[name]["references"] = s.References
-		manifestData[name]["examples"] = s.Examples
+		skillAbs := s.Path
+		if !filepath.IsAbs(skillAbs) {
+			skillAbs = filepath.Join(registryRoot, skillAbs)
+		}
+
+		relPath := s.Path
+		if r, err := filepath.Rel(manifestDir, skillAbs); err == nil {
+			relPath = r
+		}
+
+		srcURI := s.SourceURI
+		if srcURI == "" || strings.HasPrefix(srcURI, "file://") {
+			srcURI = fmt.Sprintf("file://%s", relPath)
+		}
+
+		m := s.ToMap()
+		m["path"] = relPath
+		m["source_uri"] = srcURI
+		m["references"] = s.References
+		m["examples"] = s.Examples
+		manifestData[name] = m
 	}
 
 	data, err := json.MarshalIndent(manifestData, "", "  ")
@@ -1313,6 +1378,8 @@ func LoadSkillsFromManifest(manifestPath string) (map[string]*SkillDefinition, e
 		References    map[string]string `json:"references"`
 		Examples      map[string]string `json:"examples"`
 		Path          string            `json:"path"`
+		SourceURI     string            `json:"source_uri"`
+		SHA256Hash    string            `json:"sha256_hash"`
 	}
 
 	if err := json.Unmarshal(content, &rawMap); err != nil {
@@ -1333,6 +1400,8 @@ func LoadSkillsFromManifest(manifestPath string) (map[string]*SkillDefinition, e
 			References:    data.References,
 			Examples:      data.Examples,
 			Path:          data.Path,
+			SourceURI:     data.SourceURI,
+			SHA256Hash:    data.SHA256Hash,
 		}
 	}
 	return loaded, nil

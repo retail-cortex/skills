@@ -363,10 +363,14 @@ public class SkillLoader {
                 allowedTools = fmData.get("allowed_tools");
             }
 
-            Set<String> knownKeys = Set.of("name", "description", "license", "author", "version", "compatibility", "allowed-tools", "allowed_tools");
+            Set<String> knownKeys = Set.of(
+                    "name", "description", "license", "author", "authors", "version", "compatibility",
+                    "allowed-tools", "allowed_tools", "category", "tags", "trigger_phrases", "execution_hints",
+                    "metadata", "source_uri", "src", "source"
+            );
             Map<String, String> meta = new HashMap<>();
             for (Map.Entry<String, String> entry : fmData.entrySet()) {
-                if (!knownKeys.contains(entry.getKey())) {
+                if (!knownKeys.contains(entry.getKey()) && entry.getValue() != null && !entry.getValue().isBlank()) {
                     meta.put(entry.getKey(), entry.getValue());
                 }
             }
@@ -383,6 +387,25 @@ public class SkillLoader {
                 version = meta.get("version");
             } else if (!meta.containsKey("version")) {
                 meta.put("version", version);
+            }
+
+            Path regRoot = findRegistryRoot();
+            String relPath;
+            try {
+                relPath = regRoot.toAbsolutePath().relativize(skillDir.toAbsolutePath()).toString();
+            } catch (Exception e) {
+                relPath = skillDir.toString();
+            }
+
+            String sourceUri = fmData.get("source_uri");
+            if (sourceUri == null) {
+                sourceUri = fmData.get("src");
+            }
+            if (sourceUri == null) {
+                sourceUri = fmData.get("source");
+            }
+            if (sourceUri == null) {
+                sourceUri = "file://" + relPath;
             }
 
             Map<String, String> references = new TreeMap<>();
@@ -417,6 +440,19 @@ public class SkillLoader {
                 }
             }
 
+            String sha256Hex = "";
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                String payload = name + ":" + (version != null ? version : "") + ":" + fm.body().trim() + ":" + desc;
+                byte[] hash = md.digest(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                for (byte b : hash) {
+                    sb.append(String.format("%02x", b));
+                }
+                sha256Hex = sb.toString();
+            } catch (Exception ignored) {
+            }
+
             return new SkillDefinition(
                     name,
                     desc,
@@ -429,7 +465,9 @@ public class SkillLoader {
                     meta,
                     references,
                     examples,
-                    skillDir.toAbsolutePath().toString()
+                    relPath,
+                    sourceUri,
+                    sha256Hex
             );
         } catch (Exception e) {
             logger.warn("Failed loading skill from {}: {}", skillDir, e.getMessage());
@@ -954,14 +992,34 @@ public class SkillLoader {
         Map<String, SkillDefinition> skills = loadAllSkills(skillsRoot, null);
         Path outFile = outputPath != null ? outputPath : getLoaderSkillsDir().resolve("skills_manifest.json");
 
-        if (outFile.getParent() != null) {
-            Files.createDirectories(outFile.getParent());
-        }
+        Path manifestDir = outFile.getParent() != null ? outFile.getParent().toAbsolutePath().normalize() : Paths.get(".").toAbsolutePath().normalize();
+        Files.createDirectories(manifestDir);
+
+        Path registryRoot = findRegistryRoot().toAbsolutePath().normalize();
 
         Map<String, Map<String, Object>> manifestData = new LinkedHashMap<>();
         for (Map.Entry<String, SkillDefinition> entry : skills.entrySet()) {
             SkillDefinition s = entry.getValue();
+            Path skillAbs = Paths.get(s.getPath());
+            if (!skillAbs.isAbsolute()) {
+                skillAbs = registryRoot.resolve(skillAbs).toAbsolutePath().normalize();
+            }
+
+            String relPath;
+            try {
+                relPath = manifestDir.relativize(skillAbs).toString();
+            } catch (Exception e) {
+                relPath = s.getPath();
+            }
+
+            String srcUri = s.getSourceUri();
+            if (srcUri == null || srcUri.isEmpty() || srcUri.startsWith("file://")) {
+                srcUri = "file://" + relPath;
+            }
+
             Map<String, Object> map = s.toMap();
+            map.put("path", relPath);
+            map.put("source_uri", srcUri);
             map.put("references", s.getReferences());
             map.put("examples", s.getExamples());
             manifestData.put(entry.getKey(), map);

@@ -101,6 +101,7 @@ class SkillDefinition:
     scripts: List[Dict[str, object]] = field(default_factory=list)
     resources: List[Dict[str, object]] = field(default_factory=list)
     path: str = ""
+    source_uri: str = ""
     compiled_reference: Optional[CompiledSkillReference] = None
     sha256_hash: str = ""
 
@@ -139,6 +140,7 @@ class SkillDefinition:
             "scripts": self.scripts,
             "resources": self.resources,
             "path": self.path,
+            "source_uri": self.source_uri,
             "compiled_reference": self.compiled_reference.to_dict() if self.compiled_reference else None,
             "sha256_hash": self.sha256_hash,
         }

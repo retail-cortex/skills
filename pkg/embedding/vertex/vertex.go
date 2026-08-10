@@ -126,21 +126,21 @@ func (p *Provider) GenerateEmbedding(ctx context.Context, text string) ([]float6
 		return nil, nil
 	}
 
-	// 1. Check for Vertex AI Application Default Credentials (ADC)
-	token := p.getValidGCPToken()
-	if token != "" && p.ProjectID != "" {
-		vec, err := p.generateVertexEmbedding(text, token)
-		if err != nil {
-			return nil, err
-		}
-		if len(vec) > 0 {
+	// 1. Direct Gemini Developer API key if configured
+	if p.GeminiAPIKey != "" {
+		vec, err := p.generateGeminiEmbedding(text)
+		if err == nil && len(vec) > 0 {
 			return vec, nil
+		}
+		if p.ProjectID == "" {
+			return nil, err
 		}
 	}
 
-	// 2. Fallback to Gemini Developer API
-	if p.GeminiAPIKey != "" {
-		vec, err := p.generateGeminiEmbedding(text)
+	// 2. Vertex AI Application Default Credentials (ADC)
+	token := p.getValidGCPToken()
+	if token != "" && p.ProjectID != "" {
+		vec, err := p.generateVertexEmbedding(text, token)
 		if err != nil {
 			return nil, err
 		}

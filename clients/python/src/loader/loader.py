@@ -115,7 +115,7 @@ def get_loader_skills_dir() -> Path:
     return loader_dir
 
 
-def parse_frontmatter(content: str) -> Tuple[Dict[str, str], str]:
+def parse_frontmatter(content: str) -> Tuple[Dict[str, Any], str]:
     """Parses YAML frontmatter block from SKILL.md content."""
     pattern = r"^---\s*\n(.*?)\n---\s*\n(.*)$"
     match = re.search(pattern, content, re.DOTALL)
@@ -125,7 +125,15 @@ def parse_frontmatter(content: str) -> Tuple[Dict[str, str], str]:
     yaml_text = match.group(1)
     body = match.group(2)
 
-    data: Dict[str, str] = {}
+    try:
+        import yaml
+        raw_data = yaml.safe_load(yaml_text)
+        if isinstance(raw_data, dict):
+            return raw_data, body
+    except Exception:
+        pass
+
+    data: Dict[str, Any] = {}
     for line in yaml_text.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or ":" not in line:
@@ -254,7 +262,7 @@ def parse_skill_root_uri(uri: str) -> Tuple[str, str, Optional[str], Optional[st
         return "file", clean, None, None
 
 
-def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
+def load_skill_from_dir(skill_dir: Path, source_uri: Optional[str] = None) -> Optional[SkillDefinition]:
     """Loads a single skill definition from its directory, enforcing symlink boundary checks."""
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.is_file():
@@ -268,7 +276,7 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
         license_val = fm_data.get("license")
         author_val = fm_data.get("author")
         authors_val = fm_data.get("authors") or []
-        version_val = fm_data.get("version")
+        version_val = str(fm_data.get("version")) if fm_data.get("version") is not None else None
         compatibility_val = fm_data.get("compatibility")
         allowed_tools_val = fm_data.get("allowed-tools") or fm_data.get("allowed_tools")
         tool_reqs_val = fm_data.get("tool_requirements") or []
@@ -276,13 +284,21 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
         tags_val = fm_data.get("tags") or []
         triggers_val = fm_data.get("trigger_phrases") or []
         execution_hints_val = fm_data.get("execution_hints") or {}
+        source_uri_val = source_uri or fm_data.get("source_uri") or fm_data.get("src") or fm_data.get("source") or ""
 
         known_keys = {
             "name", "description", "license", "author", "authors", "version", "compatibility",
             "allowed-tools", "allowed_tools", "tool_requirements", "category", "tags",
-            "trigger_phrases", "execution_hints"
+            "trigger_phrases", "execution_hints", "metadata", "source_uri", "src", "source"
         }
-        meta_dict = {k: v for k, v in fm_data.items() if k not in known_keys}
+        metadata_raw = fm_data.get("metadata")
+        meta_dict: Dict[str, str] = {}
+        if isinstance(metadata_raw, dict):
+            meta_dict = {str(k): str(v) for k, v in metadata_raw.items() if v is not None and str(v).strip()}
+
+        for k, v in fm_data.items():
+            if k not in known_keys and not isinstance(v, (dict, list)) and v is not None and str(v).strip():
+                meta_dict[str(k)] = str(v)
 
         if not author_val and "author" in meta_dict:
             author_val = meta_dict["author"]
@@ -290,9 +306,19 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
             version_val = meta_dict["version"]
 
         if author_val and "author" not in meta_dict:
-            meta_dict["author"] = author_val
+            meta_dict["author"] = str(author_val)
         if version_val and "version" not in meta_dict:
-            meta_dict["version"] = version_val
+            meta_dict["version"] = str(version_val)
+
+        # Compute relative path against registry root
+        root = find_registry_root()
+        try:
+            rel_path = str(skill_dir.resolve().relative_to(root.resolve()))
+        except Exception:
+            rel_path = os.path.relpath(str(skill_dir), str(root))
+
+        if not source_uri_val:
+            source_uri_val = f"file://{rel_path}"
 
         references: Dict[str, str] = {}
         ref_dir = skill_dir / "references"
@@ -335,6 +361,9 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
                     except Exception:
                         pass
 
+        payload = f"{name}:{version_val or ''}:{body.strip()}:{description}"
+        sha256_val = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
         return SkillDefinition(
             name=name,
             description=description,
@@ -353,7 +382,9 @@ def load_skill_from_dir(skill_dir: Path) -> Optional[SkillDefinition]:
             metadata=meta_dict,
             references=references,
             examples=examples,
-            path=str(skill_dir),
+            path=rel_path,
+            source_uri=source_uri_val,
+            sha256_hash=sha256_val,
         )
     except Exception:
         return None
@@ -650,13 +681,20 @@ def load_skills_from_github(
 
         for root_rel in root_paths:
             candidate_dir = repo_target_dir / root_rel if root_rel != "." else repo_target_dir
+            source_uri_base = f"github://{clean_repo}@{git_ref}"
+            if root_rel != "." and root_rel != "skills":
+                source_uri_base = f"github://{clean_repo}@{git_ref}/{root_rel}"
             if candidate_dir.is_dir():
-                single_skill = load_skill_from_dir(candidate_dir)
+                single_skill = load_skill_from_dir(candidate_dir, source_uri=source_uri_base)
                 if single_skill:
                     if not selected_skills or single_skill.name in selected_skills:
+                        single_skill.source_uri = source_uri_base
                         loaded_skills[single_skill.name] = single_skill
                 else:
                     skills = load_all_skills(candidate_dir, skill_filter=selected_skills)
+                    for s in skills.values():
+                        if not s.source_uri or s.source_uri.startswith("file://"):
+                            s.source_uri = f"{source_uri_base}/{s.name}" if root_rel in (".", "skills") else source_uri_base
                     loaded_skills.update(skills)
 
     return loaded_skills
@@ -691,6 +729,9 @@ def load_skills_from_maven(
         target_dir = artifact_dir / sub if sub else artifact_dir
         if target_dir.is_dir():
             skills = load_all_skills(target_dir, skill_filter=skill_filter)
+            mvn_source = f"maven://{coordinate}:{ver}" + (f"/{sub}" if sub else "")
+            for s in skills.values():
+                s.source_uri = mvn_source
             loaded.update(skills)
 
     return loaded
@@ -726,6 +767,9 @@ def load_skills_from_go_module(
         target_dir = mod_target / sub if sub else mod_target
         if target_dir.is_dir():
             skills = load_all_skills(target_dir, skill_filter=skill_filter)
+            mod_source = f"mod://{module_path}@{ver}" + (f"/{sub}" if sub else "")
+            for s in skills.values():
+                s.source_uri = mod_source
             loaded.update(skills)
 
     return loaded
@@ -818,25 +862,51 @@ def build_skills_manifest(
     output_path: Optional[Path] = None,
 ) -> Path:
     """Builds a pre-compiled JSON manifest of all skills for fast zero-I/O loading."""
-    skills = load_all_skills(skills_root)
     out_file = output_path or (get_loader_skills_dir() / "skills_manifest.json")
-    manifest_data = {
-        name: {
+    manifest_base = out_file.parent.resolve()
+    reg_root = find_registry_root().resolve()
+    skills = load_all_skills(skills_root)
+
+    manifest_data = {}
+    for name, s in skills.items():
+        skill_abs = Path(s.path)
+        if not skill_abs.is_absolute():
+            skill_abs = (reg_root / s.path).resolve()
+
+        try:
+            rel_to_manifest = str(skill_abs.relative_to(manifest_base))
+        except ValueError:
+            rel_to_manifest = os.path.relpath(str(skill_abs), str(manifest_base))
+
+        src_uri = s.source_uri
+        if not src_uri or src_uri.startswith("file://"):
+            src_uri = f"file://{rel_to_manifest}"
+
+        manifest_data[name] = {
             "name": s.name,
             "description": s.description,
             "instructions": s.instructions,
             "license": s.license,
             "author": s.author,
+            "authors": s.authors,
             "version": s.version,
             "compatibility": s.compatibility,
             "allowed_tools": s.allowed_tools,
+            "tool_requirements": s.tool_requirements,
+            "category": s.category,
+            "tags": s.tags,
+            "trigger_phrases": s.trigger_phrases,
+            "execution_hints": s.execution_hints,
             "metadata": s.metadata,
             "references": s.references,
             "examples": s.examples,
-            "path": s.path,
+            "scripts": s.scripts,
+            "resources": s.resources,
+            "path": rel_to_manifest,
+            "source_uri": src_uri,
+            "sha256_hash": s.sha256_hash,
         }
-        for name, s in skills.items()
-    }
+
     out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
     return out_file
@@ -856,13 +926,23 @@ def load_skills_from_manifest(manifest_path: Path) -> Dict[str, SkillDefinition]
                 instructions=data["instructions"],
                 license=data.get("license"),
                 author=data.get("author"),
+                authors=data.get("authors") or [],
                 version=data.get("version"),
                 compatibility=data.get("compatibility"),
-                allowed_tools=data.get("allowed_tools"),
+                allowed_tools=data.get("allowed_tools") or data.get("allowed-tools"),
+                tool_requirements=data.get("tool_requirements") or [],
+                category=data.get("category"),
+                tags=data.get("tags") or [],
+                trigger_phrases=data.get("trigger_phrases") or [],
+                execution_hints=data.get("execution_hints") or {},
                 metadata=data.get("metadata", {}),
                 references=data.get("references", {}),
                 examples=data.get("examples", {}),
+                scripts=data.get("scripts") or [],
+                resources=data.get("resources") or [],
                 path=data.get("path", ""),
+                source_uri=data.get("source_uri", ""),
+                sha256_hash=data.get("sha256_hash", ""),
             )
         return loaded
     except Exception:

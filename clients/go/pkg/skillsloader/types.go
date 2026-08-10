@@ -130,6 +130,8 @@ type SkillDefinition struct {
 	Scripts          []ScriptDefinition    `json:"scripts,omitempty"`
 	Resources        []ResourceRequirement `json:"resources,omitempty"`
 	Path             string                `json:"path"`
+	SourceURI        string                `json:"source_uri,omitempty"`
+	SHA256Hash       string                `json:"sha256_hash,omitempty"`
 }
 
 // GetReferenceContent retrieves content of a reference file on demand.
@@ -198,6 +200,8 @@ func (s *SkillDefinition) ToMap() map[string]any {
 		"scripts":           scripts,
 		"resources":         resources,
 		"path":              s.Path,
+		"source_uri":        s.SourceURI,
+		"sha256_hash":       s.SHA256Hash,
 	}
 }
 

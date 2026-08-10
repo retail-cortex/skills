@@ -15,23 +15,23 @@ In addition to build-time dependency staging, each SDK provides **JIT Pre-Call R
 
 ```mermaid
 graph TD
-    subgraph Java Build Cycle ["Java Maven Build (mvn compile / package)"]
-        J1[pom.xml Plugin Configuration] --> J2[skills-loader-maven-plugin Mojo]
-        J2 --> J3[Validate SDLC & Generate skills_manifest.json]
-        J3 --> J4[Bundle directly into target JAR resources]
+    subgraph JavaBuildCycle ["Java Maven Build (mvn compile / package)"]
+        J1["pom.xml Plugin Configuration"] --> J2["skills-loader-maven-plugin Mojo"]
+        J2 --> J3["Validate SDLC & Generate skills_manifest.json"]
+        J3 --> J4["Bundle directly into target JAR resources"]
     end
 
-    subgraph Python Build Cycle ["Python Build (uv build / pip install)"]
-        P1[pyproject.toml tool.retailcortex-loader] --> P2[loader.build_meta PEP 517 Hook]
-        P2 --> P3[Download & Validate Skill Dependencies]
-        P4[Package staged skills into Wheel / SDist]
+    subgraph PythonBuildCycle ["Python Build (uv build / pip install)"]
+        P1["pyproject.toml tool.retailcortex-loader"] --> P2["loader.build_meta PEP 517 Hook"]
+        P2 --> P3["Download & Validate Skill Dependencies"]
+        P4["Package staged skills into Wheel / SDist"]
         P3 --> P4
     end
 
-    subgraph Go Build Cycle ["Go Build (go generate / rules_go)"]
-        G1[//go:generate Directives & Bazel Rules] --> G2[skillsloader Compiler]
-        G2 --> G3[Audit & Generate zero-I/O skills_manifest.json]
-        G3 --> G4[Embed manifest into static Go binary]
+    subgraph GoBuildCycle ["Go Build (go generate / rules_go)"]
+        G1["go:generate Directives & Bazel Rules"] --> G2["skillsloader Compiler"]
+        G2 --> G3["Audit & Generate zero-I/O skills_manifest.json"]
+        G3 --> G4["Embed manifest into static Go binary"]
     end
 ```
 

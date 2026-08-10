@@ -15,22 +15,22 @@ The enterprise skills platform is architected around a high-performance Go backe
 
 ```mermaid
 graph TD
-    subgraph CLI Client ["skm CLI Client"]
-        CLI1[skm config (~/.skm/.env.toml)]
-        CLI2[skm register <source_uri>]
-        CLI3[skm search / skm list (--remote, --page, --max)]
-        CLI4[skm add skm://skills/{id}]
+    subgraph CLIClient ["skm CLI Client"]
+        CLI1["skm config (~/.skm/.env.toml)"]
+        CLI2["skm register &lt;source_uri&gt;"]
+        CLI3["skm search / skm list (--remote, --page, --max)"]
+        CLI4["skm add skm://skills/{id}"]
     end
 
-    subgraph Service Backend ["cmd/skills-service (Go Backend)"]
-        S1[Gin REST API Handlers]
-        S2[pkg/service Skills & Apps Service]
-        S3[pkg/embedding Multi-Modal Soft-Switch Provider]
-        S4[pkg/data GORM PostgreSQL / AlloyDB Repository]
-        S5[pkg/mcp MCP Server Tools]
+    subgraph ServiceBackend ["cmd/skills-service (Go Backend)"]
+        S1["Gin REST API Handlers"]
+        S2["pkg/service Skills & Apps Service"]
+        S3["pkg/embedding Multi-Modal Soft-Switch Provider"]
+        S4["pkg/data GORM PostgreSQL / AlloyDB Repository"]
+        S5["pkg/mcp MCP Server Tools"]
     end
 
-    subgraph Database ["pgvector Storage & Indexing"]
+    subgraph DatabaseStorage ["pgvector Storage & Indexing"]
         DB1["Poly-Column Schema (embedding_768 / 1408 / 3072)"]
         DB2["HNSW Vector Indexes (Cosine Distance)"]
     end

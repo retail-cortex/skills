@@ -31,7 +31,7 @@ func SetupTelemetry(cfg TelemetryConfig) {
 		if envName := os.Getenv("OTEL_SERVICE_NAME"); envName != "" {
 			sName = envName
 		} else {
-			sName = "skills-service"
+			sName = "castor-registry"
 		}
 	}
 

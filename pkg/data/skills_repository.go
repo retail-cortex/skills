@@ -219,8 +219,8 @@ func (r *SkillsRepository) CreateSkill(
 	}
 
 	// 3. Construct Canonical Base and Versioned URIs
-	canonicalSkillURI := fmt.Sprintf("skm://skills/%s/%s/%s", domain, category, req.Name)
-	versionedURI := fmt.Sprintf("skm://skills/%s/%s/%s/%s", domain, category, req.Name, versionStr)
+	canonicalSkillURI := fmt.Sprintf("castor://skills/%s/%s/%s", domain, category, req.Name)
+	versionedURI := fmt.Sprintf("castor://skills/%s/%s/%s/%s", domain, category, req.Name, versionStr)
 	shaHash := ComputeSkillHash(req.Name, req.Description, req.Instructions)
 
 	tagsBytes, _ := json.Marshal(req.Tags)
@@ -379,26 +379,36 @@ func (r *SkillsRepository) CreateSkill(
 	return r.BuildSkillResponse(db, &skill, nil)
 }
 
-// GetSkill retrieves a skill by ID, unique name, or namespaced skm:// URI.
+// GetSkill retrieves a skill by ID, unique name, or namespaced castor:// URI.
 func (r *SkillsRepository) GetSkill(db *gorm.DB, skillIDOrNameOrURI string) (*model.SkillResponse, error) {
 	var skill model.Skill
 	target := strings.TrimSpace(skillIDOrNameOrURI)
 	target = strings.TrimPrefix(target, "/")
 
-	candidateURI := target
-	if !strings.HasPrefix(target, "skm://") {
-		candidateURI = fmt.Sprintf("skm://skills/%s", strings.TrimPrefix(target, "skills/"))
+	trimmed := target
+	for _, p := range []string{"castor://skills/", "cstr://skills/", "skm://skills/", "castor://", "cstr://", "skm://"} {
+		if strings.HasPrefix(target, p) {
+			trimmed = strings.TrimPrefix(target, p)
+			break
+		}
 	}
+	trimmed = strings.TrimPrefix(trimmed, "skills/")
+
+	candidateCastorURI := fmt.Sprintf("castor://skills/%s", trimmed)
+	candidateCstrURI := fmt.Sprintf("cstr://skills/%s", trimmed)
+	candidateSkmURI := fmt.Sprintf("skm://skills/%s", trimmed)
 
 	// 1. Direct match on Skill ID, Name, or base URI
-	err := db.Where("id = ? OR name = ? OR uri = ? OR uri = ?", target, target, target, candidateURI).First(&skill).Error
+	err := db.Where("id = ? OR name = ? OR uri = ? OR uri = ? OR uri = ? OR uri = ?",
+		target, target, target, candidateCastorURI, candidateCstrURI, candidateSkmURI).First(&skill).Error
 	if err == nil {
 		return r.BuildSkillResponse(db, &skill, nil)
 	}
 
-	// 2. Check match on SkillVersion URI (e.g. skm://skills/domain/cat/name/1.0.0)
+	// 2. Check match on SkillVersion URI (e.g. castor://skills/domain/cat/name/1.0.0)
 	var ver model.SkillVersion
-	if errVer := db.Where("uri = ? OR uri = ?", target, candidateURI).First(&ver).Error; errVer == nil {
+	if errVer := db.Where("uri = ? OR uri = ? OR uri = ? OR uri = ?",
+		target, candidateCastorURI, candidateCstrURI, candidateSkmURI).First(&ver).Error; errVer == nil {
 		if errSkill := db.Where("id = ?", ver.SkillID).First(&skill).Error; errSkill == nil {
 			return r.BuildSkillResponse(db, &skill, nil)
 		}

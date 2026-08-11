@@ -25,7 +25,7 @@ Located at `examples/go/client`, this example demonstrates how a standalone Go a
 examples/go/client/
 ├── BUILD.bazel              # Bazel test rule (test_go_client_example)
 ├── configs/
-│   └── .env.toml            # Cascading TOML properties (skm.server.url, etc.)
+│   └── .env.toml            # Cascading TOML properties (castor.server.url, etc.)
 ├── go.mod                   # Standalone Go module configuration
 ├── main.go                  # Application entry point using modenv & skillsloader
 └── main_test.go             # Native Go unit test suite
@@ -50,8 +50,8 @@ func main() {
 		fmt.Printf("Defaulting configuration: %v\n", err)
 	}
 
-	serverURL := cfg.GetString("skm.server.url", "http://localhost:8080")
-	fmt.Printf("Connected to SKM Server at: %s\n", serverURL)
+	serverURL := cfg.GetString("castor.server.url", "http://localhost:8080")
+	fmt.Printf("Connected to Castor Server at: %s\n", serverURL)
 
 	// 2. Load Enterprise Skills
 	skills, err := skillsloader.LoadSkillsFromPackage("retailcortex_skills_go", []string{"go-project-setup"})

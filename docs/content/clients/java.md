@@ -40,7 +40,7 @@ Configure the plugin in your application's `pom.xml`:
                 <configuration>
                     <!-- Qualified skill root URIs to resolve during build -->
                     <roots>
-                        <root>skm://skills/sk-9b1deb4d</root>
+                        <root>castor://skills/example.com/testing/test-skill/1.0.0</root>
                         <root>github://google/skills@main/tree/main/skills/cloud/gemini-api</root>
                         <root>file://${project.basedir}/skills</root>
                     </roots>
@@ -66,7 +66,7 @@ Configure the plugin in your application's `pom.xml`:
 ### What Happens During `mvn compile` or `mvn package`:
 
 1. **Pre-Processing Execution**: The `GenerateManifestMojo` fires during the `generate-resources` lifecycle phase.
-2. **Skill Resolution**: Resolves all specified `roots` from central SKM servers (`skm://`), GitHub (`github://`), local filesystem (`file://`), or local Maven artifacts (`~/.m2`).
+2. **Skill Resolution**: Resolves all specified `roots` from central Castor Registry servers (`castor://`, `cstr://`), GitHub (`github://`), local filesystem (`file://`), or local Maven artifacts (`~/.m2`).
 3. **Build Validation**: Validates SDLC invariants (YAML frontmatter, CWE rules, retry policies). If validation fails, **the Maven build fails**.
 4. **Resource Injection**: Generates `skills_manifest.json` and automatically registers `${project.build.directory}/generated-resources/skills` into the Maven project resources so it is bundled directly inside the final target `.jar`.
 
@@ -162,7 +162,7 @@ class SkillLoaderTest {
     }
 
     @Test
-    void testLoadFromSKMServerMocked() throws Exception {
+    void testLoadFromCastorServerMocked() throws Exception {
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn("""
             {
@@ -174,7 +174,7 @@ class SkillLoaderTest {
             """);
         when(mockHttpClient.send(any(), any())).thenReturn(mockResponse);
 
-        var skills = SkillLoader.loadSkillsFromSKMServer("sk-9b1deb4d", null, "http://localhost:8080", "key");
+        var skills = SkillLoader.loadSkillsFromCastorServer("example.com/testing/test-skill/1.0.0", null, "http://localhost:8080", "key");
         assertThat(skills).containsKey("mocked-skill");
     }
 }
@@ -229,8 +229,8 @@ import java.util.List;
 
 public class ADKAgentRunner {
     public static void main(String[] args) throws Exception {
-        String serverUrl = System.getProperty("skm.server.url",
-                System.getenv().getOrDefault("SKM_SERVER_URL", "http://localhost:8000"));
+        String serverUrl = System.getProperty("castor.server.url",
+                System.getenv().getOrDefault("CASTOR_SERVER_URL", "http://localhost:8000"));
 
         SkillRegistry registry = new SkillRegistry();
 

@@ -41,18 +41,43 @@ alias(
 )
 
 alias(
+    name = "cstr",
+    actual = "//cmd/cstr",
+)
+
+alias(
+    name = "cstr-binaries",
+    actual = "//cmd/cstr:cstr_binaries",
+)
+
+alias(
+    name = "castor-server",
+    actual = "//cmd/castor-server",
+)
+
+alias(
+    name = "castor-service",
+    actual = "//cmd/castor-server",
+)
+
+alias(
+    name = "castor-registry",
+    actual = "//cmd/castor-server",
+)
+
+alias(
     name = "skm",
-    actual = "//cmd/skm",
+    actual = "//cmd/cstr",
 )
 
 alias(
     name = "skm-binaries",
-    actual = "//cmd/skm:skm_binaries",
+    actual = "//cmd/cstr:cstr_binaries",
 )
 
 alias(
     name = "skills-service",
-    actual = "//cmd/skills-service",
+    actual = "//cmd/castor-server",
 )
 
 alias(
@@ -72,7 +97,7 @@ alias(
 
 alias(
     name = "validate",
-    actual = "//cmd/skm",
+    actual = "//cmd/cstr",
 )
 
 alias(
@@ -85,7 +110,7 @@ test_suite(
     tests = [
         "//clients/go/pkg/skillsloader:skillsloader_test",
         "//clients/java:skills_loader_java_test",
-        "//cmd/skills-service:skills-service_test",
+        "//cmd/castor-server:castor-server_test",
         "//examples/go/client:test_go_client_example",
         "//examples/java/client:test_java_client_example",
         "//examples/python/client:test_python_client_example",

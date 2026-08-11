@@ -41,10 +41,10 @@ def run() -> dict[str, str]:
                     os.environ.setdefault(k.strip(), v.strip())
 
 
-    server_url = os.getenv("SKM_SERVER_URL", "http://localhost:8080")
-    api_key = os.getenv("SKM_API_KEY", "")
+    server_url = os.getenv("CASTOR_SERVER_URL", os.getenv("CSTR_SERVER_URL", os.getenv("SKM_SERVER_URL", "http://localhost:8080")))
+    api_key = os.getenv("CASTOR_API_KEY", os.getenv("CSTR_API_KEY", os.getenv("SKM_API_KEY", "")))
 
-    print(f"Loaded SKM Server URL from dotenv: {server_url}")
+    print(f"Loaded Castor Server URL from dotenv: {server_url}")
 
     # 2. Parse polyglot skill URI
     uri = "github://google/skills@main/tree/main/skills/cloud/gemini-api"

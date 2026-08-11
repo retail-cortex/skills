@@ -5,17 +5,17 @@ weight: 50
 
 # Scaffolding & Quality Audit
 
-`skm` provides built-in capabilities for rapid skill development, scaffolding, and automated 5-point Enterprise SDLC quality auditing.
+`cstr` provides built-in capabilities for rapid skill development, scaffolding, and automated 5-point Enterprise SDLC quality auditing.
 
 ---
 
-## 1. Scaffolding New Skills (`skm init`)
+## 1. Scaffolding New Skills (`cstr init`)
 
 Scaffold a new valid skill directory structure satisfying all SDLC invariants immediately:
 
 ```bash
 # Scaffold in custom directory
-skm init my-custom-skill -d ./skills
+cstr init my-custom-skill -d ./skills
 ```
 
 This generates:
@@ -55,19 +55,19 @@ Detailed instructions for AI Agent execution...
 
 ---
 
-## 2. 5-Point SDLC Quality Audit (`skm validate`)
+## 2. 5-Point SDLC Quality Audit (`cstr validate`)
 
 Run automated compliance checks against YAML frontmatter, directory hierarchies, CWE security rules, rate-limit resilience, and Markdown file links:
 
 ```bash
 # Validate single skill directory
-skm validate ./skills/my-custom-skill
+cstr validate ./skills/my-custom-skill
 
 # Recursively audit all skills in directory
-skm validate -r ./skills
+cstr validate -r ./skills
 
 # Machine-readable JSON output for CI/CD pipelines
-skm validate -r ./skills --json
+cstr validate -r ./skills --json
 ```
 
 ---
@@ -84,5 +84,5 @@ skm validate -r ./skills --json
 
 ### Audit Exit Codes
 * **`0`**: All skills passed 100% compliance checks.
-* **`1`**: One or more validation violations detected (blocks CI/CD pipelines and `skm register`).
+* **`1`**: One or more validation violations detected (blocks CI/CD pipelines and `cstr register`).
 

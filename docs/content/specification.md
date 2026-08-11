@@ -10,11 +10,11 @@ weight: 20
 The **Enterprise AI Agent Skills Specification** defines the architectural contract, directory layout, metadata schema, resolution protocol, and cryptographic verification standard for AI Agent Skills compatible with Google Agent Development Kit (ADK) and polyglot agent runtimes.
 
 This specification extends and supersedes baseline specifications (such as `agentskills.io`) by introducing:
-1. **Canonical Central Registry & Server Registration (`skm://`)**: Registration protocol (`POST /api/v1/skills`) assigning unique `skill_id` keys and canonical URIs (`skm://skills/{skill_id}`).
+1. **Canonical Central Registry & Server Registration (`castor://`)**: Registration protocol (`POST /api/v1/skills`) assigning unique `skill_id` keys and canonical URIs (`castor://skills/{domain}/{category}/{name}/{version}`).
 2. **Native Build Lifecycle Integration**: Client build hooks (`skills-loader-maven-plugin` for Maven, `loader.build_meta` for Python PEP 517 / `uv`, `//go:generate` for Go) that audit skills and inject pre-compiled resources directly into application artifacts.
 3. **Cryptographic Lockfiles (`.manifest.lock`)**: Deterministic SHA-256 checksum tracking to prevent skill drift or unauthorized agent/developer tampering.
 4. **5-Point SDLC Quality Invariants**: Mandatory frontmatter, progressive disclosure sub-trees, CWE security checkpoints, HTTP 429 resilience rules, and strict `file:///` link resolution.
-5. **Polyglot URI Resolution**: Unified URI syntax supporting central servers (`skm://`), GitHub repositories (`github://`), Go modules (`mod://`), Java Maven artifacts (`maven://`), local packages (`pkg://`), and local filesystems (`file://`).
+5. **Polyglot URI Resolution**: Unified URI syntax supporting central servers (`castor://`, `cstr://`), GitHub repositories (`github://`), Go modules (`mod://`), Java Maven artifacts (`maven://`), local packages (`pkg://`), and local filesystems (`file://`).
 6. **Zero-I/O Pre-compiled Manifests (`skills_manifest.json`)**: In-memory skill registration for low-latency agent startup.
 7. **Just-in-Time (JIT) Semantic Discovery**: Semantic retrieval mapping user intent to specific skills, eliminating the need to statically load entire registries.
 8. **Human-in-the-Loop (HITL) Intervention Gates**: Explicit compliance validation checkpoints designed to isolate read vs. write workloads for AHI safety.
@@ -70,7 +70,7 @@ A compliant skill loader MUST support resolving qualified skill root URIs:
 
 | Scheme | Example | Resolution Mechanics |
 | :--- | :--- | :--- |
-| **`skm://`** | `skm://skills/sk-9b1deb4d` | Queries central `skills-service` HTTP endpoint (`GET /api/v1/skills/{id}`) using `X-API-Key`. |
+| **`castor://`** / **`cstr://`** | `castor://skills/example.com/testing/test-skill/1.0.0` | Queries central `Castor Registry` HTTP endpoint (`GET /api/v1/skills/{id}`) using `X-API-Key`. |
 | **`github://`** | `github://owner/repo[@ref][/path]` | Fetches git trees via `git clone` or GitHub zipballs. |
 | **`mod://`** | `mod://module_path[@version][/path]` | Resolves via `$GOPATH/pkg/mod` or `go mod download`. |
 | **`maven://`** | `maven://groupId:artifactId:version` | Resolves from `~/.m2/repository` or `mvn dependency:get`. |
@@ -79,28 +79,28 @@ A compliant skill loader MUST support resolving qualified skill root URIs:
 
 ---
 
-## 5. Enterprise Registration Protocol (`skm register`)
+## 5. Enterprise Registration Protocol (`cstr register`)
 
 Central server registration publishes source skills and assigns immutable `skill_id` keys:
 
-1. **Client Request**: `skm register <source_uri>` sends `POST /api/v1/skills` with `X-API-Key` authentication header.
-2. **Server Processing**: `skills-service` validates source skill frontmatter, assigns `skill_id` (e.g., `sk-9b1deb4d`), and stores `source_uri` and canonical `uri` (`skm://skills/{skill_id}`).
-3. **Client Response**: Returns HTTP `201 Created` with canonical URI `skm://skills/{skill_id}`.
+1. **Client Request**: `cstr register <source_uri>` sends `POST /api/v1/skills` with `X-API-Key` authentication header.
+2. **Server Processing**: `Castor Registry` validates source skill frontmatter, assigns `skill_id` (e.g., `sk-9b1deb4d`), and stores `source_uri` and canonical `uri` (`castor://skills/{domain}/{category}/{name}/{version}`).
+3. **Client Response**: Returns HTTP `201 Created` with canonical URI `castor://skills/{domain}/{category}/{name}/{version}`.
 
 ---
 
-## 6. Domain Scoping & Application Registration Standard (`urn:skm:app:...`)
+## 6. Domain Scoping & Application Registration Standard (`urn:castor:app:...`)
 
-Every application registered with `skills-service` MUST be bound to a verified domain authority and assigned a canonical RFC 8141 URN:
+Every application registered with `Castor Registry` MUST be bound to a verified domain authority and assigned a canonical RFC 8141 URN:
 
 ### 6.1 URN Syntax
-- **Application URN**: `urn:skm:app:<domain>:<app_name>` (e.g. `urn:skm:app:retailcortex.com:checkout-agent`)
-- **Skill URN**: `urn:skm:skill:<domain>:<app_name>:<skill_name>:<version>` (e.g. `urn:skm:skill:retailcortex.com:checkout-agent:payment-gateway:v1.0.0`)
+- **Application URN**: `urn:castor:app:<domain>:<app_name>` (e.g. `urn:castor:app:retailcortex.com:checkout-agent`)
+- **Skill URN**: `urn:castor:skill:<domain>:<app_name>:<skill_name>:<version>` (e.g. `urn:castor:skill:retailcortex.com:checkout-agent:payment-gateway:v1.0.0`)
 
 ### 6.2 Domain Ownership Validation Rules
 1. **SSO Email Match (`VERIFIED_SSO`)**: If the developer's email domain matches the requested registration domain (e.g. `dev@retailcortex.com` registering `retailcortex.com`), domain verification is automatically confirmed.
 2. **Freemail Prohibition (`ErrFreemailDomainProhibited`)**: Public freemail provider addresses (`gmail.com`, `yahoo.com`, `outlook.com`, `hotmail.com`, `icloud.com`, etc.) are explicitly forbidden from claiming corporate domain namespaces.
-3. **DNS Challenge Fallback (`PENDING_DNS`)**: Claiming a custom third-party domain generates a DNS TXT challenge token (`skm-domain-verify-<uuid>`) that must be published under `_skm-challenge.<domain>` before activation.
+3. **DNS Challenge Fallback (`PENDING_DNS`)**: Claiming a custom third-party domain generates a DNS TXT challenge token (`castor-domain-verify-<uuid>`) that must be published under `_castor-challenge.<domain>` before activation.
 
 ### 6.3 Multi-User Role-Based Access Control (RBAC) & Collaborator Model
 Applications support multi-user collaboration and scoped API credentials governed by strict permission tiers:

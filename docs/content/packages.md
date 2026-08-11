@@ -5,53 +5,53 @@ weight: 60
 
 # Packages, Microservices & Tooling
 
-The Skill Builder repository is structured into backend microservices, standalone CLI tools, polyglot client libraries, and protocol buffer definitions across Go, Java, and Python.
+The Castor repository is structured into backend microservices, standalone CLI tools, polyglot client libraries, and protocol buffer definitions across Go, Java, and Python.
 
 ---
 
-## 1. Backend Microservice (`cmd/skills-service`)
+## 1. Backend Microservice (`cmd/castor-server`)
 
-`skills-service` is the central enterprise backend microservice written in Go (`cmd/skills-service`).
+`castor-server` is the central enterprise `Castor Registry` backend microservice written in Go (`cmd/castor-server`).
 
 ### Key Capabilities
 
 - **Gin REST & gRPC API Endpoints**: Exposes REST endpoints (`POST /api/v1/skills`, `GET /api/v1/skills/:id`, `POST /api/v1/apps/verify`) and gRPC servicers (`pkg/service`).
 - **Database Persistence**: GORM repository layer (`pkg/data`) for SQLite and AlloyDB storage of apps and skills.
 - **Model Context Protocol (MCP)**: Embedded stdio and SSE MCP server (`pkg/mcp`) for agent tool execution.
-- **Canonical URI Generation**: Assigns `skm://skills/{skill_id}` URIs upon skill registration.
+- **Canonical URI Generation**: Assigns `castor://skills/{domain}/{category}/{name}/{version}` URIs upon skill registration.
 
 ### Execution
 
 ```bash
 # Run backend service directly via Bazel
-bazel run //:skills-service
+bazel run //:castor-server
 ```
 
 ---
 
-## 2. Standalone CLI Client (`cmd/skm`)
+## 2. Standalone CLI Client (`cmd/cstr`)
 
-`skm` is the enterprise CLI package manager built in Go (`cmd/skm`) supporting cross-compilation for Linux, macOS, and Windows.
+`cstr` is the enterprise `Castor CLI` package manager built in Go (`cmd/cstr`) supporting cross-compilation for Linux, macOS, and Windows.
 
 ### Core Commands
 
-- **`skm config`**: Configures CLI settings (`SKM_SERVER_URL`, `SKM_API_KEY`) in `~/.skm/.env.toml`.
-- **`skm register`**: Registers source skills (`github://`, `file://`) to `skills-service`.
-- **`skm add`**: Resolves and installs skill dependencies (`skm://`, `github://`, `mod://`, `maven://`, `pkg://`, `file://`) into `.skills/`.
-- **`skm verify`**: Cryptographically audits installed skills against `.manifest.lock`.
-- **`skm validate`**: Runs 5-point SDLC compliance audit against skill directories.
-- **`skm compile`**: Compiles skills into pre-compiled zero-I/O `skills_manifest.json`.
-- **`skm list` & `skm search`**: Discovers and searches skills in local registries.
-- **`skm init`**: Scaffolds new compliant skill directory trees.
+- **`cstr config`**: Configures CLI settings (`CASTOR_SERVER_URL`, `CASTOR_API_KEY`) in `~/.castor/.env.toml`.
+- **`cstr register`**: Registers source skills (`github://`, `file://`) to `Castor Registry`.
+- **`cstr add`**: Resolves and installs skill dependencies (`castor://`, `cstr://`, `github://`, `mod://`, `maven://`, `pkg://`, `file://`) into `.skills/`.
+- **`cstr verify`**: Cryptographically audits installed skills against `.manifest.lock`.
+- **`cstr validate`**: Runs 5-point SDLC compliance audit against skill directories.
+- **`cstr compile`**: Compiles skills into pre-compiled zero-I/O `skills_manifest.json`.
+- **`cstr list` & `cstr search`**: Discovers and searches skills in local and remote registries.
+- **`cstr init`**: Scaffolds new compliant skill directory trees.
 
 ### Execution
 
 ```bash
 # Run CLI via Bazel
-bazel run //:skm -- help
+bazel run //:cstr -- help
 
 # Build all platform binaries
-bazel build //cmd/skm:skm_binaries
+bazel build //cmd/cstr:cstr_binaries
 ```
 
 ---
@@ -62,7 +62,7 @@ Client libraries integrate directly into native build cycles to validate, resolv
 
 1. **Go Client (`clients/go/pkg/skillsloader`)**: Go module loader, `//go:generate` pre-compilation, `modenv` property loading, and `rules_go` Bazel rules.
 2. **Java Client (`clients/java`)**: Java client and native Maven Plugin (`skills-loader-maven-plugin` / `GenerateManifestMojo`), binding to `mvn compile`, Java System properties (`System.getProperty`), and `rules_jvm_external`.
-3. **Python Client (`clients/python`)**: Python loader package (`retailcortex-loader`) with PEP 517 build backend wrapper (`loader.build_meta`), binding to `uv build` / `pip install`, `python-dotenv`, and `rules_python`.
+3. **Python Client (`clients/python`)**: Python loader package (`castor-loader`) with PEP 517 build backend wrapper (`loader.build_meta`), binding to `uv build` / `pip install`, `python-dotenv`, and `rules_python`.
 
 ---
 

@@ -21,13 +21,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ApplicationTest {
 
     @Test
+    void testGetCastorServerUrl() {
+        System.setProperty("castor.server.url", "http://test-server:8080");
+        assertThat(Application.getCastorServerUrl()).isEqualTo("http://test-server:8080");
+    }
+
+    @Test
+    void testGetCastorApiKey() {
+        System.setProperty("castor.api.key", "test-key-123");
+        assertThat(Application.getCastorApiKey()).isEqualTo("test-key-123");
+    }
+
+    @Test
     void testGetSkmServerUrl() {
+        System.clearProperty("castor.server.url");
         System.setProperty("skm.server.url", "http://test-server:8080");
         assertThat(Application.getSkmServerUrl()).isEqualTo("http://test-server:8080");
     }
 
     @Test
     void testGetSkmApiKey() {
+        System.clearProperty("castor.api.key");
         System.setProperty("skm.api.key", "test-key-123");
         assertThat(Application.getSkmApiKey()).isEqualTo("test-key-123");
     }

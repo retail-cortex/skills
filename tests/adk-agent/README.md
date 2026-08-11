@@ -1,10 +1,10 @@
-# Retail Cortex Skills Agent (`retailcortex-skills-agent`)
+# Castor Skills Agent (`castor-skills-agent`)
 
-Enterprise Python 3.13 package deploying an interactive Google Agent Development Kit (ADK) programming agent wrapped inside a FastAPI web service.
+Enterprise Python 3.13 package deploying an interactive Google Agent Development Kit (ADK) programming agent wrapped inside a FastAPI web service for the Castor registry ecosystem.
 
 ## Architecture Overview
 
-The `skills-agent` package exposes an interactive CLI and FastAPI service that orchestrates all 23 enterprise skills residing in `/skills`.
+The `castor-agent` package exposes an interactive CLI and FastAPI service that orchestrates all enterprise skills.
 
 ### Key Components
 

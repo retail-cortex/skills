@@ -722,7 +722,7 @@ SkillDefinition defines the core structural model for an enterprise AI agent ski
 | `scripts`            | 20      | `ScriptDefinition`       | Repeated | Executable Scripts & Multimodal Resources Helper scripts (Python or TypeScript only)                               |
 | `resources`          | 21      | `ResourceRequirement`    | Repeated | Multimodal context resources & assets                                                                              |
 | `skill_id`           | 22      | `string`                 |          | Registration & Server Provenance Generated unique skill identifier (e.g. sk-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3d0123)  |
-| `uri`                | 23      | `string`                 |          | Canonical registered URI (e.g. skm://skills/sk-9b1deb4d)                                                           |
+| `uri`                | 23      | `string`                 |          | Canonical registered URI (e.g. castor://skills/example.com/testing/test-skill/1.0.0)                                |
 | `source_uri`         | 24      | `string`                 |          | Original registration source (e.g. github://google/skills@main/tree/main/skills/cloud/gemini-api)                  |
 
 

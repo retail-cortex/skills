@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: skill-service
-  namespace: skill-builder
+  name: castor-registry
+  namespace: castor
   labels:
-    app.kubernetes.io/name: skill-service
-    app.kubernetes.io/part-of: skill-builder
+    app.kubernetes.io/name: castor-registry
+    app.kubernetes.io/part-of: castor
 spec:
   replicas: 2
   strategy:
@@ -15,14 +15,14 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app.kubernetes.io/name: skill-service
+      app.kubernetes.io/name: castor-registry
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: skill-service
-        app.kubernetes.io/part-of: skill-builder
+        app.kubernetes.io/name: castor-registry
+        app.kubernetes.io/part-of: castor
     spec:
-      serviceAccountName: skill-service-sa
+      serviceAccountName: castor-registry-sa
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -31,8 +31,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: skill-service
-          image: gcr.io/PROJECT_ID/skills-service:latest
+        - name: castor-registry
+          image: gcr.io/PROJECT_ID/castor-server:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -49,12 +49,12 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: skill-service-config
+                name: castor-registry-config
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: skill-service-db-secret
+                  name: castor-registry-db-secret
                   key: database_url
           resources:
             requests:

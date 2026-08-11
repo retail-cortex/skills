@@ -54,7 +54,7 @@ def find_registry_root() -> Path:
         from rules_python.python.runfiles import runfiles
         r = runfiles.Create()
         if r:
-            for ws in [os.environ.get("TEST_WORKSPACE", ""), "_main", "skill_builder"]:
+            for ws in [os.environ.get("TEST_WORKSPACE", ""), "_main", "castor", "skill_builder"]:
                 if ws:
                     p = r.Rlocation(f"{ws}/examples/python/skills/src/retailcortex_skills_python/skills/python-core/SKILL.md")
 
@@ -76,6 +76,7 @@ def find_registry_root() -> Path:
             candidates.append(test_srcdir / workspace_name)
         candidates.extend([
             test_srcdir / "_main",
+            test_srcdir / "castor",
             test_srcdir / "skill_builder",
             test_srcdir,
         ])
@@ -178,6 +179,11 @@ def parse_skill_root_uri(uri: str) -> Tuple[str, str, Optional[str], Optional[st
     - Legacy formats supported for backwards compatibility: github://owner/repo:ref/subpath, github://owner/repo@ref/subpath
     """
     clean = uri.strip()
+    for p in ["castors://", "castor://", "cstrs://", "cstr://", "skms://", "skm://"]:
+        if clean.startswith(p):
+            raw = clean[len(p):].removeprefix("skills/")
+            scheme = p.replace("://", "")
+            return scheme, raw, None, None
     if clean.startswith("file://"):
         target = clean[len("file://"):]
         return "file", target, None, None
@@ -1161,9 +1167,11 @@ class SkillRegistry:
         bounded_max = min(max(1, max_skills), 25)
         clean_prompt = prompt.strip()
 
-        # 1. Try remote skills-service vector search if server_url is provided or configured in env
+        # 1. Try remote Castor Registry vector search if server_url is provided or configured in env
         target_server = (
             server_url
+            or os.environ.get("CASTOR_SERVER_URL")
+            or os.environ.get("CSTR_SERVER_URL")
             or os.environ.get("SKILLS_SERVER_URL")
             or os.environ.get("SKM_SERVER_URL")
         )
@@ -1176,7 +1184,7 @@ class SkillRegistry:
 
                 encoded_query = urllib.parse.quote(clean_prompt)
                 url = f"{target_server.rstrip('/')}/api/v1/skills?s={encoded_query}&page_size={bounded_max}"
-                req = urllib.request.Request(url, headers={"User-Agent": "skills-loader/1.0.0"})
+                req = urllib.request.Request(url, headers={"User-Agent": "castor-loader/1.0.0"})
                 with urllib.request.urlopen(req, timeout=3.0) as resp:
                     if resp.status == 200:
                         data = json.loads(resp.read().decode("utf-8"))

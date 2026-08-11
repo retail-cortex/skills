@@ -1,6 +1,6 @@
 # Enterprise Infrastructure & Kubernetes Deployments
 
-This directory contains production-ready **Terraform** modules, **Google Kubernetes Engine (GKE)** cluster definitions, **AlloyDB AI** provisioning scripts, and **Kustomize** deployment manifests for the `skills-service` across `dev`, `qa`, and `prod` environments.
+This directory contains production-ready **Terraform** modules, **Google Kubernetes Engine (GKE)** cluster definitions, **AlloyDB AI** provisioning scripts, and **Kustomize** deployment manifests for the `castor-registry` across `dev`, `qa`, and `prod` environments.
 
 ---
 
@@ -42,7 +42,7 @@ deployments/
 
 ```mermaid
 graph TD
-    subgraph VPC ["VPC Network: skill-builder-vpc"]
+    subgraph VPC ["VPC Network: castor-vpc"]
         subgraph Subnets ["VPC-Native Subnets & Cloud NAT"]
             SUB_DEV["dev-subnet (10.10.0.0/20)<br/>Pods: 10.100.0.0/16<br/>Svc: 10.101.0.0/20"]
             SUB_QA["qa-subnet (10.20.0.0/20)<br/>Pods: 10.102.0.0/16<br/>Svc: 10.103.0.0/20"]
@@ -50,13 +50,13 @@ graph TD
         end
 
         subgraph GKE ["Google Kubernetes Engine"]
-            GKE_DEV["skill-builder-gke-dev<br/>(1-3 nodes, e2-standard-4)"]
-            GKE_QA["skill-builder-gke-qa<br/>(1-4 nodes, e2-standard-4)"]
-            GKE_PROD["skill-builder-gke-prod<br/>(3-10 nodes, n2-standard-4)"]
+            GKE_DEV["castor-gke-dev<br/>(1-3 nodes, e2-standard-4)"]
+            GKE_QA["castor-gke-qa<br/>(1-4 nodes, e2-standard-4)"]
+            GKE_PROD["castor-gke-prod<br/>(3-10 nodes, n2-standard-4)"]
         end
 
         subgraph PSA ["Private Services Access (VPC Peering)"]
-            ALLOYDB["AlloyDB AI Cluster (Primary Instance)<br/>pgvector & Google ML Support<br/>Databases: skills_dev, skills_qa, skills_prod"]
+            ALLOYDB["AlloyDB AI Cluster (Primary Instance)<br/>pgvector & Google ML Support<br/>Databases: castor_dev, castor_qa, castor_prod"]
         end
     end
 
@@ -73,7 +73,7 @@ graph TD
 ## 3. Provisioned Components
 
 ### 3.1 Network (`modules/network`)
-- **VPC Network**: Custom regional VPC (`skill-builder-vpc`).
+- **VPC Network**: Custom regional VPC (`castor-vpc`).
 - **Subnets**: Dedicated subnets for `dev`, `qa`, and `prod` with primary CIDRs and secondary alias IP ranges for GKE pods and services.
 - **Private Services Access (PSA)**: Allocates a `/16` internal IP range peered via `servicenetworking.googleapis.com` for AlloyDB private connectivity.
 - **Cloud Router & NAT**: Enables private GKE nodes to reach external Google APIs without public IPs.
@@ -81,13 +81,13 @@ graph TD
 ### 3.2 AlloyDB AI Database (`modules/alloydb`)
 - **Cluster & Primary Instance**: HA AlloyDB instance with `google_ml.enable_model_support=on` and `alloydb.enable_pgvector=on`.
 - **Environment Partitions**:
-  - `dev_user` accessing database `skills_dev`
-  - `qa_user` accessing database `skills_qa`
-  - `prod_user` accessing database `skills_prod`
-- **Secret Manager Integration**: Passwords and full DSN connection strings are stored in Google Cloud Secret Manager (`skill-builder-alloydb-<env>-dsn`).
+  - `dev_user` accessing database `castor_dev`
+  - `qa_user` accessing database `castor_qa`
+  - `prod_user` accessing database `castor_prod`
+- **Secret Manager Integration**: Passwords and full DSN connection strings are stored in Google Cloud Secret Manager (`castor-alloydb-<env>-dsn`).
 
 ### 3.3 GKE Clusters (`modules/gke`)
-- **3 Isolated Clusters**: `skill-builder-gke-dev`, `skill-builder-gke-qa`, and `skill-builder-gke-prod`.
+- **3 Isolated Clusters**: `castor-gke-dev`, `castor-gke-qa`, and `castor-gke-prod`.
 - **Workload Identity**: Configured to allow Kubernetes ServiceAccounts to authenticate directly to Google Cloud APIs (Vertex AI, Cloud Trace, Secret Manager) without static keyfiles.
 - **Private Nodes**: Node pools execute on private IPs with Calico network policies and Shielded VM security.
 
@@ -107,7 +107,7 @@ export GCS_TF_STATE_BUCKET="your-tf-state-bucket" # Optional for remote GCS stat
 ./deployments/scripts/deploy-infra.sh
 ```
 
-### Step 2: Deploy `skills-service` to GKE (Kustomize)
+### Step 2: Deploy `castor-registry` to GKE (Kustomize)
 
 ```bash
 # Deploy to Development Cluster
@@ -124,8 +124,8 @@ export GCS_TF_STATE_BUCKET="your-tf-state-bucket" # Optional for remote GCS stat
 
 ```bash
 # Verify pods are running in the target cluster
-kubectl get pods -n skill-builder
+kubectl get pods -n castor
 
 # Stream logs to confirm AlloyDB connection and embedding provider initialization
-kubectl logs -n skill-builder -l app.kubernetes.io/name=skill-service -f
+kubectl logs -n castor -l app.kubernetes.io/name=castor-registry -f
 ```

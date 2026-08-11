@@ -17,7 +17,7 @@ Located at `examples/python/client`, this example demonstrates how a standalone 
 ### Key Features & Design
 - **PEP 621 Standard Package**: Configured with `pyproject.toml` using `uv` dependency specifications.
 - **Environment Property Loading**: Uses `python-dotenv` (`load_dotenv()`) to read settings from `examples/python/client/.env`.
-- **Polyglot URI Parsing**: Exercises `loader.parse_skill_root_uri` across `file://`, `pkg://`, `github://`, and `skm://` schemes.
+- **Polyglot URI Parsing**: Exercises `loader.parse_skill_root_uri` across `file://`, `pkg://`, `github://`, and `castor://` schemes.
 
 ### Project Layout
 
@@ -40,11 +40,11 @@ from loader.loader import parse_skill_root_uri, load_skills_from_package
 def main() -> None:
     # 1. Load environment properties
     load_dotenv()
-    server_url = os.getenv("SKM_SERVER_URL", "http://localhost:8080")
-    print(f"Connected to SKM Server at: {server_url}")
+    server_url = os.getenv("CASTOR_SERVER_URL", "http://localhost:8080")
+    print(f"Connected to Castor Server at: {server_url}")
 
     # 2. Parse Qualified URIs
-    parsed = parse_skill_root_uri("skm://skills/python-core:v1.0.0")
+    parsed = parse_skill_root_uri("castor://skills/retailcortex.com/python/python-core/1.0.0")
     print(f"Parsed URI scheme: {parsed.scheme}, target: {parsed.target}, ref: {parsed.ref}")
 
     # 3. Load Python Enterprise Skills

@@ -5,18 +5,18 @@ weight: 80
 
 # Critical Comparison: Enterprise Skills Implementation vs. `agentskills.io` Standard
 
-This document provides a comprehensive critical comparison between the local polyglot enterprise skills implementation (`skill-builder`) and the open [Agent Skills Specification](https://agentskills.io/specification), the [Client Implementation Guide](https://agentskills.io/client-implementation/adding-skills-support), and ecosystem clients listed on [Agent Skills Clients](https://agentskills.io/clients).
+This document provides a comprehensive critical comparison between the local polyglot enterprise skills implementation (`Castor`) and the open [Agent Skills Specification](https://agentskills.io/specification), the [Client Implementation Guide](https://agentskills.io/client-implementation/adding-skills-support), and ecosystem clients listed on [Agent Skills Clients](https://agentskills.io/clients).
 
 ---
 
 ## 1. Executive Summary & Architectural Overview
 
-The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.26+, Java 17+) enterprise framework for building, loading, validating, registering, and serving AI agent skills compatible with Google Agent Development Kit (ADK) agents.
+The `Castor` repository provides a multi-language (Python 3.13, Go 1.26+, Java 17+) enterprise framework for building, loading, validating, registering, and serving AI agent skills compatible with Google Agent Development Kit (ADK) agents.
 
 ### Core Architectural Pillars
 * **Polyglot Skill Loaders & Native Build Plugins**: 1:1 functional parity across Python (`loader.py` / `loader.build_meta`), Go (`loader.go`), and Java (`SkillLoader.java` / `GenerateManifestMojo.java`).
-* **Multi-Source URI Resolution**: Supports `skm://` (central enterprise server), `github://` (remote git trees and zipballs), `mod://` (Go modules), `maven://` (Java Maven artifacts), `pkg://` (workspace runfile packages), and `file://` (local paths).
-* **Enterprise Registration Lifecycle (`skm register`)**: CLI client (`skm`) registers source skills to central `skills-service` (`cmd/skills-service`), auto-assigning canonical `skm://skills/{skill_id}` URIs.
+* **Multi-Source URI Resolution**: Supports `castor://`, `cstr://` (central enterprise server), `github://` (remote git trees and zipballs), `mod://` (Go modules), `maven://` (Java Maven artifacts), `pkg://` (workspace runfile packages), and `file://` (local paths).
+* **Enterprise Registration Lifecycle (`cstr register`)**: CLI client (`cstr`) registers source skills to central `Castor Registry` (`cmd/castor-server`), auto-assigning canonical `castor://skills/{domain}/{category}/{name}/{version}` URIs.
 * **Zero-I/O Pre-compiled Manifests**: Pre-processes skill registries into `skills_manifest.json` for instant cold starts in serverless or containerized environments.
 * **5-Point SDLC Quality Gate**: Automated security auditor (`validator.go` / `SkillAuditor.java`) enforcing frontmatter rules, L3 directory structures, CWE security checkpoints, HTTP 429 rate-limit resilience, and markdown file scheme links.
 * **Just-in-Time (JIT) Semantic Discovery**: Replaces static registry loading with RAG-MCP semantic tool retrieval to eliminate LLM context bloat.
@@ -26,7 +26,7 @@ The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.26+,
 
 ## 2. Specification Compliance Matrix (`agentskills.io/specification`)
 
-| Specification Dimension | `agentskills.io` Standard | Local `skill-builder` Implementation | Compliance Status |
+| Specification Dimension | `agentskills.io` Standard | Local `Castor` Implementation | Compliance Status |
 | :--- | :--- | :--- | :--- |
 | **Parent Directory Name** | Lowercase alphanumeric + hyphens (1-64 chars). Must match `name` field in `SKILL.md`. | Validated strictly in `validator.go` via regex `^[a-z0-9]+(-[a-z0-9]+)*$`. | **100% Compliant** |
 | **Description Constraints** | Required, non-empty, 1-1024 characters. | Enforced in all loaders and validated by auditor. | **100% Compliant** |
@@ -44,7 +44,7 @@ The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.26+,
 * **Local Implementation**:
   - Automatically walks Bazel runfiles (`BUILD_WORKSPACE_DIRECTORY`, `TEST_SRCDIR`), workspace packages, and root `skills/`.
   - Includes standard cross-client `.agents/skills/` directories at both project root (`<root>/.agents/skills`) and user home (`~/.agents/skills`).
-  - Extends discovery with qualified URI parsing (`skm://`, `github://`, `mod://`, `maven://`, `pkg://`, `file://`).
+  - Extends discovery with qualified URI parsing (`castor://`, `cstr://`, `github://`, `mod://`, `maven://`, `pkg://`, `file://`).
 
 ### Step 2: Progressive Disclosure Tiers
 1. **Tier 1 (Catalog)**: High-level `SkillSummary` (`name`, `description`, `path`, reference/example counts) loaded at startup.
@@ -71,7 +71,7 @@ The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.26+,
 | **Gemini CLI** | Go | `.gemini/skills/`, `~/.gemini/skills/` | Local filesystem | CLI prompt confirmation |
 | **Roo Code / OpenHands** | TypeScript / Python | Workspace `.vscode/` & repo roots | Git & Docker sandboxing | Workspace permission prompts |
 | **Spring AI** | Java (Spring Framework) | Classpath & Spring bean registry | Maven / Gradle dependencies | Framework bean validation |
-| **`skill-builder` (Local)** | **Python, Go, Java (Polyglot)** | **Bazel runfiles, packages, `.agents/skills`** | **`skm://`, `github://`, `mod://`, `maven://`, `pkg://`, `file://`** | **Automated 5-Point SDLC Auditor & Native Build Plugins** |
+| **`Castor` (Local)** | **Python, Go, Java (Polyglot)** | **Bazel runfiles, packages, `.agents/skills`** | **`castor://`, `github://`, `mod://`, `maven://`, `pkg://`, `file://`** | **Automated 5-Point SDLC Auditor & Native Build Plugins** |
 
 ---
 
@@ -79,7 +79,7 @@ The `skill-builder` repository provides a multi-language (Python 3.13, Go 1.26+,
 
 All identified recommendations have been fully implemented across Python, Go, and Java loader suites, supported by comprehensive unit and integration tests:
 
-1. **`skm://` Central Server Integration**: Full support for central server registration and canonical URI resolution.
+1. **`castor://` / `cstr://` Central Server Integration**: Full support for central server registration and canonical URI resolution.
 2. **Native Build System Hooks**: `skills-loader-maven-plugin` for Java Maven, `loader.build_meta` PEP 517 hook for Python `uv`, and `//go:generate` directives for Go.
 3. **Property Management**: Native support for TOML configuration (`modenv` in Go), environment loading (`dotenv` in Python), and JVM System properties (`System.getProperty` in Java).
 

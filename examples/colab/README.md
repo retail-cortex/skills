@@ -1,20 +1,20 @@
-# Google Cloud Enterprise AI Agent Skills: Google Colab Tutorial
+# Castor: Google Colab Interactive Tutorial
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retail-cortex/skills/blob/main/examples/colab/skills_service_adk_tutorial.ipynb)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-This directory contains the customer-facing **Google Colab interactive tutorial** for the Google Cloud Enterprise AI Agent Skills platform and Google Agent Development Kit (ADK).
+This directory contains the customer-facing **Google Colab interactive tutorial** for the Castor Enterprise AI Agent Skills platform (`Castor Registry`, `Castor CLI (cstr)`) and Google Agent Development Kit (ADK).
 
 ---
 
 ## What This Colab Demonstrates
 
 1. **Go Daemon & CLI Execution in Colab**:
-   - Compiling the Go `skills-service` daemon and `skm` CLI from source or downloading pre-built Linux `amd64` binaries from GitHub Releases (`curl -sSL https://github.com/retail-cortex/skills/releases/latest/download/...`).
-   - Running `skills-service` as a background process listening on `http://127.0.0.1:8000` with health check verification.
+   - Compiling the Go `castor-server` daemon and `cstr` CLI from source or downloading pre-built Linux `amd64` binaries from GitHub Releases (`curl -sSL https://github.com/retail-cortex/skills/releases/latest/download/...`).
+   - Running `castor-server` as a background process listening on `http://127.0.0.1:8000` with health check verification.
 2. **Enterprise Application Registration**:
-   - Registering a client application with domain scoping (`urn:skm:app:retailcortex.com:checkout-agent`).
-   - Domain verification status (`VERIFIED_SSO`), freemail protection against public email spoofing, and API key provisioning (`skm_live_...`).
+   - Registering a client application with domain scoping (`urn:castor:app:retailcortex.com:checkout-agent`).
+   - Domain verification status (`VERIFIED_SSO`), freemail protection against public email spoofing, and API key provisioning (`cstr_live_...`).
 3. **Multi-Modal Skill Registration (Local & Remote GitHub)**:
    - Ingesting local file skills with progressive disclosure (`SKILL.md`, `references/`, `examples/`).
    - Ingesting remote GitHub repositories (`github://retail-cortex/skills@main/skills/canvas-image`).

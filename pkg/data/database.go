@@ -37,7 +37,7 @@ func GetDatabaseURL() string {
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		return url
 	}
-	return "skills.db"
+	return "castor.db"
 }
 
 // InitDB initializes the GORM database connection and migrates models.

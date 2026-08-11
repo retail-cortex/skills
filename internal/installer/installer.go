@@ -74,30 +74,44 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 				roots = []string{subpath}
 			}
 			skills, loadErr = skillsloader.LoadSkillsFromGoModule(target, ref, roots, filter)
-		case "skm", "skms":
-			serverURL := os.Getenv("SKM_SERVER_URL")
-			apiKey := os.Getenv("SKM_API_KEY")
+		case "castor", "castors", "cstr", "cstrs", "skm", "skms":
+			serverURL := os.Getenv("CASTOR_SERVER_URL")
+			if serverURL == "" {
+				serverURL = os.Getenv("CSTR_SERVER_URL")
+			}
+			if serverURL == "" {
+				serverURL = os.Getenv("SKM_SERVER_URL")
+			}
+			apiKey := os.Getenv("CASTOR_API_KEY")
+			if apiKey == "" {
+				apiKey = os.Getenv("CSTR_API_KEY")
+			}
+			if apiKey == "" {
+				apiKey = os.Getenv("SKM_API_KEY")
+			}
 			if serverURL == "" || apiKey == "" {
 				if home, err := os.UserHomeDir(); err == nil {
-					cfgPath := filepath.Join(home, ".skm", ".env.toml")
-					if content, err := os.ReadFile(cfgPath); err == nil {
-						for _, line := range strings.Split(string(content), "\n") {
-							parts := strings.SplitN(line, "=", 2)
-							if len(parts) == 2 {
-								k := strings.TrimSpace(parts[0])
-								v := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
-								if serverURL == "" && (k == "SKM_SERVER_URL" || k == "server_url" || k == "SERVER_URL") {
-									serverURL = v
-								}
-								if apiKey == "" && (k == "SKM_API_KEY" || k == "api_key" || k == "API_KEY") {
-									apiKey = v
+					for _, dir := range []string{".castor", ".cstr", ".skm"} {
+						cfgPath := filepath.Join(home, dir, ".env.toml")
+						if content, err := os.ReadFile(cfgPath); err == nil {
+							for _, line := range strings.Split(string(content), "\n") {
+								parts := strings.SplitN(line, "=", 2)
+								if len(parts) == 2 {
+									k := strings.TrimSpace(parts[0])
+									v := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
+									if serverURL == "" && (k == "CASTOR_SERVER_URL" || k == "CSTR_SERVER_URL" || k == "SKM_SERVER_URL" || k == "server_url" || k == "SERVER_URL") {
+										serverURL = v
+									}
+									if apiKey == "" && (k == "CASTOR_API_KEY" || k == "CSTR_API_KEY" || k == "SKM_API_KEY" || k == "api_key" || k == "API_KEY") {
+										apiKey = v
+									}
 								}
 							}
 						}
 					}
 				}
 			}
-			skills, loadErr = skillsloader.LoadSkillsFromSKMServer(target, filter, serverURL, apiKey)
+			skills, loadErr = skillsloader.LoadSkillsFromCastorRegistry(target, filter, serverURL, apiKey)
 		case "file":
 			skills, loadErr = ResolveFileSkills(target, filter)
 		default:

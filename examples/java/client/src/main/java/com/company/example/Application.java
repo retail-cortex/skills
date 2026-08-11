@@ -22,25 +22,53 @@ public class Application {
 
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
+    public static String getCastorServerUrl() {
+        String prop = System.getProperty("castor.server.url", System.getProperty("skm.server.url"));
+        if (prop != null && !prop.isBlank()) {
+            return prop;
+        }
+        String env = System.getenv("CASTOR_SERVER_URL");
+        if (env == null || env.isBlank()) {
+            env = System.getenv("CSTR_SERVER_URL");
+        }
+        if (env == null || env.isBlank()) {
+            env = System.getenv("SKM_SERVER_URL");
+        }
+        return env != null && !env.isBlank() ? env : "http://localhost:8080";
+    }
+
+    public static String getCastorApiKey() {
+        String prop = System.getProperty("castor.api.key", System.getProperty("skm.api.key"));
+        if (prop != null && !prop.isBlank()) {
+            return prop;
+        }
+        String env = System.getenv("CASTOR_API_KEY");
+        if (env == null || env.isBlank()) {
+            env = System.getenv("CSTR_API_KEY");
+        }
+        if (env == null || env.isBlank()) {
+            env = System.getenv("SKM_API_KEY");
+        }
+        return env != null && !env.isBlank() ? env : "java-secret-key-99999";
+    }
+
     public static String getSkmServerUrl() {
-        return System.getProperty("skm.server.url",
-                System.getenv().getOrDefault("SKM_SERVER_URL", "http://localhost:8080"));
+        return getCastorServerUrl();
     }
 
     public static String getSkmApiKey() {
-        return System.getProperty("skm.api.key",
-                System.getenv().getOrDefault("SKM_API_KEY", "java-secret-key-99999"));
+        return getCastorApiKey();
     }
 
     public static void main(String[] args) {
-        logger.info("Initializing Java Client Standalone Example...");
+        logger.info("Initializing Castor Java Client Standalone Example...");
 
-        String serverUrl = getSkmServerUrl();
-        String apiKey = getSkmApiKey();
+        String serverUrl = getCastorServerUrl();
+        String apiKey = getCastorApiKey();
 
         logger.info("Loaded System properties: serverUrl={}, apiKey={}", serverUrl, apiKey);
 
-        var parsed = SkillLoader.parseSkillRootUri("github://google/skills@main/tree/main/skills/cloud/gemini-api");
+        var parsed = SkillLoader.parseSkillRootUri("castor://skills/example.com/testing/test-skill/1.0.0");
         logger.info("Parsed URI: scheme={}, target={}, ref={}", parsed.scheme(), parsed.target(), parsed.ref());
     }
 }

@@ -17,7 +17,7 @@ Located at `examples/java/client`, this example demonstrates how a standalone Ja
 ### Key Features & Design
 - **Standard Maven Layout**: Features an explicit `pom.xml` requiring no local Bazel toolchain.
 - **Maven Lifecycle Integration**: Configures `skills-loader-maven-plugin:generate-manifest` to run during the `generate-resources` phase, automatically scanning local skill directories and bundling `skills_manifest.json` into `target/classes`.
-- **System Property Resolution**: Implements `System.getProperty("skm.server.url")` falling back to environment variables (`SKM_SERVER_URL`).
+- **System Property Resolution**: Implements `System.getProperty("castor.server.url")` falling back to environment variables (`CASTOR_SERVER_URL`).
 
 ### Project Layout
 
@@ -67,17 +67,17 @@ import java.util.Map;
 public class Application {
 
     public String resolveServerUrl() {
-        String prop = System.getProperty("skm.server.url");
+        String prop = System.getProperty("castor.server.url");
         if (prop != null && !prop.isBlank()) {
             return prop;
         }
-        String env = System.getenv("SKM_SERVER_URL");
+        String env = System.getenv("CASTOR_SERVER_URL");
         return (env != null && !env.isBlank()) ? env : "http://localhost:8080";
     }
 
     public static void main(String[] args) {
         Application app = new Application();
-        System.out.println("Connected to SKM Server at: " + app.resolveServerUrl());
+        System.out.println("Connected to Castor Server at: " + app.resolveServerUrl());
 
         // Load Java Enterprise Skills
         Map<String, SkillDefinition> skills = SkillLoader.loadSkillsFromPackage(

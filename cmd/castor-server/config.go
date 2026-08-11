@@ -37,18 +37,19 @@ func LoadConfig() *Config {
 	cfg := &Config{
 		Host:                "0.0.0.0",
 		Port:                8000,
-		DatabaseURL:         "skills.db",
+		DatabaseURL:         "castor.db",
 		EnableOpenTelemetry: false,
-		OTELServiceName:     "skills-service",
+		OTELServiceName:     "castor-registry",
 		GCPProjectID:        "",
 		EmbeddingProvider:   "vertex-gemini",
 	}
 
 	// If MODENV_PREFIX is unset, auto-resolve from workspace directory or local directory
 	if os.Getenv("MODENV_PREFIX") == "" {
-		candidates := []string{".", "cmd/skills-service"}
+		candidates := []string{".", "cmd/castor-server", "cmd/skills-service"}
 		if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
 			candidates = append([]string{
+				filepath.Join(wsDir, "cmd/castor-server"),
 				filepath.Join(wsDir, "cmd/skills-service"),
 				wsDir,
 			}, candidates...)

@@ -5,7 +5,7 @@ weight: 20
 
 # Application Registration & Authentication Lifecycle
 
-Application Registration connects client tools (such as the `skm` CLI or agent applications) to the central enterprise skill server (`skills-service`). 
+Application Registration connects client tools (such as the `cstr` CLI or agent applications) to the central enterprise skill server (`Castor Registry`). 
 
 ---
 
@@ -29,11 +29,11 @@ Developers register an application by providing an application name, domain auth
    - Extracts email domain (e.g. `retailcortex.com`).
    - If `domain` is omitted, defaults to the email domain.
    - **Freemail Protection**: If a public freemail address (e.g. `@gmail.com`, `@yahoo.com`) attempts to claim a corporate domain, the server rejects the request with HTTP `403 Forbidden` (`ErrFreemailDomainProhibited`).
-   - Assigns a deterministic canonical URN: `urn:skm:app:<domain>:<app_name>` (e.g. `urn:skm:app:retailcortex.com:checkout-agent`).
+   - Assigns a deterministic canonical URN: `urn:castor:app:<domain>:<app_name>` (e.g. `urn:castor:app:retailcortex.com:checkout-agent`).
 2. **Domain Verification Status**:
    - **`VERIFIED_SSO`**: Set automatically when the developer's email domain matches the requested domain.
-   - **`PENDING_DNS`**: Set when claiming a custom third-party domain, issuing a DNS challenge string (`skm-domain-verify-<uuid>`).
-3. **API Key Generation & Hashing**: Generates a secure random API key (`skm_live_...`) and computes its SHA-256 hash (`api_key_hash`) for DB storage.
+   - **`PENDING_DNS`**: Set when claiming a custom third-party domain, issuing a DNS challenge string (`castor-domain-verify-<uuid>`).
+3. **API Key Generation & Hashing**: Generates a secure random API key (`cstr_live_...`) and computes its SHA-256 hash (`api_key_hash`) for DB storage.
 4. **Terminal Response**: Returns the raw `api_key` in the `201 Created` payload so the developer can configure it locally.
 
 ### Response Payload (`201 Created`)
@@ -43,11 +43,11 @@ Developers register an application by providing an application name, domain auth
   "app_id": "8f3a91b2-1234-4567-89ab-cdef01234567",
   "app_name": "checkout-agent",
   "domain": "retailcortex.com",
-  "app_urn": "urn:skm:app:retailcortex.com:checkout-agent",
+  "app_urn": "urn:castor:app:retailcortex.com:checkout-agent",
   "organization_id": "team-checkout",
   "email": "developer@retailcortex.com",
   "domain_verification_status": "VERIFIED_SSO",
-  "api_key": "skm_live_YOUR_API_KEY_HERE",
+  "api_key": "cstr_live_YOUR_API_KEY_HERE",
   "verification_token": "e4d3c2b1-5678-90ab-cdef-1234567890ab",
   "verification_url": "http://localhost:8000/api/v1/apps/verify?token=e4d3c2b1-5678-90ab-cdef-1234567890ab"
 }
@@ -73,7 +73,7 @@ Host: localhost:8000
   "app_id": "8f3a91b2-1234-4567-89ab-cdef01234567",
   "app_name": "checkout-agent",
   "domain": "retailcortex.com",
-  "app_urn": "urn:skm:app:retailcortex.com:checkout-agent",
+  "app_urn": "urn:castor:app:retailcortex.com:checkout-agent",
   "email": "developer@retailcortex.com",
   "domain_verification_status": "VERIFIED_SSO",
   "is_active": true,
@@ -83,52 +83,52 @@ Host: localhost:8000
 
 ---
 
-## 3. CLI Configuration (`skm config`)
+## 3. CLI Configuration (`cstr config`)
 
-Configure `skm` settings persisted in `~/.skm/.env.toml`:
+Configure `cstr` settings persisted in `~/.castor/.env.toml`:
 
 ```bash
-# Configure target skills-service server URL
-skm config set server http://localhost:8000
+# Configure target Castor Registry server URL
+cstr config set server http://localhost:8000
 
 # Store issued API key
-skm config set api_key skm_live_YOUR_API_KEY_HERE
+cstr config set api_key cstr_live_YOUR_API_KEY_HERE
 
 # Store domain & organization defaults
-skm config set domain retailcortex.com
-skm config set org team-checkout
+cstr config set domain retailcortex.com
+cstr config set org team-checkout
 
 # Verify active CLI configuration
-skm config show
+cstr config show
 ```
 
-### Configuration File (`~/.skm/.env.toml`)
+### Configuration File (`~/.castor/.env.toml`)
 
 ```toml
-# SKM Enterprise CLI Configuration
-SKM_SERVER_URL="http://localhost:8000"
-SKM_API_KEY="skm_live_YOUR_API_KEY_HERE"
-SKM_DOMAIN="retailcortex.com"
-SKM_ORGANIZATION_ID="team-checkout"
+# Castor CLI Enterprise Configuration
+CASTOR_SERVER_URL="http://localhost:8000"
+CASTOR_API_KEY="cstr_live_YOUR_API_KEY_HERE"
+CASTOR_DOMAIN="retailcortex.com"
+CASTOR_ORGANIZATION_ID="team-checkout"
 ```
 
 ---
 
 ## 4. Filter & Interceptor Authentication (`AuthenticateAPIKey`)
 
-When requests are made to protected endpoints (e.g. `POST /api/v1/skills` during `skm register`), the `X-API-Key` HTTP header is inspected by the server filter/interceptor middleware (`AuthenticateAPIKey`).
+When requests are made to protected endpoints (e.g. `POST /api/v1/skills` during `cstr register`), the `X-API-Key` HTTP header is inspected by the server filter/interceptor middleware (`AuthenticateAPIKey`).
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Dev as Developer
-    participant CLI as skm CLI
-    participant Server as skills-service
+    participant CLI as cstr CLI
+    participant Server as Castor Registry
     participant DB as Database (registered_apps)
 
     Dev->>Server: POST /api/v1/apps/register {app_name, domain, email}
     Server->>Server: Validate domain ownership & freemail prohibition
-    Server->>Server: Format URN: urn:skm:app:<domain>:<app_name>
+    Server->>Server: Format URN: urn:castor:app:<domain>:<app_name>
     Server->>DB: Store app record (api_key_hash, is_active=false)
     Server-->>Dev: Return raw api_key & verification_url in terminal
 
@@ -136,7 +136,7 @@ sequenceDiagram
     Server->>DB: Update is_active = true
     Server-->>Dev: 200 OK (Account Active)
 
-    Dev->>CLI: skm config set api_key <skm_live_...>
+    Dev->>CLI: cstr config set api_key <cstr_live_...>
     CLI->>Server: POST /api/v1/skills (Header: X-API-Key)
     Server->>DB: Interceptor: Lookup SHA256(X-API-Key) & Check is_active == true
     alt Valid Key and is_active == true
@@ -155,20 +155,20 @@ The interceptor validates **two mandatory requirements** on every request:
 
 ---
 
-## 5. OAuth 2.0 / OIDC SSO Authentication (`skm login --sso`)
+## 5. OAuth 2.0 / OIDC SSO Authentication (`cstr login --sso`)
 
-For enterprise environments integrated with identity providers (Google Workspace, Okta, Azure AD), `skm` supports native OAuth 2.0 / OIDC single sign-on authentication.
+For enterprise environments integrated with identity providers (Google Workspace, Okta, Azure AD), `cstr` supports native OAuth 2.0 / OIDC single sign-on authentication.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Dev as Developer
-    participant CLI as skm CLI (~/.skm)
+    participant CLI as cstr CLI (~/.castor)
     participant IdP as Identity Provider (Google Workspace/Okta)
-    participant Server as skills-service
+    participant Server as Castor Registry
     participant DB as Database (registered_apps)
 
-    Dev->>CLI: skm login --sso google
+    Dev->>CLI: cstr login --sso google
     CLI->>CLI: 1. Start loopback HTTP listener (http://127.0.0.1:8989/callback)
     CLI->>CLI: 2. Generate PKCE code_verifier & code_challenge (S256)
     CLI->>Dev: 3. Open workstation browser to IdP OAuth endpoint
@@ -184,20 +184,20 @@ sequenceDiagram
 
     alt Verified SSO Match
         Server->>DB: Save app record (domain="retailcortex.com", is_active=true, domain_verification_status="VERIFIED_SSO")
-        Server-->>CLI: Return 201 Created (App URN: urn:skm:app:retailcortex.com:skm-cli)
+        Server-->>CLI: Return 201 Created (App URN: urn:castor:app:retailcortex.com:cstr-cli)
     else Freemail Account (@gmail.com claiming retailcortex.com)
         Server-->>CLI: Return 403 Forbidden (Freemail prohibited from claiming corporate domains)
     end
 
-    CLI->>CLI: Save credentials in ~/.skm/credentials.json (Mode 0600)
+    CLI->>CLI: Save credentials in ~/.castor/credentials.json (Mode 0600)
     CLI-->>Dev: [+] Successfully Authenticated via Google SSO (Domain: retailcortex.com)
 ```
 
 ### 5.1 CLI Authentication Workflows
-- **Interactive PKCE Workflow (`skm login --sso`)**: Uses OAuth 2.0 Authorization Code Grant with PKCE (RFC 7636) via an ephemeral local loopback server (`http://127.0.0.1:8989/callback`).
-- **Headless / Device Authorization Workflow (`skm login --sso --device`)**: Uses Device Authorization Grant (RFC 8628) for SSH and non-browser terminal environments. Displays a user code (`ABCD-EFGH`) and verification URL (`https://google.com/device`).
+- **Interactive PKCE Workflow (`cstr login --sso`)**: Uses OAuth 2.0 Authorization Code Grant with PKCE (RFC 7636) via an ephemeral local loopback server (`http://127.0.0.1:8989/callback`).
+- **Headless / Device Authorization Workflow (`cstr login --sso --device`)**: Uses Device Authorization Grant (RFC 8628) for SSH and non-browser terminal environments. Displays a user code (`ABCD-EFGH`) and verification URL (`https://google.com/device`).
 
-### 5.2 OIDC Token Persistence (`~/.skm/credentials.json`)
+### 5.2 OIDC Token Persistence (`~/.castor/credentials.json`)
 OIDC ID Tokens and Refresh Tokens are stored in a restricted JSON file (`POSIX mode 0600`):
 
 ```json
@@ -211,13 +211,13 @@ OIDC ID Tokens and Refresh Tokens are stored in a restricted JSON file (`POSIX m
       "access_token": "ya29.a0...",
       "expires_at": "2026-08-04T18:00:00Z",
       "hd": "retailcortex.com",
-      "app_urn": "urn:skm:app:retailcortex.com:skm-cli"
+      "app_urn": "urn:castor:app:retailcortex.com:cstr-cli"
     }
   }
 }
 ```
 
 ### 5.3 Server-Side JWT Claims Verification
-When `skills-service` receives requests bearing `Authorization: Bearer <ID_TOKEN>`, it verifies the signature against the IdP's public JWKS endpoint:
+When `Castor Registry` receives requests bearing `Authorization: Bearer <ID_TOKEN>`, it verifies the signature against the IdP's public JWKS endpoint:
 - **`email`**: Extracted identity (guaranteed verified by IdP signature).
 - **`hd` (Hosted Domain)**: Extracted corporate domain claim. Domain verification status is set directly to `VERIFIED_SSO` and email activation links are bypassed (`is_active = true`).

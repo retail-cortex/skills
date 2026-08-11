@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: skill-service
-  namespace: skill-builder
+  name: castor-registry
+  namespace: castor
 spec:
   replicas: 5
   template:
@@ -13,9 +13,9 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: skill-service
+              app.kubernetes.io/name: castor-registry
       containers:
-        - name: skill-service
+        - name: castor-registry
           resources:
             requests:
               cpu: "1000m"

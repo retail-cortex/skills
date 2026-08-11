@@ -53,6 +53,7 @@ func FindRegistryRoot() string {
 		}
 		candidates = append(candidates,
 			filepath.Join(testSrcDir, "_main"),
+			filepath.Join(testSrcDir, "castor"),
 			filepath.Join(testSrcDir, "skill_builder"),
 			testSrcDir,
 		)
@@ -63,24 +64,19 @@ func FindRegistryRoot() string {
 			}
 		}
 
-		// Search for any SKILL.md under TEST_SRCDIR
+		// Fallback: deep scan under testSrcDir for any SKILL.md
 		var foundRoot string
 		_ = filepath.Walk(testSrcDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
+			if err != nil || info == nil {
 				return nil
 			}
-			if info.Name() == "SKILL.md" {
+			if !info.IsDir() && info.Name() == "SKILL.md" {
 				dir := filepath.Dir(path)
-				for dir != "." && dir != "/" {
-					if isDir(filepath.Join(dir, "packages")) || isDir(filepath.Join(dir, "skills")) || isDir(filepath.Join(dir, "examples")) {
-						foundRoot = dir
-						return fmt.Errorf("found")
+				for d := dir; d != testSrcDir && d != string(filepath.Separator) && d != "."; d = filepath.Dir(d) {
+					if isDir(filepath.Join(d, "packages")) || isDir(filepath.Join(d, "skills")) || isDir(filepath.Join(d, "examples")) {
+						foundRoot = d
+						return filepath.SkipAll
 					}
-					parent := filepath.Dir(dir)
-					if parent == dir {
-						break
-					}
-					dir = parent
 				}
 			}
 			return nil
@@ -176,14 +172,13 @@ func ParseDotenvFile(envPath string) map[string]string {
 // ParseSkillRootURI parses a qualified skill root URI into (scheme, target, ref, subpath).
 func ParseSkillRootURI(uri string) (scheme, target, ref, subpath string) {
 	clean := strings.TrimSpace(uri)
-	if strings.HasPrefix(clean, "skm://") || strings.HasPrefix(clean, "skms://") {
-		prefix := "skm://"
-		if strings.HasPrefix(clean, "skms://") {
-			prefix = "skms://"
+	for _, p := range []string{"castors://", "castor://", "cstrs://", "cstr://", "skms://", "skm://"} {
+		if strings.HasPrefix(clean, p) {
+			raw := clean[len(p):]
+			raw = strings.TrimPrefix(raw, "skills/")
+			schemeName := strings.TrimSuffix(p, "://")
+			return schemeName, raw, "", ""
 		}
-		raw := clean[len(prefix):]
-		raw = strings.TrimPrefix(raw, "skills/")
-		return "skm", raw, "", ""
 	}
 	if strings.HasPrefix(clean, "file://") {
 		return "file", clean[len("file://"):], "", ""
@@ -1572,7 +1567,13 @@ func (r *SkillRegistry) SuggestSkills(prompt string, maxSkills int, serverURL st
 
 	targetServer := serverURL
 	if targetServer == "" {
-		targetServer = os.Getenv("SKILLS_SERVER_URL")
+		targetServer = os.Getenv("CASTOR_SERVER_URL")
+		if targetServer == "" {
+			targetServer = os.Getenv("CSTR_SERVER_URL")
+		}
+		if targetServer == "" {
+			targetServer = os.Getenv("SKILLS_SERVER_URL")
+		}
 		if targetServer == "" {
 			targetServer = os.Getenv("SKM_SERVER_URL")
 		}
@@ -1936,8 +1937,13 @@ func VerifyManifestLock(destDir string) (*VerificationReport, error) {
 	return report, nil
 }
 
-// LoadSkillsFromSKMServer fetches a skill definition from a central SKM server.
-func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, apiKey string) (map[string]*SkillDefinition, error) {
+// LoadSkillsFromCastorRegistry fetches a skill definition from a central Castor Registry.
+func LoadSkillsFromCastorRegistry(target string, filter []string, serverURL string, apiKey string) (map[string]*SkillDefinition, error) {
+	return LoadSkillsFromCastorServer(target, filter, serverURL, apiKey)
+}
+
+// LoadSkillsFromCastorServer fetches a skill definition from a central Castor server.
+func LoadSkillsFromCastorServer(target string, filter []string, serverURL string, apiKey string) (map[string]*SkillDefinition, error) {
 	if serverURL == "" {
 		serverURL = "http://localhost:8080"
 	}
@@ -2004,7 +2010,7 @@ func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, a
 		Examples:     data.Examples,
 	}
 
-	tmpDir, err := os.MkdirTemp("", "skm-server-skill-*")
+	tmpDir, err := os.MkdirTemp("", "castor-skill-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp dir: %w", err)
 	}
@@ -2032,23 +2038,39 @@ func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, a
 		return os.WriteFile(destPath, data, 0644)
 	}
 
-	if len(s.References) > 0 {
+	if len(data.References) > 0 {
 		refDir := filepath.Join(tmpDir, "references")
 		_ = os.MkdirAll(refDir, 0755)
-		for name, content := range s.References {
-			_ = writeFilePayload(filepath.Join(refDir, name), content)
+		for filename, content := range data.References {
+			_ = writeFilePayload(filepath.Join(refDir, filename), content)
 		}
 	}
 
-	if len(s.Examples) > 0 {
+	if len(data.Examples) > 0 {
 		exDir := filepath.Join(tmpDir, "examples")
 		_ = os.MkdirAll(exDir, 0755)
-		for name, content := range s.Examples {
-			_ = writeFilePayload(filepath.Join(exDir, name), content)
+		for filename, content := range data.Examples {
+			_ = writeFilePayload(filepath.Join(exDir, filename), content)
+		}
+	}
+
+	if len(filter) > 0 {
+		match := false
+		for _, f := range filter {
+			if strings.EqualFold(s.Name, f) {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return map[string]*SkillDefinition{}, nil
 		}
 	}
 
 	return map[string]*SkillDefinition{s.Name: s}, nil
 }
 
-
+// LoadSkillsFromSKMServer fetches a skill definition from a central server (legacy alias for LoadSkillsFromCastorServer).
+func LoadSkillsFromSKMServer(target string, filter []string, serverURL string, apiKey string) (map[string]*SkillDefinition, error) {
+	return LoadSkillsFromCastorServer(target, filter, serverURL, apiKey)
+}

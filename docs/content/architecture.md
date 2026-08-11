@@ -9,20 +9,20 @@ Every skill in this registry enforces a complete, production-grade Software Deve
 
 ---
 
-## 1. Enterprise Service Architecture (`skills-service`)
+## 1. Enterprise Service Architecture (`Castor Registry`)
 
-The enterprise skills platform is architected around a high-performance Go backend service (`cmd/skills-service`) exposing dual REST HTTP endpoints (`/api/v1/skills`, `/api/v1/apps/register`, `/api/v1/apps/verify`), alongside Model Context Protocol (MCP) tool bindings (`pkg/mcp`).
+The enterprise skills platform is architected around a high-performance Go backend service (`cmd/castor-server`) exposing dual REST HTTP endpoints (`/api/v1/skills`, `/api/v1/apps/register`, `/api/v1/apps/verify`), alongside Model Context Protocol (MCP) tool bindings (`pkg/mcp`).
 
 ```mermaid
 graph TD
-    subgraph CLIClient ["skm CLI Client"]
-        CLI1["skm config (~/.skm/.env.toml)"]
-        CLI2["skm register &lt;source_uri&gt;"]
-        CLI3["skm search / skm list (--remote, --page, --max)"]
-        CLI4["skm add skm://skills/{id}"]
+    subgraph CLIClient ["cstr CLI Client"]
+        CLI1["cstr config (~/.castor/.env.toml)"]
+        CLI2["cstr register &lt;source_uri&gt;"]
+        CLI3["cstr search / cstr list (--remote, --page, --max)"]
+        CLI4["cstr add castor://skills/{domain}/{category}/{name}/{version}"]
     end
 
-    subgraph ServiceBackend ["cmd/skills-service (Go Backend)"]
+    subgraph ServiceBackend ["cmd/castor-server (Go Backend)"]
         S1["Gin REST API Handlers"]
         S2["pkg/service Skills & Apps Service"]
         S3["pkg/embedding Multi-Modal Soft-Switch Provider"]
@@ -105,7 +105,7 @@ type Provider interface {
 
 ### Supported Concrete Providers
 
-Configured dynamically in `cmd/skills-service/.env.toml` via `embedding_provider` or environment variable `EMBEDDING_PROVIDER`:
+Configured dynamically in `cmd/castor-server/.env.toml` via `embedding_provider` or environment variable `EMBEDDING_PROVIDER`:
 
 #### 1. Google Vertex AI & Gemini Provider ([`pkg/embedding/vertex`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/vertex/vertex.go))
 - **Provider Identifier**: `"vertex-gemini"` (default)
@@ -169,7 +169,7 @@ sequenceDiagram
     participant User as User / Calling Client
     participant Agent as ADK Programming Agent
     participant Registry as SkillRegistry (Python/Go/Java)
-    participant Server as skills-service (pgvector)
+    participant Server as Castor Registry (pgvector)
     participant LLM as Gemini 2.0 Flash
 
     User->>Agent: Send user prompt ("Render 2D canvas image")
@@ -198,7 +198,7 @@ Every language standardizes on **Bazel** for hermetic CI/CD and monorepo executi
 
 - **Go**: `modenv` (`github.com/rrmcguinness/modenv/pkg/modenv`) for multi-tier cascading TOML configuration (`.env.toml`, `.env.local.toml`).
 - **Python**: `python-dotenv` (`load_dotenv()`) for `.env` property resolution.
-- **Java**: Java System Properties (`System.getProperty("skm.server.url")`) with environment fallbacks.
+- **Java**: Java System Properties (`System.getProperty("castor.server.url")`) with environment fallbacks.
 
 ---
 

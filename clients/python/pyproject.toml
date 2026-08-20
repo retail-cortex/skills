@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "retailcortex-loader"
+name = "castor-loader"
 version = "1.0.0"
-description = "Reusable enterprise AI agent skill scanner and loader for Google ADK"
+description = "Castor Registry - Enterprise AI agent skill scanner and loader for Google ADK"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.13"

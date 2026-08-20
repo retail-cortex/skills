@@ -28,7 +28,7 @@ func TestExecute_Version(t *testing.T) {
 	errOut := &bytes.Buffer{}
 	code := Execute([]string{"version"}, out, errOut)
 	assert.Equal(t, 0, code)
-	assert.Contains(t, out.String(), "skm version")
+	assert.Contains(t, out.String(), "cstr version")
 }
 
 func TestExecute_Help(t *testing.T) {
@@ -36,7 +36,7 @@ func TestExecute_Help(t *testing.T) {
 	errOut := &bytes.Buffer{}
 	code := Execute([]string{"help"}, out, errOut)
 	assert.Equal(t, 0, code)
-	assert.Contains(t, out.String(), "SKM - Enterprise Standalone Skills CLI Client")
+	assert.Contains(t, out.String(), "Castor CLI (cstr) - Enterprise Standalone Skills CLI Client")
 }
 
 func TestExecute_InitAndValidate(t *testing.T) {
@@ -285,7 +285,7 @@ func TestExecute_NoArgs(t *testing.T) {
 	errOut := &bytes.Buffer{}
 	code := Execute([]string{}, out, errOut)
 	assert.Equal(t, 0, code)
-	assert.Contains(t, out.String(), "SKM - Enterprise Standalone Skills CLI Client")
+	assert.Contains(t, out.String(), "Castor CLI (cstr) - Enterprise Standalone Skills CLI Client")
 }
 
 func TestExecute_SearchNoArgs(t *testing.T) {
@@ -305,12 +305,18 @@ func TestExecute_CompileFlags(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(skillDir, "examples", "ex.md"), []byte("ex"), 0644)
 	_ = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: comp-flag-skill\n---\nBody"), 0644)
 
-	outFile := filepath.Join(tmpDir, "out_manifest.json")
-	out := &bytes.Buffer{}
-	errOut := &bytes.Buffer{}
-	code := Execute([]string{"compile", "-d=" + tmpDir, "--output=" + outFile}, out, errOut)
-	assert.Equal(t, 0, code)
-	assert.Contains(t, out.String(), "Successfully compiled")
+	outFile := filepath.Join(tmpDir, "manifest.json")
+	compOut := &bytes.Buffer{}
+	compErr := &bytes.Buffer{}
+
+	code := Execute([]string{"compile", "-d=" + tmpDir, "--output=" + outFile}, compOut, compErr)
+	assert.Equal(t, 0, code, "compile stderr: %s", compErr.String())
+	assert.Contains(t, compOut.String(), "Successfully compiled")
+
+	// Verify compiled manifest exists and contains skill
+	manifestBytes, errRead := os.ReadFile(outFile)
+	assert.NoError(t, errRead)
+	assert.Contains(t, string(manifestBytes), "comp-flag-skill")
 }
 
 func TestExecute_AddNoURIs(t *testing.T) {
@@ -357,19 +363,19 @@ func TestExecute_Completion(t *testing.T) {
 	// Bash
 	code := Execute([]string{"completion", "bash"}, out, errOut)
 	assert.Equal(t, 0, code)
-	assert.Contains(t, out.String(), "_skm_completions")
+	assert.Contains(t, out.String(), "_cstr_completions")
 
 	// Zsh
 	out2 := &bytes.Buffer{}
 	code = Execute([]string{"completion", "zsh"}, out2, errOut)
 	assert.Equal(t, 0, code)
-	assert.Contains(t, out2.String(), "#compdef skm")
+	assert.Contains(t, out2.String(), "#compdef cstr")
 
 	// Fish
 	out3 := &bytes.Buffer{}
 	code = Execute([]string{"completion", "fish"}, out3, errOut)
 	assert.Equal(t, 0, code)
-	assert.Contains(t, out3.String(), "complete -c skm")
+	assert.Contains(t, out3.String(), "complete -c cstr")
 
 	// Unsupported
 	errBuf := &bytes.Buffer{}
@@ -427,7 +433,7 @@ func TestExecute_Verify(t *testing.T) {
 	errOut := &bytes.Buffer{}
 	code := Execute([]string{"verify", "-d", tmpDir}, out, errOut)
 	assert.Equal(t, 1, code) // Status is modified because sha256 doesn't match dummy
-	assert.Contains(t, out.String(), "SKM Skill Integrity Verification Report")
+	assert.Contains(t, out.String(), "Castor Skill Integrity Verification Report")
 
 	// Verify JSON
 	out2 := &bytes.Buffer{}

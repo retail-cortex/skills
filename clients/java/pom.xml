@@ -9,8 +9,8 @@
     <version>1.0.0</version>
     <packaging>maven-plugin</packaging>
 
-    <name>Enterprise Skills Loader Maven Plugin</name>
-    <description>Java 17+ client library and pre-processor Maven plugin for enterprise ADK AI skills.</description>
+    <name>Castor Enterprise Skills Loader Maven Plugin</name>
+    <description>Java 17+ client library and pre-processor Maven plugin for Castor Registry enterprise ADK AI skills.</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

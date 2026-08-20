@@ -7,7 +7,7 @@ weight: 40
 # Enterprise Skills Registry
 
 
-This registry provides 23 enterprise-ready AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security, canonical server registration (`skm://skills/{skill_id}`), and performance requirements for the Google Agent Development Kit (ADK).
+This registry provides 23 enterprise-ready AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security, canonical server registration (`castor://skills/{domain}/{category}/{name}/{version}`), and performance requirements for the Google Agent Development Kit (ADK).
 
 ---
 
@@ -15,10 +15,10 @@ This registry provides 23 enterprise-ready AI Agent Skills. While built upon the
 
 ```mermaid
 graph LR
-    A[Source Skill github:// / file://] --> B[skm register]
-    B --> C[skills-service Registry]
-    C --> D["Canonical URI: skm://skills/{skill_id}"]
-    D --> E["skm add skm://skills/{skill_id}"]
+    A[Source Skill github:// / file://] --> B[cstr register]
+    B --> C[Castor Registry]
+    C --> D["Canonical URI: castor://skills/{domain}/{category}/{name}/{version}"]
+    D --> E["cstr add castor://skills/{domain}/{category}/{name}/{version}"]
     E --> F[Grounded ADK Agent]
 ```
 

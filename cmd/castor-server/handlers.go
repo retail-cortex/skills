@@ -43,7 +43,7 @@ func (h *ServerHandlers) HealthCheck(cfg *Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "ok",
-			"service": "skills-service",
+			"service": "castor-registry",
 			"version": "0.1.0",
 			"ports": gin.H{
 				"rest": cfg.Port,

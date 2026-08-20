@@ -5,7 +5,7 @@ weight: 30
 
 # Python Client & `uv` Build Integration (`loader.build_meta`)
 
-The Python client (`retailcortex-loader`) implements a **PEP 517/518 build backend wrapper** (`loader.build_meta`) alongside high-performance **JIT Dynamic Pre-Call Retrieval** for Google ADK agents.
+The Python client (`castor-loader`) implements a **PEP 517/518 build backend wrapper** (`loader.build_meta`) alongside high-performance **JIT Dynamic Pre-Call Retrieval** for Google ADK agents.
 
 By declaring `loader.build_meta` in your project's `pyproject.toml`, native Python package managers (`uv build`, `pip install .`, `build`) execute pre-build hooks that download, audit, and stage skill dependencies into the package tree prior to generating wheels (`.whl`) or source distributions (`.tar.gz`).
 
@@ -17,7 +17,7 @@ Configure `loader.build_meta` as your project's build backend in `pyproject.toml
 
 ```toml
 [build-system]
-requires = ["retailcortex-loader>=1.0.0", "setuptools>=68.0.0"]
+requires = ["castor-loader>=1.0.0", "setuptools>=68.0.0"]
 build-backend = "loader.build_meta"
 
 [project]
@@ -28,16 +28,16 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "google-adk>=0.1.0",
-    "retailcortex-loader>=1.0.0",
+    "castor-loader>=1.0.0",
     "pydantic>=2.7.0",
 ]
 
-[tool.retailcortex-loader]
+[tool.castor-loader]
 # Target staging directory inside python package tree
 dest = "src/my_enterprise_agent/.skills"
 # Skill root URIs to resolve and package during build
 dependencies = [
-    "skm://skills/sk-9b1deb4d",
+    "castor://skills/example.com/testing/test-skill/1.0.0",
     "github://google/skills@main/tree/main/skills/cloud/gemini-api",
     "file://./local_skills/customer-search"
 ]
@@ -46,7 +46,7 @@ dependencies = [
 ### What Happens During `uv build` or `pip install .`:
 
 1. **PEP 517 Hook Interception**: When `uv build` or `pip install` executes, the `loader.build_meta` build backend intercepts the build process (`build_wheel`, `build_sdist`, `prepare_metadata_for_build_wheel`).
-2. **Dependency Resolution**: Reads `[tool.retailcortex-loader.dependencies]` and downloads/resolves all specified skills from SKM servers, GitHub, or local paths.
+2. **Dependency Resolution**: Reads `[tool.castor-loader.dependencies]` and downloads/resolves all specified skills from Castor Registry servers, GitHub, or local paths.
 3. **SDLC Audit Gate**: Performs 5-point SDLC checks. If validation fails, **the build terminates with an error**.
 4. **Staging & Packaging**: Stages resolved skills into `dest` (`src/my_enterprise_agent/.skills/`), ensuring they are packaged directly into the final `.whl` artifact.
 
@@ -74,7 +74,7 @@ for skill in suggested:
 ```
 
 ### Fallback Resilience Strategy
-1. **Remote Vector Search**: Dispatches `GET /api/v1/skills?s={query}&page_size=3` to the central `skills-service`.
+1. **Remote Vector Search**: Dispatches `GET /api/v1/skills?s={query}&page_size=3` to the central `Castor Registry`.
 2. **Local Vector Search**: If offline or unreachable, executes local TF-IDF cosine similarity search via `DiscoveryEngine`.
 3. **Keyword & Substring Fallback**: Falls back to tokenized keyword matching and domain heuristics.
 

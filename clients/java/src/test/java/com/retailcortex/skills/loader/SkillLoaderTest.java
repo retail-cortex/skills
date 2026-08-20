@@ -89,6 +89,9 @@ class SkillLoaderTest {
         github://owner/repo:v2.5.0 | github | owner/repo | v2.5.0 |
         github://owner/repo@v1.2.0/skills/cloud | github | owner/repo | v1.2.0 | skills/cloud
         github://google/skills/tree/main/skills/cloud/gemini-api | github | google/skills | main | skills/cloud/gemini-api
+        castor://skills/example.com/testing/test-skill/1.0.0 | castor | example.com/testing/test-skill/1.0.0 | |
+        cstr://skills/example.com/testing/test-skill | cstr | example.com/testing/test-skill | |
+        skm://skills/example.com/testing/test-skill | skm | example.com/testing/test-skill | |
         """)
     void testParseSkillRootUri(String uri, String expScheme, String expTarget, String expRef, String expSubpath) {
         SkillLoader.ParsedUri parsed = SkillLoader.parseSkillRootUri(uri);

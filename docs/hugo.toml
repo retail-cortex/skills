@@ -1,6 +1,6 @@
 baseURL = 'https://retail-cortex.github.io/skills/'
 locale = 'en-US'
-title = 'RetailCortex Skill Builder Documentation'
+title = 'Castor Documentation'
 
 theme = 'hugo-geekdoc'
 

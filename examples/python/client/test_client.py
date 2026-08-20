@@ -20,8 +20,8 @@ class TestPythonClientExample(unittest.TestCase):
 
     def test_run(self):
         import os
-        os.environ["SKM_API_KEY"] = "python-secret-key-67890"
-        os.environ["SKM_SERVER_URL"] = "http://localhost:8080"
+        os.environ["CASTOR_API_KEY"] = "python-secret-key-67890"
+        os.environ["CASTOR_SERVER_URL"] = "http://localhost:8080"
         res = run()
         self.assertEqual(res["server_url"], "http://localhost:8080")
         self.assertEqual(res["api_key"], "python-secret-key-67890")

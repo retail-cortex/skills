@@ -45,13 +45,13 @@ func runRegister(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if sourceURI == "" {
-		fmt.Fprintf(stderr, "Error: source URI required (e.g. skm register github://google/skills@main/tree/main/skills/cloud/gemini-api)\n")
+		fmt.Fprintf(stderr, "Error: source URI required (e.g. cstr register github://google/skills@main/tree/main/skills/cloud/gemini-api)\n")
 		return 1
 	}
 
 	cfg, err := LoadCLIConfig()
 	if err != nil || cfg.ServerURL == "" {
-		fmt.Fprintf(stderr, "Error: SKM server URL not configured. Run 'skm config set server <URL>' first.\n")
+		fmt.Fprintf(stderr, "Error: Castor Registry server URL not configured. Run 'cstr config set server <URL>' first.\n")
 		return 1
 	}
 
@@ -59,7 +59,7 @@ func runRegister(args []string, stdout, stderr io.Writer) int {
 	resolvedSkills, err := installer.ResolveFileSkills(sourceURI, nil)
 	if err != nil || len(resolvedSkills) == 0 {
 		// If remote or package URI, fetch into temporary directory
-		tmpDir, tmpErr := os.MkdirTemp("", "skm_reg_*")
+		tmpDir, tmpErr := os.MkdirTemp("", "cstr_reg_*")
 		if tmpErr != nil {
 			fmt.Fprintf(stderr, "Error creating temp dir: %v\n", tmpErr)
 			return 1

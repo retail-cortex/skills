@@ -77,7 +77,7 @@ func TestHealthEndpoint(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &body)
 	require.NoError(t, err)
 	assert.Equal(t, "ok", body["status"])
-	assert.Equal(t, "skills-service", body["service"])
+	assert.Equal(t, "castor-registry", body["service"])
 }
 
 func TestInvalidAPIKeySkillOps(t *testing.T) {

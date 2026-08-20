@@ -5,27 +5,27 @@ weight: 30
 
 # Skill Registration
 
-Skill Registration publishes a source skill definition (from GitHub, local directories, or package repositories) into the central enterprise `skills-service` registry, generating multi-modal vector embeddings and updating HNSW vector indexes for real-time semantic discovery.
+Skill Registration publishes a source skill definition (from GitHub, local directories, or package repositories) into the central enterprise `Castor Registry`, generating multi-modal vector embeddings and updating HNSW vector indexes for real-time semantic discovery.
 
 ---
 
-## 1. Registering Source Skills (`skm register`)
+## 1. Registering Source Skills (`cstr register`)
 
-Use `skm register <source_uri>` to parse a source skill and register it with the central server:
+Use `cstr register <source_uri>` to parse a source skill and register it with the central server:
 
 ```bash
 # Register a skill from a remote GitHub repository
-skm register github://google/skills@main/tree/main/skills/cloud/gemini-api
+cstr register github://google/skills@main/tree/main/skills/cloud/gemini-api
 
 # Register a skill from a local development directory
-skm register file:///path/to/enterprise-skill
+cstr register file:///path/to/enterprise-skill
 ```
 
 ---
 
 ## 2. Multi-Modal Ingestion & Embedding Pipeline
 
-When `skm register` submits a skill to `skills-service`:
+When `cstr register` submits a skill to `Castor Registry`:
 
 1. **Frontmatter & Asset Parsing**:
    - Parses YAML frontmatter (`name`, `description`, `version`, `category`, `tags`, `trigger_phrases`, `execution_hints`).
@@ -41,23 +41,23 @@ When `skm register` submits a skill to `skills-service`:
    - Updates PostgreSQL/AlloyDB HNSW index partitions (`skills_embedding_768_hnsw_idx`, `skills_embedding_1408_hnsw_idx`).
 4. **Canonical URI Assignment**:
    - Generates deterministic UUID `skill_id` (e.g. `sk-9b1deb4d`).
-   - Allocates canonical URI: **`skm://skills/{skill_id}`**.
+   - Allocates canonical URI: **`castor://skills/{domain}/{category}/{name}/{version}`**.
 
 ```mermaid
 sequenceDiagram
-    participant CLI as skm CLI
-    participant Config as ~/.skm/.env.toml
-    participant Server as skills-service
+    participant CLI as cstr CLI
+    participant Config as ~/.castor/.env.toml
+    participant Server as Castor Registry
     participant Workers as Worker Goroutines (x4)
     participant Embed as Embedding Provider (Vertex/AlloyDB)
     participant DB as pgvector DB
 
-    CLI->>Config: Load SKM_SERVER_URL & SKM_API_KEY
+    CLI->>Config: Load CASTOR_SERVER_URL & CASTOR_API_KEY
     CLI->>CLI: Parse source skill frontmatter, references & assets
     CLI->>Server: POST /api/v1/skills (Header: X-API-Key, Body: SkillCreateRequest)
     Server->>DB: INSERT INTO skills (initial record)
     Server->>Workers: Dispatch embeddingJob to embedJobChan
-    Server-->>CLI: 201 Created (SkillResponse with skm:// URI)
+    Server-->>CLI: 201 Created (SkillResponse with castor:// URI)
     Workers->>Embed: GenerateSkillEmbeddings(900-char sliding chunks)
     Embed-->>Workers: Return 1408d / 768d vector embeddings
     Workers->>DB: SaveSkillEmbeddings(chunks -> skill_embeddings)
@@ -70,7 +70,7 @@ sequenceDiagram
 ```http
 POST /api/v1/skills HTTP/1.1
 Host: localhost:8000
-X-API-Key: skm_live_YOUR_API_KEY_HERE
+X-API-Key: cstr_live_YOUR_API_KEY_HERE
 Content-Type: application/json
 
 {
@@ -89,7 +89,7 @@ Content-Type: application/json
 {
   "id": "sk-9b1deb4d",
   "name": "gemini-api",
-  "uri": "skm://skills/sk-9b1deb4d",
+  "uri": "castor://skills/example.com/cloud/gemini-api/1.0.0",
   "source_uri": "github://google/skills@main/tree/main/skills/cloud/gemini-api",
   "version": "1.0.0",
   "created_at": "2026-08-09T17:30:00Z"

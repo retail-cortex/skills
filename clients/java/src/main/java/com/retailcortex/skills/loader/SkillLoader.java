@@ -105,6 +105,7 @@ public class SkillLoader {
                 candidates.add(base.resolve(wsName));
             }
             candidates.add(base.resolve("_main"));
+            candidates.add(base.resolve("castor"));
             candidates.add(base.resolve("skill_builder"));
             candidates.add(base);
 
@@ -217,6 +218,16 @@ public class SkillLoader {
             return new ParsedUri("file", ".", null, null);
         }
         String clean = uri.trim();
+        for (String p : List.of("castors://", "castor://", "cstrs://", "cstr://", "skms://", "skm://")) {
+            if (clean.startsWith(p)) {
+                String raw = clean.substring(p.length());
+                if (raw.startsWith("skills/")) {
+                    raw = raw.substring("skills/".length());
+                }
+                String schemeName = p.substring(0, p.indexOf("://"));
+                return new ParsedUri(schemeName, raw, null, null);
+            }
+        }
         if (clean.startsWith("file://")) {
             return new ParsedUri("file", clean.substring("file://".length()), null, null);
         }

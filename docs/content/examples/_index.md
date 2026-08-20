@@ -6,7 +6,7 @@ weight: 40
 
 # Standalone Examples & Integration Demos
 
-The `examples/` directory contains self-contained example applications and skill packages. These examples demonstrate how to integrate the Enterprise Skills Loader, build system pre-processors, and `skm` service endpoints directly into native Go, Python, and Java build pipelines as well as Google Agent Development Kit (ADK) applications.
+The `examples/` directory contains self-contained example applications and skill packages. These examples demonstrate how to integrate the Castor Skills Loader, build system pre-processors, and `Castor Registry` service endpoints directly into native Go, Python, and Java build pipelines as well as Google Agent Development Kit (ADK) applications.
 
 ---
 

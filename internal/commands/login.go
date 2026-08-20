@@ -28,7 +28,7 @@ import (
 )
 
 func runLogin(args []string, stdout, stderr io.Writer) int {
-	var appName = "skm-cli"
+	var appName = "cstr-cli"
 	var email string
 	var domain string
 	var orgID string
@@ -82,9 +82,9 @@ func runLogin(args []string, stdout, stderr io.Writer) int {
 
 	if email == "" {
 		if hostname, err := os.Hostname(); err == nil && hostname != "" {
-			appName = fmt.Sprintf("skm-cli-%s", hostname)
+			appName = fmt.Sprintf("cstr-cli-%s", hostname)
 		}
-		fmt.Fprintf(stderr, "Error: email address required for registration (e.g. skm login --email dev@company.com [--domain company.com])\n")
+		fmt.Fprintf(stderr, "Error: email address required for registration (e.g. cstr login --email dev@company.com [--domain company.com])\n")
 		return 1
 	}
 
@@ -113,7 +113,7 @@ func runLogin(args []string, stdout, stderr io.Writer) int {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Fprintf(stderr, "Error connecting to SKM server %s: %v\n", targetURL, err)
+		fmt.Fprintf(stderr, "Error connecting to Castor Registry server %s: %v\n", targetURL, err)
 		return 1
 	}
 	defer resp.Body.Close()

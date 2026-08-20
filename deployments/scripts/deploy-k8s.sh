@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Enterprise Kubernetes Deployment Script for Skill Service on GKE (dev, qa, prod)
+# Enterprise Kubernetes Deployment Script for Castor Registry on GKE (dev, qa, prod)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 K8S_DIR="$(cd "${SCRIPT_DIR}/../kubernetes" && pwd)"
@@ -9,7 +9,7 @@ K8S_DIR="$(cd "${SCRIPT_DIR}/../kubernetes" && pwd)"
 ENV="${1:-}"
 PROJECT_ID="${GCP_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-}}"
 REGION="${GCP_REGION:-us-central1}"
-NAMESPACE="skill-builder"
+NAMESPACE="castor"
 
 if [[ -z "${ENV}" || ( "${ENV}" != "dev" && "${ENV}" != "qa" && "${ENV}" != "prod" ) ]]; then
   echo "Usage: $0 <dev|qa|prod>"
@@ -21,11 +21,11 @@ if [[ -z "${PROJECT_ID}" ]]; then
   exit 1
 fi
 
-CLUSTER_NAME="skill-builder-gke-${ENV}"
+CLUSTER_NAME="castor-gke-${ENV}"
 OVERLAY_DIR="${K8S_DIR}/overlays/${ENV}"
 
 echo "=========================================================================="
-echo "Skill Service GKE Deployment"
+echo "Castor Registry GKE Deployment"
 echo "Environment : ${ENV}"
 echo "Cluster     : ${CLUSTER_NAME}"
 echo "Project ID  : ${PROJECT_ID}"
@@ -45,10 +45,10 @@ kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply
 
 # 3. Synchronize AlloyDB DSN Secret from Secret Manager
 echo "[3/5] Syncing database connection string from Google Secret Manager..."
-SECRET_ID="skill-builder-alloydb-${ENV}-dsn"
+SECRET_ID="castor-alloydb-${ENV}-dsn"
 DB_DSN=$(gcloud secrets versions access latest --secret="${SECRET_ID}" --project="${PROJECT_ID}")
 
-kubectl create secret generic skill-service-db-secret \
+kubectl create secret generic castor-registry-db-secret \
   --namespace="${NAMESPACE}" \
   --from-literal=database_url="${DB_DSN}" \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -59,8 +59,8 @@ kubectl apply -k "${OVERLAY_DIR}"
 
 # 5. Monitor Rollout Status
 echo "[5/5] Monitoring rollout progress..."
-kubectl rollout status deployment/skill-service \
+kubectl rollout status deployment/castor-registry \
   --namespace="${NAMESPACE}" \
   --timeout=180s
 
-echo "Successfully deployed skill-service to ${CLUSTER_NAME} in namespace ${NAMESPACE}."
+echo "Successfully deployed castor-registry to ${CLUSTER_NAME} in namespace ${NAMESPACE}."

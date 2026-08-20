@@ -5,7 +5,7 @@ weight: 35
 
 # Enterprise Cloud Deployment & Infrastructure
 
-This document outlines the operational procedures for provisioning Google Cloud infrastructure via **Terraform** and deploying the `skills-service` to **Google Kubernetes Engine (GKE)** with **AlloyDB AI** across `dev`, `qa`, and `prod` environments.
+This document outlines the operational procedures for provisioning Google Cloud infrastructure via **Terraform** and deploying the `Castor Registry` (`castor-server`) to **Google Kubernetes Engine (GKE)** with **AlloyDB AI** across `dev`, `qa`, and `prod` environments.
 
 ---
 
@@ -51,7 +51,7 @@ cd deployments/terraform
 
 # 1. Format & Validate
 terraform fmt -recursive
-terraform init -backend-config="bucket=${GCS_TF_STATE_BUCKET}" -backend-config="prefix=skill-builder"
+terraform init -backend-config="bucket=${GCS_TF_STATE_BUCKET}" -backend-config="prefix=castor"
 
 # 2. Plan Execution
 terraform plan \
@@ -67,11 +67,11 @@ terraform apply tfplan
 
 ### 1.3 Step 2: Build & Push Container Image
 
-Package the `skills-service` binary into a distroless container and push to Google Artifact Registry:
+Package the `castor-server` binary into a distroless container and push to Google Artifact Registry:
 
 ```bash
 # Create Artifact Registry repository (if not already created)
-gcloud artifacts repositories create skills-repo \
+gcloud artifacts repositories create castor-repo \
   --repository-format=docker \
   --location="${GCP_REGION}" \
   --project="${GCP_PROJECT_ID}" || true
@@ -80,7 +80,7 @@ gcloud artifacts repositories create skills-repo \
 gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev"
 
 # Build & Push container image
-IMAGE_TAG="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/skills-repo/skills-service:v1.0.0"
+IMAGE_TAG="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/castor-repo/castor-server:v1.0.0"
 
 docker build -t "${IMAGE_TAG}" -f - . <<EOF
 FROM golang:1.24-alpine AS builder
@@ -88,14 +88,14 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /skills-service ./cmd/skills-service
+RUN CGO_ENABLED=0 GOOS=linux go build -o /castor-server ./cmd/castor-server
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /
-COPY --from=builder /skills-service /skills-service
+COPY --from=builder /castor-server /castor-server
 EXPOSE 8000 9090
 USER 10001:10001
-ENTRYPOINT ["/skills-service"]
+ENTRYPOINT ["/castor-server"]
 EOF
 
 docker push "${IMAGE_TAG}"
@@ -103,7 +103,7 @@ docker push "${IMAGE_TAG}"
 
 ---
 
-### 1.4 Step 3: Deploy `skills-service` to GKE Environments
+### 1.4 Step 3: Deploy `Castor Registry` to GKE Environments
 
 Deploy to target clusters (`dev`, `qa`, or `prod`) using the deployment script, which configures cluster credentials, synchronizes Secret Manager credentials, and applies Kustomize overlays:
 
@@ -124,8 +124,8 @@ cd deployments/scripts
 
 ```bash
 ENV="dev"
-CLUSTER_NAME="skill-builder-gke-${ENV}"
-NAMESPACE="skill-builder"
+CLUSTER_NAME="castor-gke-${ENV}"
+NAMESPACE="castor"
 
 # 1. Fetch Cluster Credentials
 gcloud container clusters get-credentials "${CLUSTER_NAME}" \
@@ -133,11 +133,11 @@ gcloud container clusters get-credentials "${CLUSTER_NAME}" \
   --project "${GCP_PROJECT_ID}"
 
 # 2. Synchronize AlloyDB Connection Secret from Secret Manager
-SECRET_ID="skill-builder-alloydb-${ENV}-dsn"
+SECRET_ID="castor-alloydb-${ENV}-dsn"
 DB_DSN=$(gcloud secrets versions access latest --secret="${SECRET_ID}" --project="${GCP_PROJECT_ID}")
 
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic skill-service-db-secret \
+kubectl create secret generic castor-registry-db-secret \
   --namespace="${NAMESPACE}" \
   --from-literal=database_url="${DB_DSN}" \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -146,7 +146,7 @@ kubectl create secret generic skill-service-db-secret \
 kubectl apply -k "deployments/kubernetes/overlays/${ENV}"
 
 # 4. Monitor Rollout Status
-kubectl rollout status deployment/skill-service -n "${NAMESPACE}"
+kubectl rollout status deployment/castor-registry -n "${NAMESPACE}"
 ```
 
 ---
@@ -155,10 +155,10 @@ kubectl rollout status deployment/skill-service -n "${NAMESPACE}"
 
 ```bash
 # Check running pods and service endpoints
-kubectl get pods,svc -n skill-builder
+kubectl get pods,svc -n castor
 
 # Port-forward to test REST and MCP endpoints locally
-kubectl port-forward svc/skill-service 8000:8000 -n skill-builder &
+kubectl port-forward svc/castor-registry 8000:8000 -n castor &
 
 # Query service health
 curl -s http://localhost:8000/health | jq .
@@ -211,7 +211,7 @@ deployments/
    - `overlays/`: Injects environment-specific settings (database secrets, replica counts, HPA autoscale limits, and resource quotas).
 3. **Secret Injection Flow**:
    - Terraform provisions unique database users (`dev_user`, `qa_user`, `prod_user`) and random passwords, storing complete DSN strings in Google Cloud Secret Manager.
-   - `deploy-k8s.sh` retrieves the latest version from Secret Manager and mounts it as a Kubernetes Secret (`skill-service-db-secret`), ensuring plain-text credentials never enter git repositories (CWE-798).
+   - `deploy-k8s.sh` retrieves the latest version from Secret Manager and mounts it as a Kubernetes Secret (`castor-registry-db-secret`), ensuring plain-text credentials never enter git repositories (CWE-798).
 
 ---
 
@@ -221,7 +221,7 @@ deployments/
 
 ```mermaid
 graph TD
-    subgraph VPC ["VPC Network: skill-builder-vpc"]
+    subgraph VPC ["VPC Network: castor-vpc"]
         subgraph Subnets ["VPC-Native Subnets & Cloud NAT"]
             SUB_DEV["dev-subnet (10.10.0.0/20)<br/>Pods: 10.100.0.0/16<br/>Svc: 10.101.0.0/20"]
             SUB_QA["qa-subnet (10.20.0.0/20)<br/>Pods: 10.102.0.0/16<br/>Svc: 10.103.0.0/20"]
@@ -229,13 +229,13 @@ graph TD
         end
 
         subgraph GKE ["Google Kubernetes Engine"]
-            GKE_DEV["skill-builder-gke-dev<br/>(1-3 nodes, e2-standard-4)"]
-            GKE_QA["skill-builder-gke-qa<br/>(1-4 nodes, e2-standard-4)"]
-            GKE_PROD["skill-builder-gke-prod<br/>(3-10 nodes, n2-standard-4)"]
+            GKE_DEV["castor-gke-dev<br/>(1-3 nodes, e2-standard-4)"]
+            GKE_QA["castor-gke-qa<br/>(1-4 nodes, e2-standard-4)"]
+            GKE_PROD["castor-gke-prod<br/>(3-10 nodes, n2-standard-4)"]
         end
 
         subgraph PSA ["Private Services Access (VPC Peering)"]
-            ALLOYDB["AlloyDB AI Cluster (Primary Instance)<br/>pgvector & Google ML Support<br/>Databases: skills_dev, skills_qa, skills_prod"]
+            ALLOYDB["AlloyDB AI Cluster (Primary Instance)<br/>pgvector & Google ML Support<br/>Databases: castor_dev, castor_qa, castor_prod"]
         end
     end
 
@@ -260,8 +260,8 @@ Workload Identity links Kubernetes ServiceAccounts directly to Google Service Ac
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Pod as skill-service Pod
-    participant K8sSA as K8s ServiceAccount (skill-service-sa)
+    participant Pod as castor-registry Pod
+    participant K8sSA as K8s ServiceAccount (castor-registry-sa)
     participant Meta as GKE Metadata Server
     participant GoogleAuth as Google IAM STS
     participant Vertex as Vertex AI / Secret Manager

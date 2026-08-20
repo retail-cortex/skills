@@ -163,6 +163,30 @@ func TestParseSkillRootURI(t *testing.T) {
 			reqRef:     "main",
 			reqSubpath: "skills/cloud/gemini-api",
 		},
+		{
+			name:       "castor URI",
+			uri:        "castor://skills/example.com/testing/test-skill/1.0.0",
+			reqScheme:  "castor",
+			reqTarget:  "example.com/testing/test-skill/1.0.0",
+			reqRef:     "",
+			reqSubpath: "",
+		},
+		{
+			name:       "cstr URI",
+			uri:        "cstr://skills/example.com/testing/test-skill",
+			reqScheme:  "cstr",
+			reqTarget:  "example.com/testing/test-skill",
+			reqRef:     "",
+			reqSubpath: "",
+		},
+		{
+			name:       "skm URI legacy",
+			uri:        "skm://skills/example.com/testing/test-skill",
+			reqScheme:  "skm",
+			reqTarget:  "example.com/testing/test-skill",
+			reqRef:     "",
+			reqSubpath: "",
+		},
 	}
 
 	for _, tt := range tests {

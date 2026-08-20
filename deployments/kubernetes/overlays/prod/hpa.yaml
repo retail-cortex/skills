@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: skill-service-hpa
-  namespace: skill-builder
+  name: castor-registry-hpa
+  namespace: castor
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: skill-service
+    name: castor-registry
   minReplicas: 5
   maxReplicas: 30
   metrics:

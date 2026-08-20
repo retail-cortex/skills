@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: skill-service-config
-  namespace: skill-builder
+  name: castor-registry-config
+  namespace: castor
 data:
   APP_ENV: "qa"
   MODENV_ENV: "qa"
   EMBEDDING_PROVIDER: "alloydb-ai"
-  OTEL_SERVICE_NAME: "skills-service-qa"
+  OTEL_SERVICE_NAME: "castor-registry-qa"

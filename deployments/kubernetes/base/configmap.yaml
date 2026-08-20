@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: skill-service-config
-  namespace: skill-builder
+  name: castor-registry-config
+  namespace: castor
 data:
   HOST: "0.0.0.0"
   PORT: "8000"
   ENABLE_OPENTELEMETRY: "true"
-  OTEL_SERVICE_NAME: "skills-service"
+  OTEL_SERVICE_NAME: "castor-registry"
   EMBEDDING_PROVIDER: "vertex-gemini"
   GCP_REGION: "us-central1"

@@ -17,10 +17,10 @@ In corporate Go codebases, skill compilation and validation are bound directly t
 package main
 
 // Generate pre-compiled zero-I/O manifest prior to compilation
-//go:generate skm compile -d ./skills -o ./skills_manifest.json
+//go:generate cstr compile -d ./skills -o ./skills_manifest.json
 
 // Verify cryptographic integrity of skills lockfile during build
-//go:generate skm verify -d ./skills
+//go:generate cstr verify -d ./skills
 
 import (
 	"embed"
@@ -59,7 +59,7 @@ go generate ./...
 go build -o agent_service ./cmd/agent
 ```
 
-If `skm verify` or `skm compile` detects corrupt frontmatter or checksum mismatches during `go generate`, **the build pipeline terminates before binary compilation**.
+If `cstr verify` or `cstr compile` detects corrupt frontmatter or checksum mismatches during `go generate`, **the build pipeline terminates before binary compilation**.
 
 ---
 
@@ -162,10 +162,10 @@ import (
 )
 
 type AppConfig struct {
-	SKM struct {
+	Castor struct {
 		ServerURL string `toml:"server_url"`
 		APIKey    string `toml:"api_key"`
-	} `toml:"skm"`
+	} `toml:"castor"`
 }
 
 func main() {
@@ -177,7 +177,7 @@ func main() {
 		log.Printf("Warning: failed to load modenv configuration: %v", err)
 	}
 
-	serverURL := cfg.SKM.ServerURL
+	serverURL := cfg.Castor.ServerURL
 	if serverURL == "" {
 		serverURL = "http://localhost:8000"
 	}

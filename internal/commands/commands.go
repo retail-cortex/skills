@@ -39,7 +39,7 @@ var (
 	BuildDate = "unknown"
 )
 
-// Execute runs the skm CLI logic with provided args, stdout, and stderr.
+// Execute runs the cstr CLI logic with provided args, stdout, and stderr.
 func Execute(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 1 {
 		printUsage(stdout)
@@ -74,7 +74,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	case "completion":
 		return runCompletion(subArgs, stdout, stderr)
 	case "version", "-v", "--version":
-		fmt.Fprintf(stdout, "skm version %s (commit: %s, build date: %s)\n", Version, GitCommit, BuildDate)
+		fmt.Fprintf(stdout, "cstr version %s (commit: %s, build date: %s)\n", Version, GitCommit, BuildDate)
 		return 0
 	case "help", "-h", "--help":
 		printUsage(stdout)
@@ -131,7 +131,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if len(uris) == 0 {
-		fmt.Fprintf(stderr, "Error: missing skill URI (e.g. skm://..., github://..., pkg://..., file://...)\n")
+		fmt.Fprintf(stderr, "Error: missing skill URI (e.g. cstr://..., castor://..., github://..., pkg://..., file://...)\n")
 		return 1
 	}
 
@@ -141,7 +141,7 @@ func runAdd(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	fmt.Fprintf(stdout, "\nSKM Skill Add Summary (destination: %s)\n", targetDir)
+	fmt.Fprintf(stdout, "\nCastor Skill Add Summary (destination: %s)\n", targetDir)
 	fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 65))
 	hasFailures := false
 
@@ -202,7 +202,7 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, jsonStr)
 	} else {
-		fmt.Fprintf(stdout, "\nSKM Skill Validation Report\n")
+		fmt.Fprintf(stdout, "\nCastor Skill Validation Report\n")
 		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 70))
 		fmt.Fprintf(stdout, "Audited Path: %s (Recursive: %v)\n", targetPath, isRecursive)
 		fmt.Fprintf(stdout, "Total Skills: %d | Passed: %d | Failed: %d\n\n", summary.TotalSkills, summary.PassedSkills, summary.FailedSkills)
@@ -393,7 +393,7 @@ func runList(args []string, stdout, stderr io.Writer) int {
 		} else {
 			pageSummary = fmt.Sprintf(" (%d found on %s)", len(res.Items), serverURL)
 		}
-		fmt.Fprintf(stdout, "\nSKM Server Skills%s\n", pageSummary)
+		fmt.Fprintf(stdout, "\nCastor Server Skills%s\n", pageSummary)
 		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 75))
 		for _, s := range res.Items {
 			cat := "general"
@@ -522,7 +522,7 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if len(queryTerms) == 0 {
-		fmt.Fprintf(stderr, "Error: search query required (e.g. skm search python)\n")
+		fmt.Fprintf(stderr, "Error: search query required (e.g. cstr search python)\n")
 		return 1
 	}
 
@@ -552,7 +552,7 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 		} else {
 			pageSummary = fmt.Sprintf(" (%d matches on %s)", len(res.Items), serverURL)
 		}
-		fmt.Fprintf(stdout, "\nSKM Remote Search Results for '%s'%s\n", query, pageSummary)
+		fmt.Fprintf(stdout, "\nCastor Remote Search Results for '%s'%s\n", query, pageSummary)
 		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 75))
 		for _, s := range res.Items {
 			scoreStr := ""
@@ -600,7 +600,7 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 		return matches[i].Name < matches[j].Name
 	})
 
-	fmt.Fprintf(stdout, "\nSKM Search Results for '%s' (%d matches in %s)\n", query, len(matches), scanDir)
+	fmt.Fprintf(stdout, "\nCastor Search Results for '%s' (%d matches in %s)\n", query, len(matches), scanDir)
 	fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 70))
 
 	for _, s := range matches {
@@ -763,7 +763,7 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, string(bytes))
 	} else {
-		fmt.Fprintf(stdout, "\nSKM Skill Integrity Verification Report\n")
+		fmt.Fprintf(stdout, "\nCastor Skill Integrity Verification Report\n")
 		fmt.Fprintf(stdout, "%s\n", strings.Repeat("=", 70))
 		fmt.Fprintf(stdout, "Audited Path: %s\n", report.TargetDir)
 		fmt.Fprintf(stdout, "Total Skills: %d | Verified: %d | Modified: %d | Missing: %d\n\n",
@@ -796,8 +796,8 @@ func runCompletion(args []string, stdout, stderr io.Writer) int {
 
 	switch shell {
 	case "bash":
-		fmt.Fprintln(stdout, `# skm bash completion
-_skm_completions() {
+		fmt.Fprintln(stdout, `# cstr bash completion
+_cstr_completions() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local prev="${COMP_WORDS[COMP_CWORD-1]}"
     local commands="add verify validate list search compile init completion version help"
@@ -805,10 +805,10 @@ _skm_completions() {
         COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
     fi
 }
-complete -F _skm_completions skm`)
+complete -F _cstr_completions cstr`)
 	case "zsh":
-		fmt.Fprintln(stdout, `#compdef skm
-_skm() {
+		fmt.Fprintln(stdout, `#compdef cstr
+_cstr() {
     local -a commands
     commands=(
         'add:Add skills from URI'
@@ -824,10 +824,10 @@ _skm() {
     )
     _describe 'command' commands
 }
-_skm "$@"`)
+_cstr "$@"`)
 	case "fish":
-		fmt.Fprintln(stdout, `# skm fish completion
-complete -c skm -n "__fish_use_subcommand" -a "add verify validate list search compile init completion version help"`)
+		fmt.Fprintln(stdout, `# cstr fish completion
+complete -c cstr -n "__fish_use_subcommand" -a "add verify validate list search compile init completion version help"`)
 	default:
 		fmt.Fprintf(stderr, "Unsupported shell '%s'. Supported: bash, zsh, fish\n", shell)
 		return 1
@@ -916,23 +916,23 @@ func runCompile(args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintf(w, `SKM - Enterprise Standalone Skills CLI Client
+	fmt.Fprintf(w, `Castor CLI (cstr) - Enterprise Standalone Skills CLI Client
 
 Usage:
-  skm <command> [options] [arguments]
+  cstr <command> [options] [arguments]
 
 Commands:
-  login --email <email>   Register application identity & authenticate CLI credentials (~/.skm/.env.toml)
-  config <show|set>       Configure CLI settings (~/.skm/.env.toml)
-  register <source-uri>   Register a skill from github://, file://, etc. with central SKM server
-  add <uri>...            Add skills from skm://, github://, mod://, maven://, pkg://, or file:// to .skills (or -d directory)
+  login --email <email>   Register application identity & authenticate CLI credentials (~/.castor/.env.toml)
+  config <show|set>       Configure CLI settings (~/.castor/.env.toml)
+  register <source-uri>   Register a skill from github://, file://, etc. with central Castor Registry
+  add <uri>...            Add skills from cstr://, castor://, github://, mod://, maven://, pkg://, or file:// to .skills (or -d directory)
   verify [path]           Verify downloaded skills against recorded SHA-256 checksums in .manifest.lock
   validate <path>         Validate frontmatter, tree, CWE, 429 resilience, and file links in a skill directory
   list                    List skills in .skills, current directory, or specified registry
   search <query>          Search skills by query term in name, description, or instructions
   compile [path]          Compile all skills into pre-compiled skills_manifest.json for fast zero-I/O loading
   init <skill-name>       Scaffold a new valid skill directory structure
-  version                 Show SKM CLI version info
+  version                 Show Castor CLI version info
   help                    Show help overview
 
 Options for 'add':
@@ -949,7 +949,7 @@ Options for 'validate':
   --json                  Output audit summary as structured JSON
 
 Options for 'list' and 'search':
-  -r, --remote            Query the central SKM server (configured via skm login / config)
+  -r, --remote            Query the central Castor Registry (configured via cstr login / config)
   -s, --server <URL>      Target server URL for remote query
   -d <path>               Target directory to scan/search locally
   --json                  Output list/search results in JSON format
@@ -964,21 +964,21 @@ Options for HITL Safety:
   --skip-hitl             Bypass interactive human approval gates for automated execution
 
 Examples:
-  skm config set server http://localhost:8080
-  skm config set api_key my-secret-api-key
-  skm register github://google/skills@main/tree/main/skills/cloud/gemini-api
-  skm add skm://skills/sk-9b1deb4d
-  skm add github://retail-cortex/skills@main/examples/python/skills
-  skm add mod://github.com/retail-cortex/skills@v1.0.0/examples/go/skills
-  skm add maven://com.retailcortex.skills:skills-java:1.0.0
+  cstr config set server http://localhost:8080
+  cstr config set api_key my-secret-api-key
+  cstr register github://google/skills@main/tree/main/skills/cloud/gemini-api
+  cstr add cstr://skills/sk-9b1deb4d
+  cstr add github://retail-cortex/skills@main/examples/python/skills
+  cstr add mod://github.com/retail-cortex/skills@v1.0.0/examples/go/skills
+  cstr add maven://com.retailcortex.skills:skills-java:1.0.0
 
-  skm add file:///path/to/my-skill -d ./skills
-  skm verify -d ./skills
-  skm validate ./skills/my-skill
-  skm validate -r ./packages
-  skm list -d .skills
-  skm compile -o ./skills_manifest.json --strict-schemas=true
-  skm init my-custom-skill -d ./skills
+  cstr add file:///path/to/my-skill -d ./skills
+  cstr verify -d ./skills
+  cstr validate ./skills/my-skill
+  cstr validate -r ./packages
+  cstr list -d .skills
+  cstr compile -o ./skills_manifest.json --strict-schemas=true
+  cstr init my-custom-skill -d ./skills
 `)
 }
 

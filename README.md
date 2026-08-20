@@ -1,8 +1,8 @@
-# Agent Skill Builder: Enterprise Project Pattern Registry
+# Castor: Enterprise Project Pattern Registry
 
 [![Coverage](coverage.svg)](https://github.com/retail-cortex/skills)
 
-This registry provides an enterprise-grade suite of AI Agent Skills and lifecycle tooling built for the **Google Agent Development Kit (ADK)** and autonomous multi-agent ecosystems. While extending the foundational [agentskills.io](https://agentskills.io/specification) standard, this architecture implements strict enterprise governance, multi-modal vector search, and dynamic JIT tool retrieval.
+**Castor** is an enterprise-grade AI Agent Skills registry and lifecycle tooling platform built for the **Google Agent Development Kit (ADK)** and autonomous multi-agent ecosystems. While extending the foundational [agentskills.io](https://agentskills.io/specification) standard, Castor implements strict enterprise governance, multi-modal vector search, and dynamic JIT tool retrieval.
 
 ---
 
@@ -17,7 +17,7 @@ This registry provides an enterprise-grade suite of AI Agent Skills and lifecycl
 
 ```mermaid
 graph TD
-    subgraph Central Registry ["Central Backend (skills-service)"]
+    subgraph Central Registry ["Castor Registry (castor-server)"]
         S1["Gin REST API (/api/v1/skills)"]
         S2["MCP SSE Server (/mcp/sse)"]
         VEC["pgvector Poly-Column HNSW<br/>(768d / 1408d / 3072d)"]
@@ -26,7 +26,7 @@ graph TD
     end
 
     subgraph Clients ["Polyglot Client SDKs & CLI"]
-        CLI["SKM Standalone CLI (Go)"]
+        CLI["Castor CLI (cstr)"]
         PY["Python Client (loader)"]
         GO["Go Client (skillsloader)"]
         JV["Java Client (com.retailcortex.skills)"]
@@ -44,35 +44,36 @@ graph TD
 
 ## Quickstart Commands
 
-### 1. Run Standalone `skm` CLI
-The `skm` CLI manages local and remote skill lifecycles:
+### 1. Run Castor CLI (`cstr`)
+The `cstr` CLI manages local and remote skill lifecycles:
 
 ```bash
-# Build & run skm CLI via Bazel
-bazel run //cmd/skm -- --help
+# Build & run cstr CLI via Bazel
+bazel run //cmd/cstr -- --help
 
-# Remote Vector Search against skills-service with pagination
-bazel run //cmd/skm -- search "canvas image rendering raster" --remote --page 1 --max 5
+# Remote Vector Search against Castor Registry with pagination
+bazel run //cmd/cstr -- search "canvas image rendering raster" --remote --page 1 --max 5
 
 # Remote Server Listing
-bazel run //cmd/skm -- list --remote --page 1 --max 5
+bazel run //cmd/cstr -- list --remote --page 1 --max 5
 
 # Add skill dependencies from polyglot URIs (creates .manifest.lock)
-bazel run //cmd/skm -- add github://retail-cortex/skills@main/packages/skills-python
-bazel run //cmd/skm -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
-bazel run //cmd/skm -- add maven://com.retailcortex.skills:skills-java:1.0.0
+bazel run //cmd/cstr -- add castor://skills/example.com/retail/cart-service/1.0.0
+bazel run //cmd/cstr -- add github://retail-cortex/skills@main/packages/skills-python
+bazel run //cmd/cstr -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
+bazel run //cmd/cstr -- add maven://com.retailcortex.skills:skills-java:1.0.0
 
 # 5-Point SDLC Quality Audit
-bazel run //cmd/skm -- validate -r ./skills --json
+bazel run //cmd/cstr -- validate -r ./skills --json
 
 # Verify cryptographic lockfile integrity
-bazel run //cmd/skm -- verify -d .skills
+bazel run //cmd/cstr -- verify -d .skills
 ```
 
-### 2. Start Central Backend Server (`skills-service`)
+### 2. Start Central Backend Server (`Castor Registry`)
 ```bash
 # Start dual REST & MCP server on port 8000
-bazel run //:skills-service
+bazel run //:castor-server
 ```
 
 ### 3. Run Native Python ADK Agent
@@ -83,6 +84,7 @@ uv run python examples/python/client/main.py
 
 ### 4. Run Polyglot Developer CLI
 ```bash
+# Run polyglot Bazel scaffolding agent
 uv run python examples/python/polyglot/main.py --target-dir ./scratch/my-app
 ```
 
@@ -94,33 +96,33 @@ bazel test //...
 
 ---
 
-## SKM CLI Command Reference
+## Castor CLI (`cstr`) Command Reference
 
 | Command | Syntax | Description |
 | :--- | :--- | :--- |
-| **`search`** | `skm search <query> [-r] [-p <page>] [-n <max>] [--json]` | Searches skills locally or against remote `skills-service` vector index ($1 \le \text{max} \le 25$). |
-| **`list`** | `skm list [-r] [-p <page>] [-n <max>] [--json]` | Lists skills from local filesystem or central server with pagination metadata. |
-| **`add`** | `skm add <uri> [-d <dir>] [--force] [--manifest-only]` | Resolves and installs skills from `skm://`, `github://`, `mod://`, `maven://`, `pkg://`, or `file://` URIs. |
-| **`register`**| `skm register <source_uri>` | Registers source skill with central `skills-service`, computing multi-modal vector embeddings. |
-| **`login`** | `skm login <email> [app_name]` | Requests developer application registration and sends verification challenge. |
-| **`config`** | `skm config set <server\|api_key\|domain\|org> <val>` | Configures local CLI connection settings in `~/.skm/.env.toml`. |
-| **`config`** | `skm config show` | Displays active CLI configuration and masked credentials. |
-| **`validate`**| `skm validate <path> [-r] [--json]` | Executes 5-point SDLC compliance audit (Frontmatter, Structure, CWE rules, 429 retries, File links). |
-| **`verify`** | `skm verify [-d <dir>] [--json]` | Audits installed skill directory checksums against `.manifest.lock`. |
-| **`compile`** | `skm compile [-d <dir>] [-o <manifest.json>]` | Generates pre-compiled JSON manifest for zero-I/O cold starts. |
-| **`init`** | `skm init <name> [-d <dir>]` | Scaffolds a new skill directory conforming to all SDLC requirements. |
+| **`search`** | `cstr search <query> [-r] [-p <page>] [-n <max>] [--json]` | Searches skills locally or against remote `Castor Registry` vector index ($1 \le \text{max} \le 25$). |
+| **`list`** | `cstr list [-r] [-p <page>] [-n <max>] [--json]` | Lists skills from local filesystem or central server with pagination metadata. |
+| **`add`** | `cstr add <uri> [-d <dir>] [--force] [--manifest-only]` | Resolves and installs skills from `castor://`, `cstr://`, `github://`, `mod://`, `maven://`, `pkg://`, or `file://` URIs. |
+| **`register`**| `cstr register <source_uri>` | Registers source skill with central `Castor Registry`, computing multi-modal vector embeddings. |
+| **`login`** | `cstr login <email> [app_name]` | Requests developer application registration and sends verification challenge. |
+| **`config`** | `cstr config set <server\|api_key\|domain\|org> <val>` | Configures local CLI connection settings in `~/.castor/.env.toml`. |
+| **`config`** | `cstr config show` | Displays active CLI configuration and masked credentials. |
+| **`validate`**| `cstr validate <path> [-r] [--json]` | Executes 5-point SDLC compliance audit (Frontmatter, Structure, CWE rules, 429 retries, File links). |
+| **`verify`** | `cstr verify [-d <dir>] [--json]` | Audits installed skill directory checksums against `.manifest.lock`. |
+| **`compile`** | `cstr compile [-d <dir>] [-o <manifest.json>]` | Generates pre-compiled JSON manifest for zero-I/O cold starts. |
+| **`init`** | `cstr init <name> [-d <dir>]` | Scaffolds a new skill directory conforming to all SDLC requirements. |
 
 ---
 
 ## Polyglot Client SDKs
 
-### Python SDK (`loader`)
+### Python SDK (`castor-loader`)
 * **JIT Pre-Call Retrieval**:
   ```python
   from loader import SkillRegistry
 
   registry = SkillRegistry()
-  # Queries central vector index, falls back to local TF-IDF discovery
+  # Queries central Castor Registry vector index, falls back to local discovery
   suggested_skills = registry.suggest_skills(prompt="render canvas image", max_skills=3)
   ```
 * **PEP 517 Build Backend**: Declare `build-backend = "loader.build_meta"` in `pyproject.toml` to automatically download and validate skills during `uv build` or `pip install`.
@@ -133,7 +135,7 @@ bazel test //...
   registry, _ := skillsloader.NewSkillRegistry("", nil, nil, "")
   suggested := registry.SuggestSkills("render canvas image", 3, "http://localhost:8000")
   ```
-* **Build Directives**: Use `//go:generate skm compile -d ./skills` and `//go:embed skills_manifest.json` for zero-I/O static binary embeds.
+* **Build Directives**: Use `//go:generate cstr compile -d ./skills` and `//go:embed skills_manifest.json` for zero-I/O static binary embeds.
 
 ### Java SDK (`com.retailcortex.skills`)
 * **JIT Suggestions**:

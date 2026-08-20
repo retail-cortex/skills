@@ -46,7 +46,7 @@ func TestAppsRepository(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, res.AppID)
 	assert.Equal(t, "example.com", res.Domain)
-	assert.Equal(t, "urn:skm:app:example.com:test-app", res.AppURN)
+	assert.Equal(t, "urn:castor:app:example.com:test-app", res.AppURN)
 	assert.Equal(t, model.DomainStatusVerifiedSSO, res.DomainVerificationStatus)
 	assert.NotEmpty(t, res.APIKey)
 	assert.NotEmpty(t, res.VerificationToken)
@@ -61,9 +61,9 @@ func TestAppsRepository(t *testing.T) {
 	resCustom, err := repo.RegisterApp(db, reqCustom, "http://localhost:8000")
 	require.NoError(t, err)
 	assert.Equal(t, "customdomain.org", resCustom.Domain)
-	assert.Equal(t, "urn:skm:app:customdomain.org:custom-app", resCustom.AppURN)
+	assert.Equal(t, "urn:castor:app:customdomain.org:custom-app", resCustom.AppURN)
 	assert.Equal(t, model.DomainStatusPendingDNS, resCustom.DomainVerificationStatus)
-	assert.Contains(t, resCustom.DNSTXTChallenge, "skm-domain-verify-")
+	assert.Contains(t, resCustom.DNSTXTChallenge, "castor-domain-verify-")
 
 	// 3. Prohibit freemail claiming enterprise domain
 	reqFreemail := model.AppRegisterRequest{
@@ -87,7 +87,7 @@ func TestAppsRepository(t *testing.T) {
 	assert.ErrorIs(t, err, data.ErrMissingAPIKey)
 
 	// Invalid API Key
-	_, err = repo.AuthenticateAPIKey(db, "skm_live_invalid")
+	_, err = repo.AuthenticateAPIKey(db, "cstr_live_invalid")
 	assert.ErrorIs(t, err, data.ErrInvalidAPIKey)
 
 	// 5. Verify App
@@ -95,7 +95,7 @@ func TestAppsRepository(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, verifyRes.IsActive)
 	assert.Equal(t, "example.com", verifyRes.Domain)
-	assert.Equal(t, "urn:skm:app:example.com:test-app", verifyRes.AppURN)
+	assert.Equal(t, "urn:castor:app:example.com:test-app", verifyRes.AppURN)
 
 	// 6. Authenticate verified app with root API key
 	app, err := repo.AuthenticateAPIKey(db, res.APIKey)
@@ -243,7 +243,7 @@ func TestSkillsRepository(t *testing.T) {
 	assert.Equal(t, "test-skill", skillRes.Name)
 	assert.Equal(t, appRes.AppID, skillRes.AppID)
 	assert.Equal(t, "1.0.0", skillRes.Version)
-	assert.Equal(t, "skm://skills/example.com/testing/test-skill/1.0.0", skillRes.URI)
+	assert.Equal(t, "castor://skills/example.com/testing/test-skill/1.0.0", skillRes.URI)
 	assert.Equal(t, "value", skillRes.Metadata["key"])
 	assert.Equal(t, "content1", skillRes.References["ref1"])
 	assert.Equal(t, "example1", skillRes.Examples["ex1"])
@@ -257,7 +257,7 @@ func TestSkillsRepository(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, skillRes.ID, fetchedByName.ID)
 
-	fetchedByURI, err := skillsRepo.GetSkill(db, "skm://skills/example.com/testing/test-skill/1.0.0")
+	fetchedByURI, err := skillsRepo.GetSkill(db, "castor://skills/example.com/testing/test-skill/1.0.0")
 	require.NoError(t, err)
 	assert.Equal(t, skillRes.ID, fetchedByURI.ID)
 
@@ -272,7 +272,7 @@ func TestSkillsRepository(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, skillRes.ID, skillResV11.ID) // Same root Skill ID
 	assert.Equal(t, "1.1.0", skillResV11.Version)
-	assert.Equal(t, "skm://skills/example.com/testing/test-skill/1.1.0", skillResV11.URI)
+	assert.Equal(t, "castor://skills/example.com/testing/test-skill/1.1.0", skillResV11.URI)
 
 	// 4. List Skills (should still only be 1 root skill)
 	list, err := skillsRepo.ListSkills(db, "", nil)

@@ -6,9 +6,9 @@ set -euo pipefail
 PROJECT_ID="${GCP_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-}}"
 REGION="${GCP_REGION:-us-central1}"
 ENV="${1:-dev}"
-NAMESPACE="skill-builder"
-K8S_SA_NAME="skill-service-sa"
-GCP_SA_NAME="skill-service-${ENV}-sa"
+NAMESPACE="castor"
+K8S_SA_NAME="castor-registry-sa"
+GCP_SA_NAME="castor-registry-${ENV}-sa"
 GCP_SA_EMAIL="${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 if [[ -z "${PROJECT_ID}" ]]; then

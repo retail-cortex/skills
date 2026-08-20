@@ -1,0 +1,76 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "cstr_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/retail-cortex/skills/cmd/cstr",
+    deps = [
+        "//internal/commands",
+    ],
+)
+
+# Native host binary for Castor CLI (cstr)
+go_binary(
+    name = "cstr",
+    embed = [":cstr_lib"],
+)
+
+# Cross-platform native Bazel targets using go_cross_binary
+go_cross_binary(
+    name = "cstr_linux_amd64",
+    platform = "@rules_go//go/toolchain:linux_amd64",
+    target = ":cstr",
+)
+
+go_cross_binary(
+    name = "cstr_linux_arm64",
+    platform = "@rules_go//go/toolchain:linux_arm64",
+    target = ":cstr",
+)
+
+go_cross_binary(
+    name = "cstr_darwin_amd64",
+    platform = "@rules_go//go/toolchain:darwin_amd64",
+    target = ":cstr",
+)
+
+go_cross_binary(
+    name = "cstr_darwin_arm64",
+    platform = "@rules_go//go/toolchain:darwin_arm64",
+    target = ":cstr",
+)
+
+go_cross_binary(
+    name = "cstr_windows_amd64",
+    platform = "@rules_go//go/toolchain:windows_amd64",
+    target = ":cstr",
+)
+
+filegroup(
+    name = "cstr_binaries",
+    srcs = [
+        ":cstr_darwin_amd64",
+        ":cstr_darwin_arm64",
+        ":cstr_linux_amd64",
+        ":cstr_linux_arm64",
+        ":cstr_windows_amd64",
+    ],
+)
+
+# Backwards compatibility aliases
+alias(
+    name = "skm",
+    actual = ":cstr",
+)
+
+alias(
+    name = "skm_lib",
+    actual = ":cstr_lib",
+)
+
+alias(
+    name = "skm_binaries",
+    actual = ":cstr_binaries",
+)

@@ -88,13 +88,13 @@ func (r *AppsRepository) HashAPIKey(apiKey string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// generateAPIKey creates a secure random API key string skm_live_...
+// generateAPIKey creates a secure random API key string cstr_live_...
 func (r *AppsRepository) generateAPIKey() (string, error) {
 	bytes := make([]byte, 24)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("skm_live_%s", hex.EncodeToString(bytes)), nil
+	return fmt.Sprintf("cstr_live_%s", hex.EncodeToString(bytes)), nil
 }
 
 // RegisterApp registers a new application with domain scoping and seeds the creator as OWNER.
@@ -115,8 +115,7 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 	}
 
 	var existing model.RegisteredApp
-	err := db.Where("email = ?", req.Email).First(&existing).Error
-	if err == nil {
+	if err := db.Where("email = ?", req.Email).First(&existing).Error; err == nil {
 		return nil, fmt.Errorf("%w: %s", ErrAppAlreadyRegistered, req.Email)
 	}
 
@@ -128,7 +127,7 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 
 	appID := uuid.New().String()
 	verificationToken := uuid.New().String()
-	appURN := fmt.Sprintf("urn:skm:app:%s:%s", requestedDomain, req.AppName)
+	appURN := fmt.Sprintf("urn:castor:app:%s:%s", requestedDomain, req.AppName)
 
 	var domainStatus model.DomainVerificationStatus
 	var dnsChallenge string
@@ -137,7 +136,7 @@ func (r *AppsRepository) RegisterApp(db *gorm.DB, req model.AppRegisterRequest, 
 		domainStatus = model.DomainStatusVerifiedSSO
 	} else {
 		domainStatus = model.DomainStatusPendingDNS
-		dnsChallenge = fmt.Sprintf("skm-domain-verify-%s", uuid.New().String())
+		dnsChallenge = fmt.Sprintf("castor-domain-verify-%s", uuid.New().String())
 	}
 
 	now := time.Now().UTC()

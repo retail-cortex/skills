@@ -465,6 +465,21 @@ class TestSkillsLoaderPackage(unittest.TestCase):
         empty_suggested = registry.suggest_skills("", max_skills=2)
         self.assertEqual(len(empty_suggested), 2)
 
+    def test_parse_skill_root_uri_schemes(self) -> None:
+        from loader.loader import parse_skill_root_uri
+
+        scheme, target, ref, subpath = parse_skill_root_uri("castor://skills/example.com/testing/test-skill/1.0.0")
+        self.assertEqual(scheme, "castor")
+        self.assertEqual(target, "example.com/testing/test-skill/1.0.0")
+
+        scheme, target, ref, subpath = parse_skill_root_uri("cstr://skills/example.com/testing/test-skill")
+        self.assertEqual(scheme, "cstr")
+        self.assertEqual(target, "example.com/testing/test-skill")
+
+        scheme, target, ref, subpath = parse_skill_root_uri("skm://skills/example.com/testing/test-skill")
+        self.assertEqual(scheme, "skm")
+        self.assertEqual(target, "example.com/testing/test-skill")
+
 
 if __name__ == "__main__":
     unittest.main()

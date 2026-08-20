@@ -1,29 +1,29 @@
-# Retail Cortex Skills Loader (`retailcortex-skills-loader`)
+# Castor Loader (`castor-loader`)
 
-[![PyPI Version](https://img.shields.io/pypi/v/retailcortex-skills-loader.svg)](https://pypi.org/project/retailcortex-skills-loader/)
+[![PyPI Version](https://img.shields.io/pypi/v/castor-loader.svg)](https://pypi.org/project/castor-loader/)
 [![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Reusable enterprise AI agent skill scanner, parser, and loader compatible with Google ADK (Agent Development Kit).
+Reusable enterprise AI agent skill scanner, parser, and loader compatible with Google ADK (Agent Development Kit) and the Castor Registry platform.
 
 ## Features
 
-- **Polyglot URI Resolution**: Resolves skills seamlessly from `github://`, `mod://`/`go://`, `maven://`/`mvn://`, `pkg://`, and `file://` URIs.
+- **Polyglot URI Resolution**: Resolves skills seamlessly from `castor://`, `cstr://`, `github://`, `mod://`/`go://`, `maven://`/`mvn://`, `pkg://`, and `file://` URIs.
 - **Zero-I/O Manifest Loading**: Loads pre-compiled `skills_manifest.json` definitions directly for instant startup.
-- **Local & Remote Discovery**: Scans local workspace directories or downloads remote skills from GitHub repositories, Go module caches, and Maven repositories.
+- **Local & Remote Discovery**: Scans local workspace directories or downloads remote skills from Castor Registry, GitHub repositories, Go module caches, and Maven repositories.
 - **Environment Context Parsing**: Parses `.env` key-value definitions and instructions into strongly-typed `SkillDefinition` objects.
 - **Google ADK Integration**: Exposes standard `SkillRegistry` abstractions to equip Google ADK agents with enterprise capabilities.
 
 ## Installation
 
 ```bash
-pip install retailcortex-skills-loader
+pip install castor-loader
 ```
 
 Or using `uv`:
 
 ```bash
-uv add retailcortex-skills-loader
+uv add castor-loader
 ```
 
 ## Quickstart
@@ -81,10 +81,10 @@ Configure your `pyproject.toml` to use the loader's build wrapper:
 
 ```toml
 [build-system]
-requires = ["retailcortex-skills-loader", "setuptools>=61.0"]
+requires = ["castor-loader", "setuptools>=61.0"]
 build-backend = "loader.build_meta"
 
-[tool.retailcortex-loader]
+[tool.castor-loader]
 # Optional: Target directory to bundle the skills into for packaging (defaults to .skills)
 dest = "src/my_package/skills"
 dependencies = [
@@ -99,7 +99,7 @@ You can achieve the exact same automated downloading by calling the exposed func
 ```python
 from loader import download_build_dependencies
 
-# This will read [tool.retailcortex-loader] from pyproject.toml
+# This will read [tool.castor-loader] from pyproject.toml
 download_build_dependencies()
 ```
 

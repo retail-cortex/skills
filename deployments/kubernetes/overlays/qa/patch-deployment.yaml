@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: skill-service
-  namespace: skill-builder
+  name: castor-registry
+  namespace: castor
 spec:
   replicas: 3
   template:
     spec:
       containers:
-        - name: skill-service
+        - name: castor-registry
           resources:
             requests:
               cpu: "500m"

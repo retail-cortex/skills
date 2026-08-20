@@ -1,6 +1,6 @@
-# Project Overview: Agent Skill Builder
+# Project Overview: Castor
 
-Welcome to the **Agent Skill Builder** documentation. This registry provides a comprehensive, standardized suite of 33 AI Agent Skills. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, this framework **heavily extends** the standard to meet strict enterprise security and performance requirements for the Google Agent Development Kit (ADK).
+Welcome to the **Castor** documentation. Castor is an enterprise-grade AI Agent Skills registry and lifecycle tooling platform. While built upon the foundational [agentskills.io](https://agentskills.io/specification) specification, Castor **heavily extends** the standard to meet strict enterprise security and performance requirements for the Google Agent Development Kit (ADK).
 
 ### Enterprise Extensions
 - **Just-in-Time (JIT) Semantic Discovery**: Replaces static loading with RAG-MCP semantic retrieval to prevent LLM context bloat.
@@ -12,11 +12,11 @@ Welcome to the **Agent Skill Builder** documentation. This registry provides a c
 
 ## Quickstart: Running Standalone Examples & Agents
 
-Explore native Google Agent Development Kit (ADK) agent execution, qualified URI loading (`file://` and `github://...:branch`), and selective `.env` skill filtering.
+Explore native Google Agent Development Kit (ADK) agent execution, qualified URI loading (`castor://`, `cstr://`, `file://`, and `github://...:branch`), and selective `.env` skill filtering.
 
 ### 1. Run Native ADK Example Package (`examples/python/client`)
 
-Run the native ADK agent example demonstrating unified local workspace and remote GitHub skill loading:
+Run the native ADK agent example demonstrating unified local workspace and remote Castor Registry skill loading:
 
 ```bash
 uv run python examples/python/client/main.py
@@ -61,8 +61,8 @@ This documentation site is organized into logical sections:
 - [Cloud Deployment](deployment/): Enterprise infrastructure automation via Terraform, GKE clusters (`dev`, `qa`, `prod`), AlloyDB AI, and Kustomize overlays.
 - [Critical Analysis](analysis/): Comparative analysis against agentskills.io specification and ecosystem showcase clients.
 - [Skills Registry](examples/skills/): Specialized domain and technology enterprise skills catalog.
-- [CLI Client (skm)](cli/): Standalone `skm` Go CLI client manual, cross-platform builds, polyglot URI resolution, subcommands, and Oh My Zsh plugin.
-- [Packages & Architecture](packages/): Backend services (`skills-service`), Go CLI (`skm`), core packages (`pkg/embedding`, `pkg/data`, `pkg/mcp`, `pkg/service`), polyglot client SDKs, and Protocol Buffers.
+- [Castor CLI (cstr)](cli/): Standalone `cstr` Go CLI client manual, cross-platform builds, polyglot URI resolution, subcommands, and Oh My Zsh plugin.
+- [Packages & Architecture](packages/): Backend services (`Castor Registry`), Go CLI (`cstr`), core packages (`pkg/embedding`, `pkg/data`, `pkg/mcp`, `pkg/service`), polyglot client SDKs, and Protocol Buffers.
 - [Examples](examples/): Standalone integration packages, polyglot clients, web servers, and setup guides for Go, Python, and Java.
 
 ---
@@ -79,8 +79,8 @@ skill-builder/
 ├── hugo.toml                  # Hugo Geekdoc documentation site configuration
 ├── docs/                      # Documentation site source files
 ├── cmd/                       # Microservice & CLI entry points
-│   ├── skm/                   # SKM (Skill Manager) Go CLI package manager
-│   └── skills-service/        # Central Go REST, MCP, and gRPC backend service
+│   ├── cstr/                  # Castor CLI (cstr) Go package manager
+│   └── castor-server/         # Central Go REST, MCP, and gRPC Castor Registry service
 ├── pkg/                       # Shared Go domain packages
 │   ├── data/                  # GORM repository with pgvector poly-column schema
 │   ├── embedding/             # Embedding provider interface & sliding chunking
@@ -94,7 +94,7 @@ skill-builder/
 ├── clients/                   # Polyglot Client SDKs & Build Plugins
 │   ├── go/                    # Go client (skillsloader) with //go:generate
 │   ├── java/                  # Java client & skills-loader-maven-plugin
-│   └── python/                # Python client (loader) with PEP 517 build_meta
+│   └── python/                # Python client (castor-loader) with PEP 517 build_meta
 ├── examples/                  # Language integration examples & skill packages
 │   ├── go/                    # Standalone Go client & Go skill collection
 │   ├── java/                  # Standalone Java client & Java skill collection

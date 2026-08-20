@@ -1,9 +1,14 @@
+#compdef cstr
 #compdef skm
 
-_skm() {
+_cstr() {
     local -a commands
     commands=(
-        'add:Add skills from URI (github://, mod://, maven://, pkg://, file://)'
+        'login:Register application identity & authenticate CLI credentials'
+        'config:Configure CLI settings'
+        'register:Register a skill with central Castor Registry'
+        'add:Add skills from URI (cstr://, castor://, github://, mod://, maven://, pkg://, file://)'
+        'verify:Verify downloaded skills against .manifest.lock'
         'validate:Validate skills against 5-point SDLC audit'
         'list:List registered skills in registry or directory'
         'search:Search skills by keyword query'
@@ -20,15 +25,26 @@ _skm() {
 
     case $state in
         command)
-            _describe -t commands 'skm command' commands
+            _describe -t commands 'cstr command' commands
             ;;
         args)
             case $words[1] in
+                login)
+                    _arguments \
+                        '(-e --email)'{-e,--email}'[Developer email address]:email:' \
+                        '(-d --domain)'{-d,--domain}'[Organization domain]:domain:' \
+                        '(-a --app)'{-a,--app}'[Application name]:app:'
+                    ;;
                 add)
                     _arguments \
                         '(-d --dir)'{-d,--dir}'[Destination directory]:directory:_files -/' \
                         '(-f --force)'{-f,--force}'[Force overwrite existing skills]' \
                         '--filter=[Comma-separated list of skill names to filter]'
+                    ;;
+                verify)
+                    _arguments \
+                        '(-d --dir)'{-d,--dir}'[Target directory]:directory:_files -/' \
+                        '--json[Output verification report in JSON format]'
                     ;;
                 validate)
                     _arguments \
@@ -38,11 +54,14 @@ _skm() {
                 list)
                     _arguments \
                         '(-d --dir)'{-d,--dir}'[Scan directory]:directory:_files -/' \
+                        '(-r --remote)'{-r,--remote}'[Query remote Castor Registry]' \
                         '--json[Output list in JSON format]'
                     ;;
                 search)
                     _arguments \
-                        '(-d --dir)'{-d,--dir}'[Scan directory]:directory:_files -/'
+                        '(-d --dir)'{-d,--dir}'[Scan directory]:directory:_files -/' \
+                        '(-r --remote)'{-r,--remote}'[Query remote Castor Registry]' \
+                        '--json[Output search results in JSON format]'
                     ;;
                 compile)
                     _arguments \
@@ -66,4 +85,4 @@ _skm() {
     esac
 }
 
-_skm "$@"
+_cstr "$@"

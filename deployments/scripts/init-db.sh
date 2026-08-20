@@ -5,7 +5,7 @@ set -euo pipefail
 
 PROJECT_ID="${GCP_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-}}"
 REGION="${GCP_REGION:-us-east4}"
-CLUSTER_ID="${ALLOYDB_CLUSTER_ID:-skill-builder-alloydb}"
+CLUSTER_ID="${ALLOYDB_CLUSTER_ID:-castor-alloydb}"
 PRIMARY_IP="${ALLOYDB_PRIMARY_IP:-}"
 
 if [[ -z "${PROJECT_ID}" ]]; then
@@ -23,7 +23,7 @@ echo "Region     : ${REGION}"
 echo "Cluster ID : ${CLUSTER_ID}"
 echo "=========================================================================="
 
-DATABASES=("skills_dev" "skills_qa" "skills_prod")
+DATABASES=("castor_dev" "castor_qa" "castor_prod" "skills_dev" "skills_qa" "skills_prod")
 
 for DB in "${DATABASES[@]}"; do
   echo "Applying extensions to database '${DB}'..."

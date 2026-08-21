@@ -1,0 +1,98 @@
+# gazelle:ignore
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@protobuf//bazel:java_proto_library.bzl", "java_proto_library")
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+proto_library(
+    name = "skills_v1_proto",
+    srcs = [
+        "manifest.proto",
+        "skill.proto",
+        "skill_service.proto",
+    ],
+    strip_import_prefix = "/proto",
+)
+
+go_proto_library(
+    name = "skills_v1_go_proto",
+    importpath = "github.com/retail-cortex/castor/proto/castor/skills/v1",
+    proto = ":skills_v1_proto",
+)
+
+java_proto_library(
+    name = "skills_v1_java_proto",
+    deps = [":skills_v1_proto"],
+)
+
+py_proto_library(
+    name = "skills_v1_py_proto",
+    deps = [":skills_v1_proto"],
+)
+
+genrule(
+    name = "skills_v1_py_grpc_gen",
+    srcs = [
+        "manifest.proto",
+        "skill.proto",
+        "skill_service.proto",
+    ],
+    outs = [
+        "manifest_pb2.py",
+        "manifest_pb2.pyi",
+        "manifest_pb2_grpc.py",
+        "skill_pb2.py",
+        "skill_pb2.pyi",
+        "skill_pb2_grpc.py",
+        "skill_service_pb2.py",
+        "skill_service_pb2.pyi",
+        "skill_service_pb2_grpc.py",
+    ],
+    cmd = """
+        uv run --with "grpcio-tools==1.76.0" python3 -m grpc_tools.protoc \\
+            -Iproto \\
+            --python_out=$(RULEDIR)/../../.. \\
+            --pyi_out=$(RULEDIR)/../../.. \\
+            --grpc_python_out=$(RULEDIR)/../../.. \\
+            $(SRCS)
+    """,
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+)
+
+py_library(
+    name = "skills_v1_py_grpc",
+    srcs = [":skills_v1_py_grpc_gen"],
+    imports = ["../../.."],
+)
+
+# Backwards compatibility aliases
+alias(
+    name = "castor_v1_proto",
+    actual = ":skills_v1_proto",
+)
+
+alias(
+    name = "castor_v1_go_proto",
+    actual = ":skills_v1_go_proto",
+)
+
+alias(
+    name = "castor_v1_java_proto",
+    actual = ":skills_v1_java_proto",
+)
+
+alias(
+    name = "castor_v1_py_proto",
+    actual = ":skills_v1_py_proto",
+)
+
+alias(
+    name = "castor_v1_py_grpc",
+    actual = ":skills_v1_py_grpc",
+)

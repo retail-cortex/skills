@@ -22,7 +22,7 @@
     <dependencies>
         <dependency>
             <groupId>com.retailcortex.castor</groupId>
-            <artifactId>castor-loader-maven-plugin</artifactId>
+            <artifactId>castor-client</artifactId>
             <version>1.0.0</version>
         </dependency>
 
@@ -51,7 +51,7 @@
         <plugins>
             <plugin>
                 <groupId>com.retailcortex.castor</groupId>
-                <artifactId>castor-loader-maven-plugin</artifactId>
+                <artifactId>castor-client</artifactId>
                 <version>1.0.0</version>
                 <executions>
                     <execution>

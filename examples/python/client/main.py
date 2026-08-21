@@ -23,7 +23,7 @@ pkg_root = Path(__file__).resolve().parents[3] / "clients/python/src"
 if str(pkg_root) not in sys.path:
     sys.path.insert(0, str(pkg_root))
 
-from loader import parse_skill_root_uri
+from castor_client import parse_skill_root_uri
 
 
 

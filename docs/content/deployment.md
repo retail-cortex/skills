@@ -88,7 +88,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /castor-server ./cmd/castor-server
+RUN CGO_ENABLED=0 GOOS=linux go build -o /castor-server ./cmd/castor_server
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /

@@ -12,11 +12,11 @@ This section details the Java integration examples in `examples/java/`, covering
 
 ## 1. Standalone Java Client Example
 
-Located at `examples/java/client`, this example demonstrates how a standalone Java application uses system properties for server discovery, wires `skills-loader-maven-plugin` into `pom.xml`, and loads pre-compiled `skills_manifest.json` resources.
+Located at `examples/java/client`, this example demonstrates how a standalone Java application uses system properties for server discovery, wires `castor-client` into `pom.xml`, and parses skill URIs via `SkillLoader`.
 
 ### Key Features & Design
 - **Standard Maven Layout**: Features an explicit `pom.xml` requiring no local Bazel toolchain.
-- **Maven Lifecycle Integration**: Configures `skills-loader-maven-plugin:generate-manifest` to run during the `generate-resources` phase, automatically scanning local skill directories and bundling `skills_manifest.json` into `target/classes`.
+- **Maven Lifecycle Integration**: Configures `castor-client:generate-manifest` to run during the `generate-resources` phase, automatically scanning local skill directories and bundling `skills_manifest.json` into `target/classes`.
 - **System Property Resolution**: Implements `System.getProperty("castor.server.url")` falling back to environment variables (`CASTOR_SERVER_URL`).
 
 ### Project Layout
@@ -24,10 +24,10 @@ Located at `examples/java/client`, this example demonstrates how a standalone Ja
 ```text
 examples/java/client/
 ├── BUILD.bazel              # Bazel test rule (test_java_client_example)
-├── pom.xml                  # Maven POM declaring skills-loader-maven-plugin
+├── pom.xml                  # Maven POM declaring castor-client
 └── src/
     ├── main/java/com/company/example/
-    │   └── Application.java # Main application resolving properties & loading skills
+    │   └── Application.java # Main application resolving properties & parsing URIs
     └── test/java/com/company/example/
         └── ApplicationTest.java # JUnit 5 test suite
 ```
@@ -39,8 +39,8 @@ examples/java/client/
     <plugins>
         <plugin>
             <groupId>com.retailcortex.castor</groupId>
-            <artifactId>skills-loader-maven-plugin</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <artifactId>castor-client</artifactId>
+            <version>1.0.0</version>
             <executions>
                 <execution>
                     <phase>generate-resources</phase>
@@ -59,34 +59,54 @@ examples/java/client/
 ```java
 package com.company.example;
 
-import com.retailcortex.castor.loader.SkillDefinition;
 import com.retailcortex.castor.loader.SkillLoader;
-import java.util.List;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Application {
 
-    public String resolveServerUrl() {
-        String prop = System.getProperty("castor.server.url");
+    private static final Logger logger = LoggerFactory.getLogger(Application.class);
+
+    public static String getCastorServerUrl() {
+        String prop = System.getProperty("castor.server.url", System.getProperty("skm.server.url"));
         if (prop != null && !prop.isBlank()) {
             return prop;
         }
         String env = System.getenv("CASTOR_SERVER_URL");
-        return (env != null && !env.isBlank()) ? env : "http://localhost:8080";
+        if (env == null || env.isBlank()) {
+            env = System.getenv("CSTR_SERVER_URL");
+        }
+        if (env == null || env.isBlank()) {
+            env = System.getenv("SKM_SERVER_URL");
+        }
+        return env != null && !env.isBlank() ? env : "http://localhost:8080";
+    }
+
+    public static String getCastorApiKey() {
+        String prop = System.getProperty("castor.api.key", System.getProperty("skm.api.key"));
+        if (prop != null && !prop.isBlank()) {
+            return prop;
+        }
+        String env = System.getenv("CASTOR_API_KEY");
+        if (env == null || env.isBlank()) {
+            env = System.getenv("CSTR_API_KEY");
+        }
+        if (env == null || env.isBlank()) {
+            env = System.getenv("SKM_API_KEY");
+        }
+        return env != null && !env.isBlank() ? env : "java-secret-key-99999";
     }
 
     public static void main(String[] args) {
-        Application app = new Application();
-        System.out.println("Connected to Castor Server at: " + app.resolveServerUrl());
+        logger.info("Initializing Castor Java Client Standalone Example...");
 
-        // Load Java Enterprise Skills
-        Map<String, SkillDefinition> skills = SkillLoader.loadSkillsFromPackage(
-            "retailcortex_skills_java", List.of("java-enterprise")
-        );
+        String serverUrl = getCastorServerUrl();
+        String apiKey = getCastorApiKey();
 
-        for (Map.Entry<String, SkillDefinition> entry : skills.entrySet()) {
-            System.out.println("Loaded Java Skill [" + entry.getKey() + "]: " + entry.getValue().getDescription());
-        }
+        logger.info("Loaded System properties: serverUrl={}, apiKey={}", serverUrl, apiKey);
+
+        var parsed = SkillLoader.parseSkillRootUri("castor://skills/example.com/testing/test-skill/1.0.0");
+        logger.info("Parsed URI: scheme={}, target={}, ref={}", parsed.scheme(), parsed.target(), parsed.ref());
     }
 }
 ```
@@ -99,7 +119,7 @@ cd examples/java/client
 mvn test
 
 # Bazel Workspace Integration Test
-bazel test //examples/java/client:src/test/java/com/company/example/ApplicationTest
+bazel test //examples/java/client:test_java_client_example
 ```
 
 ---

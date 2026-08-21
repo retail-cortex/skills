@@ -1,11 +1,27 @@
 package(default_visibility = ["//visibility:public"])
 
 alias(
+    name = "castor-client",
+    actual = "//clients/go/cmd/castor_client",
+)
+
+alias(
+    name = "castor_client",
+    actual = "//clients/go/pkg/castor_client",
+)
+
+alias(
+    name = "castorclient",
+    actual = "//clients/go/pkg/castor_client",
+)
+
+# Backwards compatibility aliases
+alias(
     name = "skillsloader",
-    actual = "//clients/go/pkg/skillsloader",
+    actual = "//clients/go/pkg/castor_client",
 )
 
 alias(
     name = "skills-loader",
-    actual = "//clients/go/cmd/skills-loader",
+    actual = "//clients/go/cmd/castor_client",
 )

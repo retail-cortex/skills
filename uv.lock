@@ -7,7 +7,7 @@ name = "castor"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "castor-loader" },
+    { name = "castor-client" },
 ]
 
 [package.dev-dependencies]
@@ -18,7 +18,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "castor-loader", directory = "clients/python" }]
+requires-dist = [{ name = "castor-client", directory = "clients/python" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -28,7 +28,7 @@ dev = [
 ]
 
 [[package]]
-name = "castor-loader"
+name = "castor-client"
 version = "1.0.0"
 source = { directory = "clients/python" }
 

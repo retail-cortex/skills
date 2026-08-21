@@ -3,13 +3,42 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "loader_lib",
-    srcs = glob(["src/loader/**/*.py"]),
+    name = "castor_client",
+    srcs = glob(["src/castor_client/**/*.py"]),
     data = ["//:skills_data"],
     imports = ["src"],
     deps = [
         "@rules_python//python/runfiles",
     ],
+)
+
+py_library(
+    name = "loader_lib",
+    srcs = glob(["src/**/*.py"]),
+    data = ["//:skills_data"],
+    imports = ["src"],
+    deps = [
+        "@rules_python//python/runfiles",
+    ],
+)
+
+alias(
+    name = "castor-client",
+    actual = ":castor_client",
+)
+
+alias(
+    name = "python-client",
+    actual = ":castor_client",
+)
+
+py_test(
+    name = "test_castor_client",
+    size = "small",
+    srcs = ["tests/test_castor_client.py"],
+    data = ["//:skills_data"],
+    main = "tests/test_castor_client.py",
+    deps = [":castor_client"],
 )
 
 py_test(

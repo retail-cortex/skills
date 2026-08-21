@@ -18,7 +18,7 @@ Each supported language ecosystem features a standalone client integration examp
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Go** | `examples/go/client` | Go Modules (`go.mod`) | `modenv` (`.env.toml`) | `examples/go/skills` | `//examples/go/client:test_go_client_example` |
 | **Python** | `examples/python/client` | `uv` / `pyproject.toml` | `python-dotenv` (`.env`) | `examples/python/skills` | `//examples/python/client:test_python_client_example` |
-| **Java** | `examples/java/client` | Maven (`pom.xml`) | System Properties | `examples/java/skills` | `//examples/java/client:src/test/java/com/company/example/ApplicationTest` |
+| **Java** | `examples/java/client` | Maven (`pom.xml`) | System Properties | `examples/java/skills` | `//examples/java/client:test_java_client_example` |
 | **Polyglot** | `examples/python/polyglot` | `uv` / `pyproject.toml` | Environment / `uv` | Cross-Language | `//examples/python/polyglot:test_polyglot_developer` |
 
 ---
@@ -30,7 +30,7 @@ Each supported language ecosystem features a standalone client integration examp
 2. **Native Property Loading**:
    - Client applications demonstrate cascading configuration resolution using idiomatic language property frameworks (`modenv` TOML cascading in Go, `.env` file loading via `python-dotenv` in Python, and Java `System.getProperty()` with environment variable fallbacks).
 3. **Build Lifecycle Validation**:
-   - Client integration hooks (such as the Maven pre-processor plugin `skills-loader-maven-plugin:generate-manifest`) run during native build phases (`generate-resources`) to pre-compile skills manifests before code execution.
+   - Client integration hooks (such as the Maven pre-processor plugin `castor-client:generate-manifest`) run during native build phases (`generate-resources`) to pre-compile skills manifests before code execution.
 4. **Hermetic Bazel Test Harness Wiring**:
    - Every example is wired into the root Bazel workspace build graph (`MODULE.bazel`), ensuring complete regression testing via `bazel test //...`.
 
@@ -42,7 +42,7 @@ Explore dedicated integration guides for each language ecosystem:
 
 - 🐹 **[Go Client & Skills Examples](go/)**: Standalone Go module integration with `modenv` property loading and Go skill collections.
 - 🐍 **[Python Client, Polyglot & Skills Examples](python/)**: `uv` and `python-dotenv` client setup, Polyglot Monorepo Scaffolding Agent, and Python skill packages.
-- ☕ **[Java Client & Maven Plugin Examples](java/)**: Maven POM configuration, `skills-loader-maven-plugin` execution, System Properties resolution, and Java skill packages.
+- ☕ **[Java Client & Maven Plugin Examples](java/)**: Maven POM configuration, `castor-client` execution, System Properties resolution, and Java skill packages.
 - 📚 **[Enterprise Skills Registry Catalog](skills/)**: Full index of 23 enterprise AI Agent Skills distributed across language skill packages and standalone markdown definitions.
 
 ---

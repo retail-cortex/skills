@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "castor-client_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/retail-cortex/castor/clients/go/cmd/castor_client",
+    deps = ["//clients/go/pkg/castor_client"],
+)
+
+go_binary(
+    name = "castor-client",
+    embed = [":castor-client_lib"],
+)
+
+alias(
+    name = "castor_client",
+    actual = ":castor-client",
+)
+
+# Backwards compatibility alias
+alias(
+    name = "skills-loader",
+    actual = ":castor-client",
+)

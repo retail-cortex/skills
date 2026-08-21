@@ -1,4 +1,4 @@
-# Package: retailcortex.castor.v1
+# Package: castor.skills.v1
 
 
 
@@ -12,20 +12,20 @@
 
 ## Options
 
-| Name                | Value                                                        | Description |
-|---------------------|--------------------------------------------------------------|-------------|
-| go_package          | github.com/retail-cortex/castor/proto/retailcortex/skills/v1 |             |
-| java_package        | com.retailcortex.castor.proto.retailcortex.castor.v1         |             |
-| java_multiple_files | true                                                         |             |
+| Name                | Value                                                  | Description |
+|---------------------|--------------------------------------------------------|-------------|
+| go_package          | github.com/retail-cortex/castor/proto/castor/skills/v1 |             |
+| java_package        | com.retailcortex.castor.proto.skills.v1                |             |
+| java_multiple_files | true                                                   |             |
 
 
 
-### retailcortex.castor.v1 Diagram
+### castor.skills.v1 Diagram
 
 ```mermaid
 classDiagram
 direction LR
-%% Mermaid Diagram for package: retailcortex.castor.v1
+%% Mermaid Diagram for package: castor.skills.v1
 
 %% ManifestLockEntry records the skill identity, download URI, and calculated SHA-256 hash.
 
@@ -83,7 +83,7 @@ class VerificationStatus{
 
 ## Enum: VerificationStatus
 
-**FQN**: retailcortex.castor.v1.VerificationStatus
+**FQN**: castor.skills.v1.VerificationStatus
 
 VerificationStatus indicates the integrity audit result for a skill.
 
@@ -187,7 +187,7 @@ VerificationReport --> `VerificationResult`
 
 ## Message: ManifestLockEntry
 
-**FQN**: retailcortex.castor.v1.ManifestLockEntry
+**FQN**: castor.skills.v1.ManifestLockEntry
 
 ManifestLockEntry records the skill identity, download URI, and calculated SHA-256 hash.
 
@@ -206,7 +206,7 @@ ManifestLockEntry records the skill identity, download URI, and calculated SHA-2
 
 ## Message: ManifestLock
 
-**FQN**: retailcortex.castor.v1.ManifestLock
+**FQN**: castor.skills.v1.ManifestLock
 
 ManifestLock represents the .manifest.lock file schema in skill target directories.
 
@@ -221,7 +221,7 @@ ManifestLock represents the .manifest.lock file schema in skill target directori
 
 ## Message: VerificationResult
 
-**FQN**: retailcortex.castor.v1.VerificationResult
+**FQN**: castor.skills.v1.VerificationResult
 
 VerificationResult details the verification audit for a single skill.
 
@@ -240,7 +240,7 @@ VerificationResult details the verification audit for a single skill.
 
 ## Message: VerificationReport
 
-**FQN**: retailcortex.castor.v1.VerificationReport
+**FQN**: castor.skills.v1.VerificationReport
 
 VerificationReport captures the full audit summary for a target directory.
 

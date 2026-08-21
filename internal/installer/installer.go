@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 )
 
 // AddResult holds details of a skill copy/install operation.
@@ -51,8 +51,8 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 	var results []AddResult
 
 	for _, uri := range uris {
-		scheme, target, ref, subpath := skillsloader.ParseSkillRootURI(uri)
-		var skills map[string]*skillsloader.SkillDefinition
+		scheme, target, ref, subpath := castor_client.ParseSkillRootURI(uri)
+		var skills map[string]*castor_client.SkillDefinition
 		var loadErr error
 
 		switch scheme {
@@ -61,19 +61,19 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 			if subpath != "" {
 				roots = []string{subpath}
 			}
-			skills, loadErr = skillsloader.LoadSkillsFromGitHub(target, ref, roots, filter, os.Getenv("GITHUB_TOKEN"), "")
+			skills, loadErr = castor_client.LoadSkillsFromGitHub(target, ref, roots, filter, os.Getenv("GITHUB_TOKEN"), "")
 		case "maven", "mvn":
 			var roots []string
 			if subpath != "" {
 				roots = []string{subpath}
 			}
-			skills, loadErr = skillsloader.LoadSkillsFromMaven(target, ref, roots, filter)
+			skills, loadErr = castor_client.LoadSkillsFromMaven(target, ref, roots, filter)
 		case "mod", "go":
 			var roots []string
 			if subpath != "" {
 				roots = []string{subpath}
 			}
-			skills, loadErr = skillsloader.LoadSkillsFromGoModule(target, ref, roots, filter)
+			skills, loadErr = castor_client.LoadSkillsFromGoModule(target, ref, roots, filter)
 		case "castor", "castors", "cstr", "cstrs", "skm", "skms":
 			serverURL := os.Getenv("CASTOR_SERVER_URL")
 			if serverURL == "" {
@@ -111,7 +111,7 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 					}
 				}
 			}
-			skills, loadErr = skillsloader.LoadSkillsFromCastorRegistry(target, filter, serverURL, apiKey)
+			skills, loadErr = castor_client.LoadSkillsFromCastorRegistry(target, filter, serverURL, apiKey)
 		case "file":
 			skills, loadErr = ResolveFileSkills(target, filter)
 		default:
@@ -177,7 +177,7 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 			}
 
 			// Update .manifest.lock with skill_name, uri, and sha256 checksum
-			if lockErr := skillsloader.UpdateManifestLock(absDest, skillName, uri, ""); lockErr != nil {
+			if lockErr := castor_client.UpdateManifestLock(absDest, skillName, uri, ""); lockErr != nil {
 				// Non-fatal warning if manifest lock update encounters issue
 				_ = lockErr
 			}
@@ -199,7 +199,7 @@ func AddSkills(uris []string, destDir string, filter []string, force bool) ([]Ad
 	return results, nil
 }
 
-func ResolveFileSkills(target string, filter []string) (map[string]*skillsloader.SkillDefinition, error) {
+func ResolveFileSkills(target string, filter []string) (map[string]*castor_client.SkillDefinition, error) {
 	// Expand path
 	path := target
 	if strings.HasPrefix(path, "file://") {
@@ -217,7 +217,7 @@ func ResolveFileSkills(target string, filter []string) (map[string]*skillsloader
 	}
 
 	if isFile(filepath.Join(absPath, "SKILL.md")) {
-		skill, err := skillsloader.LoadSkillFromDir(absPath)
+		skill, err := castor_client.LoadSkillFromDir(absPath)
 		if err != nil {
 			return nil, err
 		}
@@ -230,14 +230,14 @@ func ResolveFileSkills(target string, filter []string) (map[string]*skillsloader
 				}
 			}
 			if !match {
-				return make(map[string]*skillsloader.SkillDefinition), nil
+				return make(map[string]*castor_client.SkillDefinition), nil
 			}
 		}
-		return map[string]*skillsloader.SkillDefinition{skill.Name: skill}, nil
+		return map[string]*castor_client.SkillDefinition{skill.Name: skill}, nil
 	}
 
 	// Try loading all skills under the directory
-	return skillsloader.LoadAllSkills(absPath, filter)
+	return castor_client.LoadAllSkills(absPath, filter)
 }
 
 func copyDirectory(src, dst string) error {

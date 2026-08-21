@@ -12,12 +12,12 @@ This section details the Python integration examples in `examples/python/`, cove
 
 ## 1. Standalone Python Client Example
 
-Located at `examples/python/client`, this example demonstrates how a standalone Python application loads environment configuration using `python-dotenv` and parses skill URIs via `skills-loader`.
+Located at `examples/python/client`, this example demonstrates how a standalone Python application loads environment configuration using `python-dotenv` and parses skill URIs via `castor-client`.
 
 ### Key Features & Design
 - **PEP 621 Standard Package**: Configured with `pyproject.toml` using `uv` dependency specifications.
 - **Environment Property Loading**: Uses `python-dotenv` (`load_dotenv()`) to read settings from `examples/python/client/.env`.
-- **Polyglot URI Parsing**: Exercises `loader.parse_skill_root_uri` across `file://`, `pkg://`, `github://`, and `castor://` schemes.
+- **Polyglot URI Parsing**: Exercises `castor_client.parse_skill_root_uri` across `file://`, `pkg://`, `github://`, and `castor://` schemes.
 
 ### Project Layout
 
@@ -34,26 +34,34 @@ examples/python/client/
 
 ```python
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
-from loader.loader import parse_skill_root_uri, load_skills_from_package
+from castor_client import parse_skill_root_uri
 
-def main() -> None:
+def run() -> dict[str, str]:
     # 1. Load environment properties
-    load_dotenv()
+    env_path = Path(__file__).parent / ".env"
+    load_dotenv(dotenv_path=env_path)
+
     server_url = os.getenv("CASTOR_SERVER_URL", "http://localhost:8080")
-    print(f"Connected to Castor Server at: {server_url}")
+    api_key = os.getenv("CASTOR_API_KEY", "")
+    print(f"Loaded Castor Server URL from dotenv: {server_url}")
 
-    # 2. Parse Qualified URIs
-    parsed = parse_skill_root_uri("castor://skills/retailcortex.com/python/python-core/1.0.0")
-    print(f"Parsed URI scheme: {parsed.scheme}, target: {parsed.target}, ref: {parsed.ref}")
+    # 2. Parse polyglot skill URI
+    uri = "github://google/skills@main/tree/main/skills/cloud/gemini-api"
+    scheme, target, ref, subpath = parse_skill_root_uri(uri)
+    print(f"Parsed URI: scheme={scheme}, target={target}, ref={ref}, subpath={subpath}")
 
-    # 3. Load Python Enterprise Skills
-    skills = load_skills_from_package("retailcortex_skills_python", skill_filter=["python-core"])
-    for name, skill in skills.items():
-        print(f"Loaded Python Skill [{name}]: {skill.description}")
+    return {
+        "server_url": server_url,
+        "api_key": api_key,
+        "scheme": scheme,
+        "target": target,
+    }
 
 if __name__ == "__main__":
-    main()
+    run()
 ```
 
 ### Execution Commands

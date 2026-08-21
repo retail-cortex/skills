@@ -3,9 +3,9 @@ title: "Java Client & Maven Plugin"
 weight: 20
 ---
 
-# Java Client & Maven Build Integration (`skills-loader-maven-plugin`)
+# Java Client & Maven Build Integration (`castor-client`)
 
-The Java client library (`com.retailcortex.castor:skills-java`) is implemented as both a runtime library and a **native Maven Plugin** (`skills-loader-maven-plugin`). 
+The Java client library (`com.retailcortex.castor:castor-client`) is implemented as both a runtime library and a **native Maven Plugin** (`castor-client`). 
 
 By hooking directly into Maven's build lifecycle (`generate-resources`, `compile`), the plugin validates skill dependencies, enforces 5-point SDLC compliance, and packages pre-compiled `skills_manifest.json` resources into target application JARs automatically.
 
@@ -27,7 +27,7 @@ Configure the plugin in your application's `pom.xml`:
             <!-- Enterprise Skills Loader Maven Plugin -->
             <plugin>
                 <groupId>com.retailcortex.castor</groupId>
-                <artifactId>skills-loader-maven-plugin</artifactId>
+                <artifactId>castor-client</artifactId>
                 <version>1.0.0</version>
                 <executions>
                     <execution>
@@ -56,7 +56,7 @@ Configure the plugin in your application's `pom.xml`:
         <!-- Runtime Client Library -->
         <dependency>
             <groupId>com.retailcortex.castor</groupId>
-            <artifactId>skills-java</artifactId>
+            <artifactId>castor-client</artifactId>
             <version>1.0.0</version>
         </dependency>
     </dependencies>
@@ -80,7 +80,6 @@ In `MODULE.bazel`:
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     artifacts = [
-        "com.retailcortex.castor:skills-java:1.0.0",
         "com.fasterxml.jackson.core:jackson-databind:2.17.1",
         "org.slf4j:slf4j-api:2.0.12",
     ],
@@ -94,9 +93,8 @@ In `BUILD.bazel`:
 java_library(
     name = "agent_service_java",
     srcs = glob(["src/main/java/**/*.java"]),
-    resources = ["//docs:site"],
     deps = [
-        "@maven//:com_retailcortex_skills_skills_java",
+        "//clients/java:castor_client_java",
         "@maven//:org_slf4j_slf4j_api",
     ],
 )
@@ -113,19 +111,20 @@ package com.company.agent;
 
 import com.retailcortex.castor.loader.SkillLoader;
 import com.retailcortex.castor.loader.SkillDefinition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.Map;
 
 public class AgentApplication {
+    private static final Logger logger = LoggerFactory.getLogger(AgentApplication.class);
+
     public static void main(String[] args) throws Exception {
-        // Load pre-compiled manifest bundled directly in JAR classpath
-        try (InputStream is = AgentApplication.class.getResourceAsStream("/skills_manifest.json")) {
-            if (is != null) {
-                Map<String, SkillDefinition> skills = SkillLoader.loadSkillsFromStream(is);
-                System.out.printf("Instantly loaded %d skills from classpath manifest.%n", skills.size());
-            }
-        }
+        // Load pre-compiled manifest from target directory
+        Path manifestPath = Path.of("target/classes/skills_manifest.json");
+        Map<String, SkillDefinition> skills = SkillLoader.loadSkillsFromManifest(manifestPath);
+        logger.info("Instantly loaded {} skills from pre-compiled manifest.", skills.size());
     }
 }
 ```
@@ -191,10 +190,14 @@ package com.company.agent;
 
 import com.retailcortex.castor.loader.SkillRegistry;
 import com.retailcortex.castor.loader.SkillDefinition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class SkillSuggester {
+    private static final Logger logger = LoggerFactory.getLogger(SkillSuggester.class);
+
     public static void main(String[] args) {
         SkillRegistry registry = new SkillRegistry();
 
@@ -206,7 +209,7 @@ public class SkillSuggester {
         );
 
         for (SkillDefinition s : suggested) {
-            System.out.printf("- %s: %s%n", s.getName(), s.getDescription());
+            logger.info("- {}: {}", s.getName(), s.getDescription());
         }
     }
 }
@@ -224,10 +227,14 @@ package com.company.agent;
 import com.retailcortex.castor.loader.SkillRegistry;
 import com.retailcortex.castor.loader.SkillDefinition;
 import com.google.adk.agent.Agent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class ADKAgentRunner {
+    private static final Logger logger = LoggerFactory.getLogger(ADKAgentRunner.class);
+
     public static void main(String[] args) throws Exception {
         String serverUrl = System.getProperty("castor.server.url",
                 System.getenv().getOrDefault("CASTOR_SERVER_URL", "http://localhost:8000"));
@@ -252,7 +259,7 @@ public class ADKAgentRunner {
 
         // 3. Execute ADK agent request
         String response = agent.execute(prompt);
-        System.out.println("ADK Agent Response:\n" + response);
+        logger.info("ADK Agent Response:\n{}", response);
     }
 }
 ```

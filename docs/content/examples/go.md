@@ -12,12 +12,12 @@ This section details the Go integration examples in `examples/go/`, covering sta
 
 ## 1. Standalone Go Client Example
 
-Located at `examples/go/client`, this example demonstrates how a standalone Go application loads server configuration using `modenv` and resolves skills dynamically via `skillsloader`.
+Located at `examples/go/client`, this example demonstrates how a standalone Go application loads server configuration using `modenv` and resolves skills dynamically via `castor_client`.
 
 ### Key Features & Design
 - **Zero Bazel Dependency for Native Go**: Contains its own `go.mod` module definition utilizing local relative replaces (`replace github.com/retail-cortex/castor => ../../../`).
 - **Cascading TOML Property Resolution**: Uses [`github.com/rrmcguinness/modenv/pkg/modenv`](https://github.com/rrmcguinness/modenv) to load settings from `configs/.env.toml` with environment variable overrides.
-- **Dynamic Skills Discovery**: Initializes `skillsloader.LoadSkillsFromRoots` and queries `skillsloader.LoadSkillsFromPackage`.
+- **Dynamic Skills Discovery**: Initializes `castor_client.LoadSkillsFromRoots` and queries `castor_client.LoadSkillsFromPackage`.
 
 ### Project Layout
 
@@ -27,7 +27,7 @@ examples/go/client/
 ├── configs/
 │   └── .env.toml            # Cascading TOML properties (castor.server.url, etc.)
 ├── go.mod                   # Standalone Go module configuration
-├── main.go                  # Application entry point using modenv & skillsloader
+├── main.go                  # Application entry point using modenv & castor_client
 └── main_test.go             # Native Go unit test suite
 ```
 
@@ -37,30 +37,54 @@ examples/go/client/
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"os"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 	"github.com/rrmcguinness/modenv/pkg/modenv"
 )
 
+type AppConfig struct {
+	Castor struct {
+		ServerURL string `toml:"server_url"`
+		APIKey    string `toml:"api_key"`
+	} `toml:"castor"`
+}
+
+func LoadConfiguration() (*AppConfig, error) {
+	os.Setenv("MODENV_PREFIX", "configs")
+	var cfg AppConfig
+	if _, err := modenv.Load(&cfg); err != nil {
+		return nil, fmt.Errorf("modenv load error: %w", err)
+	}
+	if cfg.Castor.ServerURL == "" {
+		cfg.Castor.ServerURL = "http://localhost:8080"
+	}
+	return &cfg, nil
+}
+
+func Run(ctx context.Context) error {
+	cfg, err := LoadConfiguration()
+	if err != nil {
+		log.Printf("Notice: modenv configuration notice: %v", err)
+		cfg = &AppConfig{}
+		cfg.Castor.ServerURL = "http://localhost:8080"
+	}
+
+	fmt.Printf("Loaded Castor Server URL from modenv: %s\n", cfg.Castor.ServerURL)
+
+	// Demonstrate polyglot URI parsing
+	scheme, target, ref, subpath := castor_client.ParseSkillRootURI("castor://skills/example.com/testing/test-skill/1.0.0")
+	fmt.Printf("Parsed URI: scheme=%s target=%s ref=%s subpath=%s\n", scheme, target, ref, subpath)
+
+	return nil
+}
+
 func main() {
-	// 1. Cascading TOML Configuration via modenv
-	cfg, err := modenv.Load("configs/.env.toml")
-	if err != nil {
-		fmt.Printf("Defaulting configuration: %v\n", err)
-	}
-
-	serverURL := cfg.GetString("castor.server.url", "http://localhost:8080")
-	fmt.Printf("Connected to Castor Server at: %s\n", serverURL)
-
-	// 2. Load Enterprise Skills
-	skills, err := skillsloader.LoadSkillsFromPackage("retailcortex_skills_go", []string{"go-project-setup"})
-	if err != nil {
-		panic(err)
-	}
-
-	for name, def := range skills {
-		fmt.Printf("Loaded Go Skill [%s]: %s\n", name, def.Description)
+	if err := Run(context.Background()); err != nil {
+		log.Fatalf("Go Client Example failed: %v", err)
 	}
 }
 ```

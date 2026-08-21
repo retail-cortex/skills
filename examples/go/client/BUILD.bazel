@@ -7,7 +7,7 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/retail-cortex/castor/examples/go/client",
     deps = [
-        "//clients/go/pkg/skillsloader",
+        "//clients/go/pkg/castor_client",
         "@com_github_rrmcguinness_modenv//pkg/modenv",
     ],
 )

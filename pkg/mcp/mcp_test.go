@@ -35,9 +35,9 @@ func TestMCPServerHandlers(t *testing.T) {
 	require.NoError(t, err)
 
 	appsSvc := service.NewAppsService()
-	skillsSvc := service.NewSkillsService()
+	castorSvc := service.NewCastorService()
 
-	s := mcpServer.NewMCPServer(appsSvc, skillsSvc)
+	s := mcpServer.NewMCPServer(appsSvc, castorSvc)
 	require.NotNil(t, s)
 	assert.NotNil(t, s.Server())
 

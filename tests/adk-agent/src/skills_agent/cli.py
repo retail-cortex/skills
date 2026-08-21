@@ -29,7 +29,7 @@ if str(pkg_root) not in sys.path:
     sys.path.insert(0, str(pkg_root))
 
 from skills_agent.agent import ADKProgrammingAgent, InMemorySessionService, InvocationContext, Session
-from loader import SkillRegistry, find_registry_root
+from castor_client import SkillRegistry, find_registry_root
 
 
 class InteractiveAgentCLI:

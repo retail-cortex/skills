@@ -7,7 +7,7 @@ go_library(
     srcs = ["installer.go"],
     importpath = "github.com/retail-cortex/castor/internal/installer",
     deps = [
-        "//clients/go/pkg/skillsloader",
+        "//clients/go/pkg/castor_client",
     ],
 )
 

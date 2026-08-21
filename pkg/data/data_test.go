@@ -206,11 +206,11 @@ func TestAppsRepository(t *testing.T) {
 	assert.Len(t, membersAfterDelete, 1)
 }
 
-func TestSkillsRepository(t *testing.T) {
+func TestCastorRepository(t *testing.T) {
 	setupTestDB(t)
 	db := data.GetDB()
 	appsRepo := data.NewAppsRepository()
-	skillsRepo := data.NewSkillsRepository()
+	skillsRepo := data.NewCastorRepository()
 
 	// Register and verify app
 	appRes, err := appsRepo.RegisterApp(db, model.AppRegisterRequest{

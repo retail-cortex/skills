@@ -72,12 +72,11 @@ This documentation site is organized into logical sections:
 The project is governed by a root [MODULE.bazel](https://github.com/retail-cortex/castor/blob/main/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
 
 ```text
-skill-builder/
+castor/
 ├── MODULE.bazel               # Bazel 9.2 Bzlmod module definition
 ├── BUILD.bazel                # Root Bazel aliases and targets
 ├── pyproject.toml             # Root uv workspace configuration
-├── hugo.toml                  # Hugo Geekdoc documentation site configuration
-├── docs/                      # Documentation site source files
+├── docs/                      # Documentation site source files (hugo.toml, content/)
 ├── cmd/                       # Microservice & CLI entry points
 │   ├── cstr/                  # Castor CLI (cstr) Go package manager
 │   └── castor-server/         # Central Go REST, MCP, and gRPC Castor Registry service
@@ -90,11 +89,13 @@ skill-builder/
 │   ├── model/                 # Shared domain data models and pagination DTOs
 │   └── service/               # Application services & background embedding workers
 ├── proto/                     # Protocol Buffers IDL contracts
-│   └── retailcortex/          # Enterprise service definitions (skills, registration)
+│   └── castor/
+│       ├── skills/v1/         # Core domain & service definitions (manifest, skill, skill_service)
+│       └── registration/v1/   # App registration & RBAC service definitions
 ├── clients/                   # Polyglot Client SDKs & Build Plugins
-│   ├── go/                    # Go client (skillsloader) with //go:generate
-│   ├── java/                  # Java client & skills-loader-maven-plugin
-│   └── python/                # Python client (castor-loader) with PEP 517 build_meta
+│   ├── go/                    # Go client (castor_client) with //go:generate
+│   ├── java/                  # Java client & castor-client Maven plugin
+│   └── python/                # Python client (castor-client) with PEP 517 build_meta
 ├── examples/                  # Language integration examples & skill packages
 │   ├── go/                    # Standalone Go client & Go skill collection
 │   ├── java/                  # Standalone Java client & Java skill collection

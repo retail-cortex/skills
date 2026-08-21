@@ -71,7 +71,7 @@ except ImportError:
 import time
 from skills_agent.agent import ADKProgrammingAgent, InMemorySessionService, Session
 from skills_agent.types import AgentPromptRequest
-from loader import SkillRegistry, SkillSummary
+from castor_client import SkillRegistry, SkillSummary
 
 
 class TokenBucketRateLimiter:

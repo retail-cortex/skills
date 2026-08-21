@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "castor-loader"
+name = "castor-client"
 version = "1.0.0"
-description = "Castor Registry - Enterprise AI agent skill scanner and loader for Google ADK"
+description = "Castor Registry - Enterprise AI agent skill client for Google ADK"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.13"

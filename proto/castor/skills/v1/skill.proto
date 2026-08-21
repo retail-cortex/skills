@@ -1,0 +1,183 @@
+syntax = "proto3";
+
+package castor.skills.v1;
+
+option go_package = "github.com/retail-cortex/castor/proto/castor/skills/v1;skillsv1";
+option java_package = "com.retailcortex.castor.proto.skills.v1";
+option java_multiple_files = true;
+
+// AuthorDetails represents structured attribution for a skill contributor.
+message AuthorDetails {
+  string name = 1;
+  string email = 2;
+  string url = 3;
+}
+
+// ToolRequirement represents a structured permission contract for agent tool execution.
+message ToolRequirement {
+  string name = 1;           // e.g. "Bash", "Read", "WebSearch"
+  repeated string scopes = 2; // e.g. ["git:*", "uv:*"]
+  string description = 3;     // Rationale for requesting tool execution
+}
+
+// HITLPolicyTier defines the security classification and approval requirements for skill execution.
+enum HITLPolicyTier {
+  HITL_POLICY_TIER_UNSPECIFIED = 0;
+  HITL_POLICY_TIER_0_BYPASS_ALL = 1;      // Bypass all HITL gates for automated/CI executions
+  HITL_POLICY_TIER_1_AUTO_READ = 2;       // Informative/Read-only actions; auto-execute with audit log
+  HITL_POLICY_TIER_2_AUDITED_WRITE = 3;   // Low-risk state changes; auto-execute with snapshot & audit trail
+  HITL_POLICY_TIER_3_MANDATORY_APPROVAL = 4; // High-risk state mutating actions; require explicit user approval gate
+}
+
+// CompiledSkillReference provides a minimized, cryptographically locked representation of a skill.
+message CompiledSkillReference {
+  string skill_id = 1;
+  string name = 2;
+  string description = 3;
+  string sha256_hash = 4;
+  string json_schema = 5;
+  bool strict_schema = 6;                  // Enforces additionalProperties: false
+  repeated string allowed_properties = 7;   // Allowed property extensions when strict_schema is false
+  int32 estimated_tokens = 8;
+  HITLPolicyTier hitl_tier = 9;
+}
+
+// ExecutionHints provides operational parameters for LLM agents, routers, and orchestrators.
+message ExecutionHints {
+  string preferred_model = 1;              // e.g. "gemini-3.1-pro", "gemini-2.0-flash"
+  bool requires_human_approval = 2;         // True if the skill performs high-risk or destructive actions
+  repeated string environment_variables = 3; // Required env vars (e.g. ["GITHUB_TOKEN", "GOPATH"])
+  int32 timeout_seconds = 4;                // Max recommended execution duration in seconds
+  map<string, string> custom_hints = 5;      // Arbitrary key-value execution directives
+  HITLPolicyTier hitl_tier = 6;             // Explicit HITL risk tier
+  bool allow_hitl_bypass = 7;               // Whether this skill permits programmatic HITL bypass
+}
+
+// ScriptLanguage defines supported execution runtimes for skill helper scripts.
+enum ScriptLanguage {
+  SCRIPT_LANGUAGE_UNSPECIFIED = 0;
+  SCRIPT_LANGUAGE_PYTHON = 1;      // Python runtime (uv / virtual environment)
+  SCRIPT_LANGUAGE_TYPESCRIPT = 2;  // TypeScript runtime (Node.js / ts-node / Bun)
+}
+
+// ScriptDefinition specifies an executable helper script attached to a skill.
+message ScriptDefinition {
+  string name = 1;                           // Unique identifier or script name
+  string description = 2;                    // Docstring/rationale for script usage
+  ScriptLanguage language = 3;               // Script runtime language (Python or TypeScript)
+
+  oneof source {
+    string inline_code = 4;                  // Embedded raw source code snippet
+    string storage_uri = 5;                  // Storage location (e.g. gs://bucket/path/script.py)
+    string relative_path = 6;                // Relative path in skill bundle (e.g. scripts/handler.ts)
+  }
+
+  string entry_point = 7;                    // Function or entry handler (e.g. "main", "handler")
+  repeated string dependencies = 8;          // Runtime package dependencies (e.g. ["requests>=2.31.0"])
+  int32 timeout_seconds = 9;                 // Maximum allowed script execution duration
+  map<string, string> environment_variables = 10; // Execution environment variables
+}
+
+// ResourceCategory classifies supported context assets based on Gemini upload capabilities.
+enum ResourceCategory {
+  RESOURCE_CATEGORY_UNSPECIFIED = 0;
+  RESOURCE_CATEGORY_DOCUMENT_TEXT = 1;      // PDF, DOCX, TXT, HTML, Markdown
+  RESOURCE_CATEGORY_VIDEO = 2;              // MP4, MOV, MPEG, WEBM, AVI
+  RESOURCE_CATEGORY_AUDIO = 3;              // MP3, WAV, AAC, FLAC, M4A
+  RESOURCE_CATEGORY_IMAGE = 4;              // PNG, JPEG, WebP, HEIC, HEIF
+  RESOURCE_CATEGORY_CODE_REPO = 5;          // ZIP archive, GitHub Repository link
+}
+
+// ResourceStorageLocation details storage pointers and Gemini Files API references.
+message ResourceStorageLocation {
+  string gcs_uri = 1;                        // Remote Cloud Storage URI (e.g. gs://bucket/skill-assets/doc.pdf)
+  string public_url = 2;                     // Direct HTTP/HTTPS fallback URL
+  string gemini_files_api_name = 3;          // Gemini Files API resource name (e.g. files/abc123xyz)
+  string gemini_files_api_uri = 4;           // Gemini Files API URI for direct developer API ingestion
+  int64 size_bytes = 5;                      // File size in bytes
+  string mime_type = 6;                      // Content MIME type (e.g. "application/pdf", "image/png")
+  string sha256_hash = 7;                    // Cryptographic hash for verification
+}
+
+// ResourceInterpretation captures extracted textual representations generated by resource interpreters.
+message ResourceInterpretation {
+  string interpreted_text = 1;               // Detailed text/markdown extraction (e.g. OCR text, transcripts, summaries)
+  string summary = 2;                        // Concise summary of the resource content
+  repeated string key_entities = 3;          // Extracted entities, keywords, or domain tags
+  map<string, string> metadata = 4;          // Extracted metadata (e.g. duration_seconds, resolution, page_count)
+}
+
+// ResourceRequirement represents a structured context asset required by a skill.
+message ResourceRequirement {
+  string id = 1;                             // Unique identifier for the resource within the skill
+  string name = 2;                           // Display name or title
+  string description = 3;                    // Purpose of the resource in skill execution
+  ResourceCategory category = 4;             // Asset classification category
+  string mime_type = 5;                      // Resource MIME type
+  
+  ResourceStorageLocation storage = 6;       // Remote storage pointers (GCS / Files API)
+  string inline_content = 7;                 // Lightweight inline text/markdown content (< 100KB)
+  ResourceInterpretation interpretation = 8;  // Pre-computed text interpretation for LLM context
+  bool auto_inject_context = 9;              // Whether to automatically inject interpreted context into LLM prompt
+}
+
+// SkillDefinition defines the core structural model for an enterprise AI agent skill.
+message SkillDefinition {
+  string name = 1;
+  string description = 2;
+  string instructions = 3;
+  string license = 4;
+  
+  // Attribution
+  string author = 5;                     // Legacy single-string author for backward compatibility
+  repeated AuthorDetails authors = 13;   // Strongly-typed list of contributors
+
+  string version = 6;
+  string compatibility = 7;
+  
+  // Tool Permissions & Security Contracts
+  string allowed_tools = 8;              // Legacy flat string for backward compatibility
+  repeated ToolRequirement tool_requirements = 14; // Strongly-typed tool permissions
+
+  map<string, string> metadata = 9;
+  map<string, string> references = 10;
+  map<string, string> examples = 11;
+  string path = 12;
+
+  // Categorization & Intent Triggers
+  string category = 15;                  // Domain category (e.g. "devops", "database", "python")
+  repeated string tags = 16;             // Search tags for fast registry discovery
+  repeated string trigger_phrases = 17;   // Explicit phrases or intent triggers (e.g. "scaffold Go microservice")
+
+  // Agent Execution Guidelines
+  ExecutionHints execution_hints = 18;    // Operational hints for LLM orchestrators
+  CompiledSkillReference compiled_reference = 19; // Optional pre-compiled reference pointer
+
+  // Executable Scripts & Multimodal Resources
+  repeated ScriptDefinition scripts = 20;     // Helper scripts (Python or TypeScript only)
+  repeated ResourceRequirement resources = 21; // Multimodal context resources & assets
+
+  // Registration & Server Provenance
+  string skill_id = 22;                       // Generated unique skill identifier (e.g. sk-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3d0123)
+  string uri = 23;                            // Canonical registered URI (e.g. skm://skills/sk-9b1deb4d)
+  string source_uri = 24;                     // Original registration source (e.g. github://google/skills@main/tree/main/skills/cloud/gemini-api)
+}
+
+// SkillSummary provides a lightweight summary of a skill definition for listing and discovery.
+message SkillSummary {
+  string name = 1;
+  string description = 2;
+  int32 reference_count = 3;
+  int32 example_count = 4;
+  string path = 5;
+  string category = 6;
+  repeated string tags = 7;
+  repeated string trigger_phrases = 8;
+  string sha256_hash = 9;
+  HITLPolicyTier hitl_tier = 10;
+  int32 script_count = 11;
+  int32 resource_count = 12;
+  string skill_id = 13;
+  string uri = 14;
+  string source_uri = 15;
+}

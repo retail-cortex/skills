@@ -58,11 +58,11 @@ func TestAppsService(t *testing.T) {
 	assert.Equal(t, regRes.AppID, app.AppID)
 }
 
-func TestSkillsService(t *testing.T) {
+func TestCastorService(t *testing.T) {
 	db := setupTestDB(t)
 	appsSvc := service.NewAppsService()
-	customSkillsRepo := data.NewSkillsRepository()
-	skillsSvc := service.NewSkillsService(customSkillsRepo)
+	customSkillsRepo := data.NewCastorRepository()
+	skillsSvc := service.NewCastorService(customSkillsRepo)
 
 	regRes, err := appsSvc.RegisterApp(db, model.AppRegisterRequest{
 		AppName: "svc-skills-app",

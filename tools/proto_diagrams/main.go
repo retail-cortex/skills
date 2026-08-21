@@ -49,10 +49,10 @@ func main() {
 	}
 
 	protoDirs := []string{
-		filepath.Join(workspaceRoot, "proto", "retailcortex", "castor", "v1"),
-		filepath.Join(workspaceRoot, "proto", "retailcortex", "registration", "v1"),
+		filepath.Join(workspaceRoot, "proto", "castor", "skills", "v1"),
+		filepath.Join(workspaceRoot, "proto", "castor", "registration", "v1"),
 	}
-	outDir := filepath.Join(workspaceRoot, "docs", "architecture")
+	outDir := filepath.Join(workspaceRoot, "docs", "content", "architecture")
 
 	for _, protoDir := range protoDirs {
 		fmt.Printf("Generating Mermaid architecture diagrams from %s/*.proto...\n", protoDir)
@@ -64,5 +64,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("Protobuf diagrams generated successfully in docs/architecture/")
+	fmt.Println("Protobuf diagrams generated successfully in docs/content/architecture/")
 }

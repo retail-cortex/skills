@@ -19,7 +19,7 @@ import json
 import random
 from typing import AsyncGenerator, Callable, Dict, List, Optional
 
-from loader import SkillDefinition, SkillRegistry
+from castor_client import SkillDefinition, SkillRegistry
 
 
 class ToolContext:

@@ -1,0 +1,40 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "castor_client",
+    srcs = [
+        "loader.go",
+        "types.go",
+    ],
+    importpath = "github.com/retail-cortex/castor/clients/go/pkg/castor_client",
+    deps = [
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+alias(
+    name = "castorclient",
+    actual = ":castor_client",
+)
+
+go_test(
+    name = "castor_client_test",
+    size = "small",
+    srcs = [
+        "loader_test.go",
+        "types_test.go",
+    ],
+    data = ["//:skills_data"],
+    embed = [":castor_client"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)
+
+alias(
+    name = "castorclient_test",
+    actual = ":castor_client_test",
+)

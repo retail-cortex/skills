@@ -14,7 +14,7 @@
 
 """Backward-compatible re-export module delegating to the standalone skills-loader package."""
 
-from loader import (
+from castor_client import (
     SkillDefinition,
     SkillRegistry,
     SkillSummary,

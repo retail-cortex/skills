@@ -9,9 +9,9 @@ The Castor repository is structured into backend microservices, standalone CLI t
 
 ---
 
-## 1. Backend Microservice (`cmd/castor-server`)
+## 1. Backend Microservice (`cmd/castor_server`)
 
-`castor-server` is the central enterprise `Castor Registry` backend microservice written in Go (`cmd/castor-server`).
+`castor-server` is the central enterprise `Castor Registry` backend microservice written in Go (`cmd/castor_server`).
 
 ### Key Capabilities
 
@@ -60,9 +60,9 @@ bazel build //cmd/cstr:cstr_binaries
 
 Client libraries integrate directly into native build cycles to validate, resolve, and package skills into application artifacts:
 
-1. **Go Client (`clients/go/pkg/skillsloader`)**: Go module loader, `//go:generate` pre-compilation, `modenv` property loading, and `rules_go` Bazel rules.
-2. **Java Client (`clients/java`)**: Java client and native Maven Plugin (`skills-loader-maven-plugin` / `GenerateManifestMojo`), binding to `mvn compile`, Java System properties (`System.getProperty`), and `rules_jvm_external`.
-3. **Python Client (`clients/python`)**: Python loader package (`castor-loader`) with PEP 517 build backend wrapper (`loader.build_meta`), binding to `uv build` / `pip install`, `python-dotenv`, and `rules_python`.
+1. **Go Client (`clients/go/pkg/castor_client`)**: Go module client (`castor_client`), `//go:generate` pre-compilation, `modenv` property loading, and `rules_go` Bazel rules.
+2. **Java Client (`clients/java`)**: Java client (`com.retailcortex.castor.client`) and native Maven Plugin (`castor-client` / `GenerateManifestMojo`), binding to `mvn compile`, Java System properties (`System.getProperty`), and `rules_jvm_external`.
+3. **Python Client (`clients/python`)**: Python client package (`castor-client`) with PEP 517 build backend wrapper (`castor_client.build_meta`), binding to `uv build` / `pip install`, `python-dotenv`, and `rules_python`.
 
 ---
 
@@ -70,13 +70,13 @@ Client libraries integrate directly into native build cycles to validate, resolv
 
 The backend microservice and client tooling rely on shared Go libraries in `pkg/`:
 
-- **[`pkg/embedding`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go)**: Standardized embedding provider interfaces ([`embedding.Provider`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L26)), sliding-window chunking algorithms ([`SplitTextIntoChunks`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L70)), cosine similarity computations, and deterministic offline vector simulation.
-  - **[`pkg/embedding/vertex`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/vertex/vertex.go)**: Google Vertex AI (`multimodalembedding`, `text-embedding-004`) and Gemini Developer API provider with cached OAuth2 ADC authentication.
-  - **[`pkg/embedding/alloydb`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/alloydb/alloydb.go)**: Google Cloud AlloyDB AI in-database SQL embedding provider (`SELECT embedding(...)`).
-- **[`pkg/data`](file:///Users/rmcguinness/Projects/skill-builder/pkg/data/skills_repository.go)**: GORM persistence repository supporting SQLite and PostgreSQL/AlloyDB `pgvector` poly-column vector schemas (`embedding_768`, `embedding_1408`, `embedding_3072`) with HNSW index management.
-- **[`pkg/mcp`](file:///Users/rmcguinness/Projects/skill-builder/pkg/mcp/server.go)**: Model Context Protocol (MCP) server integration supporting SSE and stdio transports for autonomous AI agent tool execution.
-- **[`pkg/service`](file:///Users/rmcguinness/Projects/skill-builder/pkg/service/skills_service.go)**: Business logic services for skill management, application registration, OpenTelemetry distributed tracing, and non-blocking background embedding worker pools.
-- **[`pkg/model`](file:///Users/rmcguinness/Projects/skill-builder/pkg/model/skill.go)**: Domain data structures, DTOs, and REST pagination envelope models.
+- **[`pkg/embedding`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/provider.go)**: Standardized embedding provider interfaces ([`embedding.Provider`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/provider.go#L26)), sliding-window chunking algorithms ([`SplitTextIntoChunks`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/provider.go#L70)), cosine similarity computations, and deterministic offline vector simulation.
+  - **[`pkg/embedding/vertex`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/vertex/vertex.go)**: Google Vertex AI (`multimodalembedding`, `text-embedding-004`) and Gemini Developer API provider with cached OAuth2 ADC authentication.
+  - **[`pkg/embedding/alloydb`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/alloydb/alloydb.go)**: Google Cloud AlloyDB AI in-database SQL embedding provider (`SELECT embedding(...)`).
+- **[`pkg/data`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/data/castor_repository.go)**: GORM persistence repository ([`CastorRepository`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/data/castor_repository.go#L24)) supporting SQLite and PostgreSQL/AlloyDB `pgvector` poly-column vector schemas (`embedding_768`, `embedding_1408`, `embedding_3072`) with HNSW index management.
+- **[`pkg/mcp`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/mcp/server.go)**: Model Context Protocol (MCP) server integration supporting SSE and stdio transports for autonomous AI agent tool execution.
+- **[`pkg/service`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/service/castor_service.go)**: Business logic service ([`CastorService`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/service/castor_service.go#L44)) for skill management, application registration, OpenTelemetry distributed tracing, and non-blocking background embedding worker pools.
+- **[`pkg/model`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/model/skill.go)**: Domain data structures, DTOs, and REST pagination envelope models.
 
 ---
 
@@ -84,7 +84,7 @@ The backend microservice and client tooling rely on shared Go libraries in `pkg/
 
 The authoritative service IDL and domain contracts are defined in Protocol Buffers:
 
-- `proto/retailcortex/skills/v1/skill.proto`: Core domain definitions (`SkillDefinition`, `SkillSummary`).
-- `proto/retailcortex/skills/v1/skill_service.proto`: gRPC and REST endpoints for `SkillService`.
-- `proto/retailcortex/registration/v1/registration_service.proto`: Application verification endpoints.
-- `proto/retailcortex/skills/v1/manifest.proto`: Manifest serialization contracts.
+- `proto/castor/skills/v1/skill.proto`: Core domain definitions (`SkillDefinition`, `SkillSummary`).
+- `proto/castor/skills/v1/skill_service.proto`: gRPC and REST endpoints for `SkillService`.
+- `proto/castor/registration/v1/registration_service.proto`: Application verification and RBAC collaborator endpoints.
+- `proto/castor/skills/v1/manifest.proto`: Manifest serialization contracts.

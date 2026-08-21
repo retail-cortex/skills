@@ -20,7 +20,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 	"github.com/rrmcguinness/modenv/pkg/modenv"
 )
 
@@ -63,7 +63,7 @@ func Run(ctx context.Context) error {
 	fmt.Printf("Loaded Castor Server URL from modenv: %s\n", cfg.Castor.ServerURL)
 
 	// Demonstrate polyglot URI parsing
-	scheme, target, ref, subpath := skillsloader.ParseSkillRootURI("castor://skills/example.com/testing/test-skill/1.0.0")
+	scheme, target, ref, subpath := castor_client.ParseSkillRootURI("castor://skills/example.com/testing/test-skill/1.0.0")
 	fmt.Printf("Parsed URI: scheme=%s target=%s ref=%s subpath=%s\n", scheme, target, ref, subpath)
 
 	return nil

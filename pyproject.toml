@@ -5,7 +5,7 @@ description = "Castor - Enterprise Project Pattern Registry for AI Agent Skills"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "castor-loader",
+    "castor-client",
 ]
 
 [project.scripts]
@@ -30,6 +30,7 @@ where = [
 package = true
 
 [tool.uv.sources]
+castor-client = { path = "clients/python" }
 castor-loader = { path = "clients/python" }
 retailcortex-loader = { path = "clients/python" }
 

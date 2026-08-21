@@ -3,22 +3,22 @@ title: "Python Client & Build Integration"
 weight: 30
 ---
 
-# Python Client & `uv` Build Integration (`loader.build_meta`)
+# Python Client & `uv` Build Integration (`castor_client.build_meta`)
 
-The Python client (`castor-loader`) implements a **PEP 517/518 build backend wrapper** (`loader.build_meta`) alongside high-performance **JIT Dynamic Pre-Call Retrieval** for Google ADK agents.
+The Python client (`castor-client`) implements a **PEP 517/518 build backend wrapper** (`castor_client.build_meta`) alongside high-performance **JIT Dynamic Pre-Call Retrieval** for Google ADK agents.
 
-By declaring `loader.build_meta` in your project's `pyproject.toml`, native Python package managers (`uv build`, `pip install .`, `build`) execute pre-build hooks that download, audit, and stage skill dependencies into the package tree prior to generating wheels (`.whl`) or source distributions (`.tar.gz`).
+By declaring `castor_client.build_meta` in your project's `pyproject.toml`, native Python package managers (`uv build`, `pip install .`, `build`) execute pre-build hooks that download, audit, and stage skill dependencies into the package tree prior to generating wheels (`.whl`) or source distributions (`.tar.gz`).
 
 ---
 
 ## 1. Native `uv` & PEP 517 Build Integration (`pyproject.toml`)
 
-Configure `loader.build_meta` as your project's build backend in `pyproject.toml`:
+Configure `castor_client.build_meta` as your project's build backend in `pyproject.toml`:
 
 ```toml
 [build-system]
-requires = ["castor-loader>=1.0.0", "setuptools>=68.0.0"]
-build-backend = "loader.build_meta"
+requires = ["castor-client>=1.0.0", "setuptools>=68.0.0"]
+build-backend = "castor_client.build_meta"
 
 [project]
 name = "my-enterprise-agent"
@@ -28,11 +28,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "google-adk>=0.1.0",
-    "castor-loader>=1.0.0",
+    "castor-client>=1.0.0",
     "pydantic>=2.7.0",
 ]
 
-[tool.castor-loader]
+[tool.castor-client]
 # Target staging directory inside python package tree
 dest = "src/my_enterprise_agent/.skills"
 # Skill root URIs to resolve and package during build
@@ -45,8 +45,8 @@ dependencies = [
 
 ### What Happens During `uv build` or `pip install .`:
 
-1. **PEP 517 Hook Interception**: When `uv build` or `pip install` executes, the `loader.build_meta` build backend intercepts the build process (`build_wheel`, `build_sdist`, `prepare_metadata_for_build_wheel`).
-2. **Dependency Resolution**: Reads `[tool.castor-loader.dependencies]` and downloads/resolves all specified skills from Castor Registry servers, GitHub, or local paths.
+1. **PEP 517 Hook Interception**: When `uv build` or `pip install` executes, the `castor_client.build_meta` build backend intercepts the build process (`build_wheel`, `build_sdist`, `prepare_metadata_for_build_wheel`).
+2. **Dependency Resolution**: Reads `[tool.castor-client.dependencies]` and downloads/resolves all specified skills from Castor Registry servers, GitHub, or local paths.
 3. **SDLC Audit Gate**: Performs 5-point SDLC checks. If validation fails, **the build terminates with an error**.
 4. **Staging & Packaging**: Stages resolved skills into `dest` (`src/my_enterprise_agent/.skills/`), ensuring they are packaged directly into the final `.whl` artifact.
 
@@ -57,7 +57,7 @@ dependencies = [
 In autonomous ADK agent workflows, loading all tools statically can cause context window bloat and tool hallucinations. `SkillRegistry.suggest_skills()` performs JIT semantic retrieval to rank and bound relevant skills to at most $k \le 3$:
 
 ```python
-from loader import SkillRegistry
+from castor_client import SkillRegistry
 
 # Initialize registry from workspace or embedded package tree
 registry = SkillRegistry()

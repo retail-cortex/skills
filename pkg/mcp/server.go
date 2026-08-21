@@ -26,21 +26,21 @@ import (
 )
 
 type MCPServer struct {
-	server       *server.MCPServer
-	appsService  *service.AppsService
-	skillService *service.SkillsService
+	server        *server.MCPServer
+	appsService   *service.AppsService
+	castorService *service.CastorService
 }
 
-func NewMCPServer(appsSvc *service.AppsService, skillSvc *service.SkillsService) *MCPServer {
+func NewMCPServer(appsSvc *service.AppsService, castorSvc *service.CastorService) *MCPServer {
 	s := server.NewMCPServer(
-		"Skills Service MCP",
+		"Castor Service MCP",
 		"1.0.0",
 	)
 
 	mcpSvc := &MCPServer{
-		server:       s,
-		appsService:  appsSvc,
-		skillService: skillSvc,
+		server:        s,
+		appsService:   appsSvc,
+		castorService: castorSvc,
 	}
 
 	mcpSvc.registerTools()
@@ -123,7 +123,7 @@ func (m *MCPServer) registerTools() {
 func (m *MCPServer) HandleSearchSkills(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	query := getArgString(req, "query")
 	db := data.GetDB()
-	results, err := m.skillService.ListSkills(db, query)
+	results, err := m.castorService.ListSkills(db, query)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -134,7 +134,7 @@ func (m *MCPServer) HandleSearchSkills(ctx context.Context, req mcp.CallToolRequ
 func (m *MCPServer) HandleGetSkill(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	skillIDOrName := getArgString(req, "skill_id_or_name")
 	db := data.GetDB()
-	res, err := m.skillService.GetSkill(db, skillIDOrName)
+	res, err := m.castorService.GetSkill(db, skillIDOrName)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -186,7 +186,7 @@ func (m *MCPServer) HandleRegisterSkill(ctx context.Context, req mcp.CallToolReq
 		cat = "general"
 	}
 
-	res, err := m.skillService.CreateSkill(db, app.AppID, model.SkillCreateRequest{
+	res, err := m.castorService.CreateSkill(db, app.AppID, model.SkillCreateRequest{
 		Name:         name,
 		Description:  description,
 		Instructions: instructions,
@@ -217,7 +217,7 @@ func (m *MCPServer) HandleUpdateSkill(ctx context.Context, req mcp.CallToolReque
 		updateReq.Instructions = &inst
 	}
 
-	res, err := m.skillService.UpdateSkill(db, skillID, app.AppID, updateReq, false)
+	res, err := m.castorService.UpdateSkill(db, skillID, app.AppID, updateReq, false)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -235,7 +235,7 @@ func (m *MCPServer) HandleDeleteSkill(ctx context.Context, req mcp.CallToolReque
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	res, err := m.skillService.DeleteSkill(db, skillID, app.AppID)
+	res, err := m.castorService.DeleteSkill(db, skillID, app.AppID)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}

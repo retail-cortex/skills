@@ -3,7 +3,7 @@ load("@rules_java//java:defs.bzl", "java_library", "java_test")
 package(default_visibility = ["//visibility:public"])
 
 java_library(
-    name = "skills_loader_java",
+    name = "castor_client_java",
     srcs = glob(["src/main/java/**/*.java"]),
     data = [
         "//:skills_data",
@@ -30,13 +30,23 @@ java_library(
     ],
 )
 
+alias(
+    name = "castor_client",
+    actual = ":castor_client_java",
+)
+
+alias(
+    name = "skills_loader_java",
+    actual = ":castor_client_java",
+)
+
 java_test(
-    name = "skills_loader_java_test",
+    name = "castor_client_java_test",
     size = "small",
     srcs = glob(["src/test/java/**/*.java"]),
     args = [
         "--select-package",
-        "com.retailcortex.castor.loader",
+        "com.retailcortex.castor",
     ],
     data = [
         "//:skills_data",
@@ -52,7 +62,7 @@ java_test(
     tags = ["local"],
     use_testrunner = False,
     deps = [
-        ":skills_loader_java",
+        ":castor_client_java",
         "@maven//:org_apache_maven_maven_core",
         "@maven//:org_apache_maven_maven_model",
         "@maven//:org_apache_maven_maven_plugin_api",
@@ -66,4 +76,14 @@ java_test(
         "@maven//:org_mockito_mockito_junit_jupiter",
         "@maven//:org_slf4j_slf4j_simple",
     ],
+)
+
+alias(
+    name = "castor_client_test",
+    actual = ":castor_client_java_test",
+)
+
+alias(
+    name = "skills_loader_java_test",
+    actual = ":castor_client_java_test",
 )

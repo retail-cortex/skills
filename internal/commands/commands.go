@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 	"github.com/retail-cortex/castor/internal/installer"
 	"github.com/retail-cortex/castor/pkg/model"
 	"github.com/retail-cortex/castor/pkg/validator"
@@ -413,7 +413,7 @@ func runList(args []string, stdout, stderr io.Writer) int {
 		if isDir(".skills") {
 			scanDir = ".skills"
 		} else {
-			scanDir = skillsloader.FindRegistryRoot()
+			scanDir = castor_client.FindRegistryRoot()
 		}
 	}
 
@@ -423,9 +423,9 @@ func runList(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	summaries := make([]skillsloader.SkillSummary, 0, len(skills))
+	summaries := make([]castor_client.SkillSummary, 0, len(skills))
 	for _, s := range skills {
-		summaries = append(summaries, skillsloader.SkillSummary{
+		summaries = append(summaries, castor_client.SkillSummary{
 			Name:           s.Name,
 			Description:    s.Description,
 			ReferenceCount: len(s.References),
@@ -577,7 +577,7 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 		if isDir(".skills") {
 			scanDir = ".skills"
 		} else {
-			scanDir = skillsloader.FindRegistryRoot()
+			scanDir = castor_client.FindRegistryRoot()
 		}
 	}
 
@@ -587,7 +587,7 @@ func runSearch(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	var matches []*skillsloader.SkillDefinition
+	var matches []*castor_client.SkillDefinition
 	for _, s := range skills {
 		if strings.Contains(strings.ToLower(s.Name), queryLower) ||
 			strings.Contains(strings.ToLower(s.Description), queryLower) ||
@@ -749,7 +749,7 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	report, err := skillsloader.VerifyManifestLock(targetDir)
+	report, err := castor_client.VerifyManifestLock(targetDir)
 	if err != nil {
 		fmt.Fprintf(stderr, "Error verifying skills integrity: %v\n", err)
 		return 1
@@ -835,18 +835,18 @@ complete -c cstr -n "__fish_use_subcommand" -a "add verify validate list search 
 	return 0
 }
 
-func loadSkillsFromDirectory(scanDir string) (map[string]*skillsloader.SkillDefinition, error) {
-	skills := make(map[string]*skillsloader.SkillDefinition)
+func loadSkillsFromDirectory(scanDir string) (map[string]*castor_client.SkillDefinition, error) {
+	skills := make(map[string]*castor_client.SkillDefinition)
 
 	// Registry attempt
-	reg, err := skillsloader.NewSkillRegistry(scanDir, nil, nil, "")
+	reg, err := castor_client.NewSkillRegistry(scanDir, nil, nil, "")
 	if err == nil && len(reg.Skills()) > 0 {
 		return reg.Skills(), nil
 	}
 
 	// Direct check on scanDir
 	if isFile(filepath.Join(scanDir, "SKILL.md")) {
-		s, err := skillsloader.LoadSkillFromDir(scanDir)
+		s, err := castor_client.LoadSkillFromDir(scanDir)
 		if err == nil && s != nil {
 			skills[s.Name] = s
 		}
@@ -860,7 +860,7 @@ func loadSkillsFromDirectory(scanDir string) (map[string]*skillsloader.SkillDefi
 			if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 				sub := filepath.Join(scanDir, entry.Name())
 				if isFile(filepath.Join(sub, "SKILL.md")) {
-					s, err := skillsloader.LoadSkillFromDir(sub)
+					s, err := castor_client.LoadSkillFromDir(sub)
 					if err == nil && s != nil {
 						skills[s.Name] = s
 					}
@@ -905,7 +905,7 @@ func runCompile(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	manifestPath, err := skillsloader.BuildSkillsManifest(targetDir, output)
+	manifestPath, err := castor_client.BuildSkillsManifest(targetDir, output)
 	if err != nil {
 		fmt.Fprintf(stderr, "Failed to compile skills manifest: %v\n", err)
 		return 1

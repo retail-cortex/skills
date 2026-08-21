@@ -1,32 +1,32 @@
-# Package: retailcortex.castor.v1
+# Package: castor.skills.v1
 
 
 
 
 ## Imports
 
-| Import                             | Description |
-|------------------------------------|-------------|
-| retailcortex/skills/v1/skill.proto |             |
+| Import                       | Description |
+|------------------------------|-------------|
+| castor/skills/v1/skill.proto |             |
 
 
 
 ## Options
 
-| Name                | Value                                                        | Description |
-|---------------------|--------------------------------------------------------------|-------------|
-| go_package          | github.com/retail-cortex/castor/proto/retailcortex/skills/v1 |             |
-| java_package        | com.retailcortex.castor.proto.retailcortex.castor.v1         |             |
-| java_multiple_files | true                                                         |             |
+| Name                | Value                                                  | Description |
+|---------------------|--------------------------------------------------------|-------------|
+| go_package          | github.com/retail-cortex/castor/proto/castor/skills/v1 |             |
+| java_package        | com.retailcortex.castor.proto.skills.v1                |             |
+| java_multiple_files | true                                                   |             |
 
 
 
-### retailcortex.castor.v1 Diagram
+### castor.skills.v1 Diagram
 
 ```mermaid
 classDiagram
 direction LR
-%% Mermaid Diagram for package: retailcortex.castor.v1
+%% Mermaid Diagram for package: castor.skills.v1
 
 %% ListSkillsRequest specifies criteria for querying skills.
 
@@ -125,7 +125,7 @@ SkillService --> `DeleteSkillResponse`
 
 ## Service: SkillService
 
-**FQN**: retailcortex.castor.v1
+**FQN**: castor.skills.v1
 
 SkillService provides gRPC and REST methods for skill discovery and lifecycle management. HTTP Endpoints: - GET /api/v1/skills -> ListSkills - GET /api/v1/skills/{skill_id_or_name} -> GetSkill - POST /api/v1/skills -> RegisterSkill (Header: X-API-Key) - PUT /api/v1/skills/{skill_id} -> ReplaceSkill (Header: X-API-Key) - PATCH /api/v1/skills/{skill_id} -> UpdateSkill (Header: X-API-Key) - DELETE /api/v1/skills/{skill_id} -> DeleteSkill (Header: X-API-Key)
 
@@ -293,7 +293,7 @@ class DeleteSkillResponse {
 
 ## Message: ListSkillsRequest
 
-**FQN**: retailcortex.castor.v1.ListSkillsRequest
+**FQN**: castor.skills.v1.ListSkillsRequest
 
 ListSkillsRequest specifies criteria for querying skills.
 
@@ -307,7 +307,7 @@ ListSkillsRequest specifies criteria for querying skills.
 
 ## Message: ListSkillsResponse
 
-**FQN**: retailcortex.castor.v1.ListSkillsResponse
+**FQN**: castor.skills.v1.ListSkillsResponse
 
 ListSkillsResponse contains a list of matching skill definitions.
 
@@ -321,7 +321,7 @@ ListSkillsResponse contains a list of matching skill definitions.
 
 ## Message: GetSkillRequest
 
-**FQN**: retailcortex.castor.v1.GetSkillRequest
+**FQN**: castor.skills.v1.GetSkillRequest
 
 GetSkillRequest specifies the skill ID or unique name to retrieve.
 
@@ -335,7 +335,7 @@ GetSkillRequest specifies the skill ID or unique name to retrieve.
 
 ## Message: RegisterSkillRequest
 
-**FQN**: retailcortex.castor.v1.RegisterSkillRequest
+**FQN**: castor.skills.v1.RegisterSkillRequest
 
 RegisterSkillRequest contains parameters for creating a new skill.
 
@@ -364,7 +364,7 @@ RegisterSkillRequest contains parameters for creating a new skill.
 
 ## Message: UpdateSkillRequest
 
-**FQN**: retailcortex.castor.v1.UpdateSkillRequest
+**FQN**: castor.skills.v1.UpdateSkillRequest
 
 UpdateSkillRequest contains parameters for modifying an existing skill.
 
@@ -389,7 +389,7 @@ UpdateSkillRequest contains parameters for modifying an existing skill.
 
 ## Message: DeleteSkillRequest
 
-**FQN**: retailcortex.castor.v1.DeleteSkillRequest
+**FQN**: castor.skills.v1.DeleteSkillRequest
 
 DeleteSkillRequest specifies the target skill to delete.
 
@@ -404,7 +404,7 @@ DeleteSkillRequest specifies the target skill to delete.
 
 ## Message: DeleteSkillResponse
 
-**FQN**: retailcortex.castor.v1.DeleteSkillResponse
+**FQN**: castor.skills.v1.DeleteSkillResponse
 
 DeleteSkillResponse contains execution status of skill deletion.
 

@@ -3,9 +3,9 @@ title: "Go Client & Toolchain Integration"
 weight: 20
 ---
 
-# Go Client & Toolchain Integration (`skillsloader`)
+# Go Client & Toolchain Integration (`castor_client`)
 
-The Go client library (`github.com/retail-cortex/castor/clients/go/pkg/skillsloader`) integrates into Go's native build workflows via **`//go:generate` directives**, **`go test` validation hooks**, and **Bazel `rules_go`** targets.
+The Go client library (`github.com/retail-cortex/castor/clients/go/pkg/castor_client`) integrates into Go's native build workflows via **`//go:generate` directives**, **`go test` validation hooks**, and **Bazel `rules_go`** targets.
 
 ---
 
@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 )
 
 // Embed pre-compiled skills manifest into static Go binary
@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("Failed to read embedded manifest: %v", err)
 	}
 
-	skills, err := skillsloader.LoadSkillsFromManifestData(manifestData)
+	skills, err := castor_client.LoadSkillsFromManifestData(manifestData)
 	if err != nil {
 		log.Fatalf("Corrupt manifest: %v", err)
 	}
@@ -76,7 +76,7 @@ go_library(
     embedsrcs = ["skills_manifest.json"],
     importpath = "com.company.agent/lib",
     deps = [
-        "//clients/go/pkg/skillsloader",
+        "//clients/go/pkg/castor_client",
     ],
 )
 
@@ -98,12 +98,12 @@ package main_test
 import (
 	"testing"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSkillsIntegrity(t *testing.T) {
-	report, err := skillsloader.VerifySkills("./skills", "./skills/.manifest.lock")
+	report, err := castor_client.VerifySkills("./skills", "./skills/.manifest.lock")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, report.ModifiedCount, "Skills directory has been tampered with")
 	assert.Equal(t, 0, report.MissingCount, "Skills files are missing")
@@ -122,12 +122,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 )
 
 func main() {
 	// Initialize registry from local workspace or embedded assets
-	registry, err := skillsloader.NewSkillRegistry("", nil, nil, "")
+	registry, err := castor_client.NewSkillRegistry("", nil, nil, "")
 	if err != nil {
 		log.Fatalf("Failed to initialize registry: %v", err)
 	}
@@ -157,7 +157,7 @@ import (
 	"log"
 
 	"github.com/google/adk/agent"
-	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 	"github.com/rrmcguinness/modenv/pkg/modenv"
 )
 
@@ -182,7 +182,7 @@ func main() {
 		serverURL = "http://localhost:8000"
 	}
 
-	registry, _ := skillsloader.NewSkillRegistry("", nil, nil, "")
+	registry, _ := castor_client.NewSkillRegistry("", nil, nil, "")
 
 	// 2. Pre-call prompt grounding: retrieve top 3 skills dynamically
 	prompt := "Synthesize demand forecasting query for store #42"

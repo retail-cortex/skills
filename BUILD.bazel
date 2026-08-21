@@ -26,18 +26,48 @@ alias(
 )
 
 alias(
+    name = "go-client",
+    actual = "//clients/go:castor-client",
+)
+
+alias(
+    name = "castor-client-go",
+    actual = "//clients/go:castor-client",
+)
+
+alias(
     name = "go-loader",
-    actual = "//clients/go/cmd/skills-loader",
+    actual = "//clients/go:castor-client",
+)
+
+alias(
+    name = "python-client",
+    actual = "//clients/python:castor_client",
+)
+
+alias(
+    name = "castor-client-python",
+    actual = "//clients/python:castor_client",
 )
 
 alias(
     name = "python-loader",
-    actual = "//clients/python:loader_lib",
+    actual = "//clients/python:castor_client",
+)
+
+alias(
+    name = "java-client",
+    actual = "//clients/java:castor_client_java",
+)
+
+alias(
+    name = "castor-client-java",
+    actual = "//clients/java:castor_client_java",
 )
 
 alias(
     name = "java-loader",
-    actual = "//clients/java:skills_loader_java",
+    actual = "//clients/java:castor_client_java",
 )
 
 alias(
@@ -52,17 +82,17 @@ alias(
 
 alias(
     name = "castor-server",
-    actual = "//cmd/castor-server",
+    actual = "//cmd/castor_server",
 )
 
 alias(
     name = "castor-service",
-    actual = "//cmd/castor-server",
+    actual = "//cmd/castor_server",
 )
 
 alias(
     name = "castor-registry",
-    actual = "//cmd/castor-server",
+    actual = "//cmd/castor_server",
 )
 
 alias(
@@ -77,7 +107,7 @@ alias(
 
 alias(
     name = "skills-service",
-    actual = "//cmd/castor-server",
+    actual = "//cmd/castor_server",
 )
 
 alias(
@@ -108,9 +138,10 @@ alias(
 test_suite(
     name = "test-e2e",
     tests = [
-        "//clients/go/pkg/skillsloader:skillsloader_test",
-        "//clients/java:skills_loader_java_test",
-        "//cmd/castor-server:castor-server_test",
+        "//clients/go/pkg/castor_client:castor_client_test",
+        "//clients/java:castor_client_java_test",
+        "//clients/python:test_castor_client",
+        "//cmd/castor_server:castor-server_test",
         "//examples/go/client:test_go_client_example",
         "//examples/java/client:test_java_client_example",
         "//examples/python/client:test_python_client_example",

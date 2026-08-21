@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.retailcortex.castor</groupId>
-    <artifactId>castor-loader-maven-plugin</artifactId>
+    <artifactId>castor-client</artifactId>
     <version>1.0.0</version>
     <packaging>maven-plugin</packaging>
 
-    <name>Castor Enterprise Skills Loader Maven Plugin</name>
+    <name>Castor Enterprise Client and Maven Plugin</name>
     <description>Java 17+ client library and pre-processor Maven plugin for Castor Registry enterprise ADK AI skills.</description>
 
     <properties>

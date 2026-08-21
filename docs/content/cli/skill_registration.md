@@ -33,8 +33,8 @@ When `cstr register` submits a skill to `Castor Registry`:
    - Reads binary multi-modal assets (`references/*.png`, `*.jpg`, `*.webp`, `*.pdf`, `*.wasm`, `*.proto`).
 2. **Multi-Chunk Sliding-Window Embedding Generation**:
    - Generates skill-level embeddings from concatenated metadata and system instructions.
-   - Offloads granular chunking to non-blocking worker goroutines ([`SkillsService.startBackgroundWorkers`](file:///Users/rmcguinness/Projects/skill-builder/pkg/service/skills_service.go#L106-L129)), decomposing instructions and references into $\le 900$-character sliding windows with 80-character overlap ([`embedding.SplitTextIntoChunks`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L70)).
-   - Concurrently generates itemized embeddings for each attached reference and example via the active provider ([`pkg/embedding/vertex`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/vertex/vertex.go) or [`pkg/embedding/alloydb`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/alloydb/alloydb.go)).
+   - Offloads granular chunking to non-blocking worker goroutines ([`CastorService.startBackgroundWorkers`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/service/castor_service.go#L106-L129)), decomposing instructions and references into $\le 900$-character sliding windows with 80-character overlap ([`embedding.SplitTextIntoChunks`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/provider.go#L70)).
+   - Concurrently generates itemized embeddings for each attached reference and example via the active provider ([`pkg/embedding/vertex`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/vertex/vertex.go) or [`pkg/embedding/alloydb`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/alloydb/alloydb.go)).
    - Embeds binary media using the configured multimodal embedding model.
 3. **Poly-Column `pgvector` Persistence**:
    - Populates vector columns matching the active model dimension (`embedding_768`, `embedding_1408`, or `embedding_3072`).

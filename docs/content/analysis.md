@@ -16,7 +16,7 @@ The `Castor` repository provides a multi-language (Python 3.13, Go 1.26+, Java 1
 ### Core Architectural Pillars
 * **Polyglot Skill Loaders & Native Build Plugins**: 1:1 functional parity across Python (`loader.py` / `loader.build_meta`), Go (`loader.go`), and Java (`SkillLoader.java` / `GenerateManifestMojo.java`).
 * **Multi-Source URI Resolution**: Supports `castor://`, `cstr://` (central enterprise server), `github://` (remote git trees and zipballs), `mod://` (Go modules), `maven://` (Java Maven artifacts), `pkg://` (workspace runfile packages), and `file://` (local paths).
-* **Enterprise Registration Lifecycle (`cstr register`)**: CLI client (`cstr`) registers source skills to central `Castor Registry` (`cmd/castor-server`), auto-assigning canonical `castor://skills/{domain}/{category}/{name}/{version}` URIs.
+* **Enterprise Registration Lifecycle (`cstr register`)**: CLI client (`cstr`) registers source skills to central `Castor Registry` (`cmd/castor_server`), auto-assigning canonical `castor://skills/{domain}/{category}/{name}/{version}` URIs.
 * **Zero-I/O Pre-compiled Manifests**: Pre-processes skill registries into `skills_manifest.json` for instant cold starts in serverless or containerized environments.
 * **5-Point SDLC Quality Gate**: Automated security auditor (`validator.go` / `SkillAuditor.java`) enforcing frontmatter rules, L3 directory structures, CWE security checkpoints, HTTP 429 rate-limit resilience, and markdown file scheme links.
 * **Just-in-Time (JIT) Semantic Discovery**: Replaces static registry loading with RAG-MCP semantic tool retrieval to eliminate LLM context bloat.
@@ -80,7 +80,7 @@ The `Castor` repository provides a multi-language (Python 3.13, Go 1.26+, Java 1
 All identified recommendations have been fully implemented across Python, Go, and Java loader suites, supported by comprehensive unit and integration tests:
 
 1. **`castor://` / `cstr://` Central Server Integration**: Full support for central server registration and canonical URI resolution.
-2. **Native Build System Hooks**: `skills-loader-maven-plugin` for Java Maven, `loader.build_meta` PEP 517 hook for Python `uv`, and `//go:generate` directives for Go.
+2. **Native Build System Hooks**: `castor-client` for Java Maven, `castor_client.build_meta` PEP 517 hook for Python `uv`, and `//go:generate` directives for Go.
 3. **Property Management**: Native support for TOML configuration (`modenv` in Go), environment loading (`dotenv` in Python), and JVM System properties (`System.getProperty` in Java).
 
 ### Test Execution Results

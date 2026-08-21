@@ -17,7 +17,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from loader import SkillDefinition, SkillSummary
+from castor_client import SkillDefinition, SkillSummary
 
 
 @dataclass

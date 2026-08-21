@@ -7,7 +7,7 @@ py_library(
     srcs = glob(["src/skills_agent/**/*.py"]),
     data = ["//:skills_data"],
     imports = ["src"],
-    deps = ["//clients/python:loader_lib"],
+    deps = ["//clients/python:castor_client"],
 )
 
 py_binary(

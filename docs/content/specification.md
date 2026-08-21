@@ -11,7 +11,7 @@ The **Enterprise AI Agent Skills Specification** defines the architectural contr
 
 This specification extends and supersedes baseline specifications (such as `agentskills.io`) by introducing:
 1. **Canonical Central Registry & Server Registration (`castor://`)**: Registration protocol (`POST /api/v1/skills`) assigning unique `skill_id` keys and canonical URIs (`castor://skills/{domain}/{category}/{name}/{version}`).
-2. **Native Build Lifecycle Integration**: Client build hooks (`skills-loader-maven-plugin` for Maven, `loader.build_meta` for Python PEP 517 / `uv`, `//go:generate` for Go) that audit skills and inject pre-compiled resources directly into application artifacts.
+2. **Native Build Lifecycle Integration**: Client build hooks (`castor-client` for Maven, `castor_client.build_meta` for Python PEP 517 / `uv`, `//go:generate` for Go) that audit skills and inject pre-compiled resources directly into application artifacts.
 3. **Cryptographic Lockfiles (`.manifest.lock`)**: Deterministic SHA-256 checksum tracking to prevent skill drift or unauthorized agent/developer tampering.
 4. **5-Point SDLC Quality Invariants**: Mandatory frontmatter, progressive disclosure sub-trees, CWE security checkpoints, HTTP 429 resilience rules, and strict `file:///` link resolution.
 5. **Polyglot URI Resolution**: Unified URI syntax supporting central servers (`castor://`, `cstr://`), GitHub repositories (`github://`), Go modules (`mod://`), Java Maven artifacts (`maven://`), local packages (`pkg://`), and local filesystems (`file://`).
@@ -111,7 +111,7 @@ Applications support multi-user collaboration and scoped API credentials governe
 | **`EDITOR`** | Engineering (Tier 2) | Create, update, replace, and delete application skills. Provision non-owner developer/CI keys. |
 | **`VIEWER`** | Read-Only (Tier 1) | Read-only inspection of application skills, metadata, and search endpoints. Prohibited from mutating skills. |
 
-#### REST & gRPC Contract Specifications ([`proto/retailcortex/registration/v1/registration_service.proto`](file:///Users/rmcguinness/Projects/skill-builder/proto/retailcortex/registration/v1/registration_service.proto))
+#### REST & gRPC Contract Specifications ([`proto/castor/registration/v1/registration_service.proto`](file:///Users/rmcguinness/Projects/retail-cortex/castor/proto/castor/registration/v1/registration_service.proto))
 
 | Endpoint | Method | gRPC RPC | Required Role | Description |
 | :--- | :--- | :--- | :--- | :--- |
@@ -131,7 +131,7 @@ Applications support multi-user collaboration and scoped API credentials governe
 Central registries MUST compute, index, and maintain multi-modal semantic embeddings for all registered skills:
 
 1. **Provider Contract & Vector Precision**:
-   - Embedding providers MUST implement the standard [`embedding.Provider`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L26) interface, emitting $L_2$-normalized `[]float64` vectors.
+   - Embedding providers MUST implement the standard [`embedding.Provider`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/provider.go#L26) interface, emitting $L_2$-normalized `[]float64` vectors.
    - Providers MUST support text embedding (`GenerateEmbedding`), binary image embedding (`GenerateImageEmbedding`), multi-chunk skill decomposition (`GenerateSkillEmbeddings`), and cosine similarity calculation (`CosineSimilarity`).
 2. **Poly-Column Dimensions**:
    - `embedding_768`: 768-dimensional vector for standard text embedding models (`text-embedding-004`, `alloydb-ai`).
@@ -149,9 +149,9 @@ Central registries MUST compute, index, and maintain multi-modal semantic embedd
 4. **HNSW Acceleration**:
    - PostgreSQL/AlloyDB indexes MUST utilize HNSW (`m=16`, `ef_construction=64`) over `vector_cosine_ops` for all active vector columns (`skills_embedding_768_hnsw_idx`, `skills_embedding_1408_hnsw_idx`).
 5. **Deterministic Offline Fallback**:
-   - In environments without live Google Cloud or AlloyDB AI credentials, registries and test runners MUST fall back to deterministic, normalized semantic hashing ([`embedding.GenerateDeterministicVector`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/provider.go#L128)) to maintain hermetic test isolation.
+   - In environments without live Google Cloud or AlloyDB AI credentials, registries and test runners MUST fall back to deterministic, normalized semantic hashing ([`embedding.GenerateDeterministicVector`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/provider.go#L128)) to maintain hermetic test isolation.
 6. **Benchmark & Recall Evaluation**:
-   - Provider implementations MUST be verifiable against an evaluation test harness ([`pkg/embedding/harness_test.go`](file:///Users/rmcguinness/Projects/skill-builder/pkg/embedding/harness_test.go)) evaluating Mean Reciprocal Rank (MRR $\ge 0.85$), Top-1/Top-3 recall accuracy ($\ge 90\%$), and P95 latency bounds.
+   - Provider implementations MUST be verifiable against an evaluation test harness ([`pkg/embedding/harness_test.go`](file:///Users/rmcguinness/Projects/retail-cortex/castor/pkg/embedding/harness_test.go)) evaluating Mean Reciprocal Rank (MRR $\ge 0.85$), Top-1/Top-3 recall accuracy ($\ge 90\%$), and P95 latency bounds.
 
 ---
 

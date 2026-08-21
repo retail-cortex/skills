@@ -6,8 +6,8 @@ go_library(
     name = "service",
     srcs = [
         "apps_service.go",
+        "castor_service.go",
         "embedding_service.go",
-        "skills_service.go",
         "telemetry.go",
     ],
     importpath = "github.com/retail-cortex/castor/pkg/service",

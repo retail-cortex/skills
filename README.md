@@ -27,9 +27,9 @@ graph TD
 
     subgraph Clients ["Polyglot Client SDKs & CLI"]
         CLI["Castor CLI (cstr)"]
-        PY["Python Client (loader)"]
-        GO["Go Client (skillsloader)"]
-        JV["Java Client (com.retailcortex.castor)"]
+        PY["Python Client (castor_client)"]
+        GO["Go Client (castor_client)"]
+        JV["Java Client (com.retailcortex.castor.client)"]
         ADK["ADK Programming Agent"]
     end
 
@@ -90,7 +90,7 @@ uv run python examples/python/polyglot/main.py --target-dir ./scratch/my-app
 
 ### 5. Execute Full Test Suite
 ```bash
-# All 25 Bazel test targets across Go, Python, Java, and MCP
+# All 26 Bazel test targets across Go, Python, Java, and MCP
 bazel test //...
 ```
 
@@ -116,36 +116,37 @@ bazel test //...
 
 ## Polyglot Client SDKs
 
-### Python SDK (`castor-loader`)
+### Python SDK (`castor-client`)
 * **JIT Pre-Call Retrieval**:
   ```python
-  from loader import SkillRegistry
+  from castor_client import SkillRegistry
 
   registry = SkillRegistry()
   # Queries central Castor Registry vector index, falls back to local discovery
   suggested_skills = registry.suggest_skills(prompt="render canvas image", max_skills=3)
   ```
-* **PEP 517 Build Backend**: Declare `build-backend = "loader.build_meta"` in `pyproject.toml` to automatically download and validate skills during `uv build` or `pip install`.
+* **PEP 517 Build Backend**: Declare `build-backend = "castor_client.build_meta"` in `pyproject.toml` to automatically download and validate skills during `uv build` or `pip install`.
 
-### Go SDK (`skillsloader`)
+### Go SDK (`castor_client`)
 * **JIT Dynamic Suggestions**:
   ```go
-  import "github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+  import "github.com/retail-cortex/castor/clients/go/pkg/castor_client"
 
-  registry, _ := skillsloader.NewSkillRegistry("", nil, nil, "")
+  registry, _ := castor_client.NewSkillRegistry("", nil, nil, "")
   suggested := registry.SuggestSkills("render canvas image", 3, "http://localhost:8000")
   ```
 * **Build Directives**: Use `//go:generate cstr compile -d ./skills` and `//go:embed skills_manifest.json` for zero-I/O static binary embeds.
 
 ### Java SDK (`com.retailcortex.castor`)
-* **JIT Suggestions**:
+* **JIT Suggestions & Client**:
   ```java
+  import com.retailcortex.castor.client.CastorClient;
   import com.retailcortex.castor.loader.SkillRegistry;
 
-  SkillRegistry registry = new SkillRegistry();
-  var suggested = registry.suggestSkills("render canvas image", 3, "http://localhost:8000");
+  CastorClient client = new CastorClient();
+  var suggested = client.suggestSkills("render canvas image", 3);
   ```
-* **Maven Plugin**: Include `skills-loader-maven-plugin` in `pom.xml` during `generate-resources` to package `skills_manifest.json` into executable JARs.
+* **Maven Plugin**: Include `castor-client` in `pom.xml` during `generate-resources` to package `skills_manifest.json` into executable JARs.
 
 ---
 

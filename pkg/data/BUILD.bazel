@@ -6,8 +6,8 @@ go_library(
     name = "data",
     srcs = [
         "apps_repository.go",
+        "castor_repository.go",
         "database.go",
-        "skills_repository.go",
     ],
     importpath = "github.com/retail-cortex/castor/pkg/data",
     deps = [

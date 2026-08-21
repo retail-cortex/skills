@@ -49,7 +49,7 @@ func main() {
 	}
 
 	protoDirs := []string{
-		filepath.Join(workspaceRoot, "proto", "retailcortex", "skills", "v1"),
+		filepath.Join(workspaceRoot, "proto", "retailcortex", "castor", "v1"),
 		filepath.Join(workspaceRoot, "proto", "retailcortex", "registration", "v1"),
 	}
 	outDir := filepath.Join(workspaceRoot, "docs", "architecture")

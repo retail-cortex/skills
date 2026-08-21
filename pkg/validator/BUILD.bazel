@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 go_library(
     name = "validator",
     srcs = ["validator.go"],
-    importpath = "github.com/retail-cortex/skills/pkg/validator",
+    importpath = "github.com/retail-cortex/castor/pkg/validator",
     deps = ["@in_gopkg_yaml_v3//:yaml_v3"],
 )
 

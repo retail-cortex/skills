@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.retailcortex.skills.loader.validator;
+package com.retailcortex.castor.loader.validator;
 
-import com.retailcortex.skills.loader.SkillLoader;
+import com.retailcortex.castor.loader.SkillLoader;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.DisplayName;

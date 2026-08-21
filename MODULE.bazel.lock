@@ -440,7 +440,7 @@
     "@@rules_hugo+//hugo:extensions.bzl%hugo_deps": {
       "general": {
         "bzlTransitiveDigest": "fHLxa1PkaQs9vWSO3GrDPPB8EdXkItmok9HbjPQUfwY=",
-        "usagesDigest": "ryZFsCZNPPxNs0Klb/8ij9lL5CVBo2Kdrfsn7ocupGo=",
+        "usagesDigest": "2a2oz0ENEVIdJ0/N+O41NETYlpTImMrC7sgY0gT8WK4=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},

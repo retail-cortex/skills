@@ -21,8 +21,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.retailcortex.skills</groupId>
-            <artifactId>skills-loader-maven-plugin</artifactId>
+            <groupId>com.retailcortex.castor</groupId>
+            <artifactId>castor-loader-maven-plugin</artifactId>
             <version>1.0.0</version>
         </dependency>
 
@@ -50,8 +50,8 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>com.retailcortex.skills</groupId>
-                <artifactId>skills-loader-maven-plugin</artifactId>
+                <groupId>com.retailcortex.castor</groupId>
+                <artifactId>castor-loader-maven-plugin</artifactId>
                 <version>1.0.0</version>
                 <executions>
                     <execution>

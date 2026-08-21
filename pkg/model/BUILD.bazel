@@ -9,7 +9,7 @@ go_library(
         "pagination.go",
         "skill.go",
     ],
-    importpath = "github.com/retail-cortex/skills/pkg/model",
+    importpath = "github.com/retail-cortex/castor/pkg/model",
 )
 
 go_test(

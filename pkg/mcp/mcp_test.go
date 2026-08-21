@@ -21,10 +21,10 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/retail-cortex/skills/pkg/data"
-	mcpServer "github.com/retail-cortex/skills/pkg/mcp"
-	"github.com/retail-cortex/skills/pkg/model"
-	"github.com/retail-cortex/skills/pkg/service"
+	"github.com/retail-cortex/castor/pkg/data"
+	mcpServer "github.com/retail-cortex/castor/pkg/mcp"
+	"github.com/retail-cortex/castor/pkg/model"
+	"github.com/retail-cortex/castor/pkg/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

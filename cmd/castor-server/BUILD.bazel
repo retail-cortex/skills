@@ -9,7 +9,7 @@ go_library(
         "handlers.go",
         "main.go",
     ],
-    importpath = "github.com/retail-cortex/skills/cmd/castor-server",
+    importpath = "github.com/retail-cortex/castor/cmd/castor-server",
     deps = [
         "//pkg/data",
         "//pkg/embedding",

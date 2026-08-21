@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/retail-cortex/skills/pkg/embedding"
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/embedding"
+	"github.com/retail-cortex/castor/pkg/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

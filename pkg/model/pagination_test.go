@@ -17,7 +17,7 @@ package model_test
 import (
 	"testing"
 
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/model"
 	"github.com/stretchr/testify/assert"
 )
 

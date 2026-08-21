@@ -27,10 +27,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
-	"github.com/retail-cortex/skills/internal/installer"
-	"github.com/retail-cortex/skills/pkg/model"
-	"github.com/retail-cortex/skills/pkg/validator"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/internal/installer"
+	"github.com/retail-cortex/castor/pkg/model"
+	"github.com/retail-cortex/castor/pkg/validator"
 )
 
 var (
@@ -968,9 +968,9 @@ Examples:
   cstr config set api_key my-secret-api-key
   cstr register github://google/skills@main/tree/main/skills/cloud/gemini-api
   cstr add cstr://skills/sk-9b1deb4d
-  cstr add github://retail-cortex/skills@main/examples/python/skills
-  cstr add mod://github.com/retail-cortex/skills@v1.0.0/examples/go/skills
-  cstr add maven://com.retailcortex.skills:skills-java:1.0.0
+  cstr add github://retail-cortex/castor@main/examples/python/skills
+  cstr add mod://github.com/retail-cortex/castor@v1.0.0/examples/go/skills
+  cstr add maven://com.retailcortex.castor:skills-java:1.0.0
 
   cstr add file:///path/to/my-skill -d ./skills
   cstr verify -d ./skills

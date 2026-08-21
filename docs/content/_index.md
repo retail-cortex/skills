@@ -69,7 +69,7 @@ This documentation site is organized into logical sections:
 
 ## Workspace Directory Layout
 
-The project is governed by a root [MODULE.bazel](https://github.com/retail-cortex/skills/blob/main/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
+The project is governed by a root [MODULE.bazel](https://github.com/retail-cortex/castor/blob/main/MODULE.bazel) (Bazel 9.2) and a root Python 3.13 `uv` workspace:
 
 ```text
 skill-builder/
@@ -109,4 +109,4 @@ skill-builder/
 
 ## License & Legal Notices
 
-This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/retail-cortex/skills/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE](https://github.com/retail-cortex/skills/blob/main/NOTICE).
+This project is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/retail-cortex/castor/blob/main/LICENSE) for details. Attribution notices are maintained in [NOTICE](https://github.com/retail-cortex/castor/blob/main/NOTICE).

@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package retailcortex.registration.v1;
 
-option go_package = "github.com/retail-cortex/skills/proto/retailcortex/registration/v1;registrationv1";
-option java_package = "com.retailcortex.skills.proto.retailcortex.registration.v1";
+option go_package = "github.com/retail-cortex/castor/proto/retailcortex/registration/v1;registrationv1";
+option java_package = "com.retailcortex.castor.proto.retailcortex.registration.v1";
 option java_multiple_files = true;
 
 // DomainVerificationStatus classifies domain ownership validation state.

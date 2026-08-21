@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "alloydb",
     srcs = ["alloydb.go"],
-    importpath = "github.com/retail-cortex/skills/pkg/embedding/alloydb",
+    importpath = "github.com/retail-cortex/castor/pkg/embedding/alloydb",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/embedding",

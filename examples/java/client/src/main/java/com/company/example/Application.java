@@ -14,7 +14,7 @@
 
 package com.company.example;
 
-import com.retailcortex.skills.loader.SkillLoader;
+import com.retailcortex.castor.loader.SkillLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

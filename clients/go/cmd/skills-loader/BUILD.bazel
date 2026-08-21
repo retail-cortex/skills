@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 go_library(
     name = "skills-loader_lib",
     srcs = ["main.go"],
-    importpath = "github.com/retail-cortex/skills/clients/go/cmd/skills-loader",
+    importpath = "github.com/retail-cortex/castor/clients/go/cmd/skills-loader",
     deps = ["//clients/go/pkg/skillsloader"],
 )
 

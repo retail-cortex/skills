@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 go_library(
     name = "proto_diagrams_lib",
     srcs = ["main.go"],
-    importpath = "github.com/retail-cortex/skills/tools/proto_diagrams",
+    importpath = "github.com/retail-cortex/castor/tools/proto_diagrams",
 )
 
 go_binary(

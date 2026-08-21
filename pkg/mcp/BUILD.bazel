@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 go_library(
     name = "mcp",
     srcs = ["server.go"],
-    importpath = "github.com/retail-cortex/skills/pkg/mcp",
+    importpath = "github.com/retail-cortex/castor/pkg/mcp",
     deps = [
         "//pkg/data",
         "//pkg/model",

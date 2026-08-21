@@ -29,8 +29,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/retail-cortex/skills"
-Repository = "https://github.com/retail-cortex/skills"
+Homepage = "https://github.com/retail-cortex/castor"
+Repository = "https://github.com/retail-cortex/castor"
 
 [project.scripts]
 start-agent = "skills_agent.cli:main"

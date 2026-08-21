@@ -8,7 +8,7 @@ go_library(
         "loader.go",
         "types.go",
     ],
-    importpath = "github.com/retail-cortex/skills/clients/go/pkg/skillsloader",
+    importpath = "github.com/retail-cortex/castor/clients/go/pkg/skillsloader",
     deps = [
         "@in_gopkg_yaml_v3//:yaml_v3",
     ],

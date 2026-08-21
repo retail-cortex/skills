@@ -477,7 +477,7 @@ def load_all_skills(
 
 
 def load_skills_from_entry_points(
-    group: str = "retailcortex.skills",
+    group: str = "retailcortex.castor",
     skill_filter: Optional[List[str]] = None,
 ) -> Dict[str, SkillDefinition]:
     """Discovers and loads enterprise skills installed via Python entry points in site-packages."""
@@ -529,7 +529,7 @@ def load_skills_from_package(
         pass
 
     # 2. Try entry points lookup if package_name matches group name
-    if clean_pkg in ("retailcortex.skills", "skills"):
+    if clean_pkg in ("retailcortex.castor", "skills"):
         return load_skills_from_entry_points(group=clean_pkg, skill_filter=skill_filter)
 
     # 3. Workspace package fallback discovery

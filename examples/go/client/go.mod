@@ -1,9 +1,9 @@
-module github.com/retail-cortex/skills/examples/go/client
+module github.com/retail-cortex/castor/examples/go/client
 
 go 1.26.5
 
 require (
-	github.com/retail-cortex/skills v0.0.0
+	github.com/retail-cortex/castor v0.0.0
 	github.com/rrmcguinness/modenv v0.0.1
 	github.com/stretchr/testify v1.11.1
 )
@@ -15,4 +15,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/retail-cortex/skills => ../../../
+replace github.com/retail-cortex/castor => ../../../

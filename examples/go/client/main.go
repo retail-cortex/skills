@@ -20,7 +20,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 	"github.com/rrmcguinness/modenv/pkg/modenv"
 )
 

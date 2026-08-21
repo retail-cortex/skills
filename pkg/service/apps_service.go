@@ -15,8 +15,8 @@
 package service
 
 import (
-	"github.com/retail-cortex/skills/pkg/data"
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/data"
+	"github.com/retail-cortex/castor/pkg/model"
 	"gorm.io/gorm"
 )
 

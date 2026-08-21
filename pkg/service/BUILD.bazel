@@ -10,7 +10,7 @@ go_library(
         "skills_service.go",
         "telemetry.go",
     ],
-    importpath = "github.com/retail-cortex/skills/pkg/service",
+    importpath = "github.com/retail-cortex/castor/pkg/service",
     deps = [
         "//pkg/data",
         "//pkg/embedding",

@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 go_library(
     name = "cstr_lib",
     srcs = ["main.go"],
-    importpath = "github.com/retail-cortex/skills/cmd/cstr",
+    importpath = "github.com/retail-cortex/castor/cmd/cstr",
     deps = [
         "//internal/commands",
     ],

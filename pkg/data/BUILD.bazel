@@ -9,7 +9,7 @@ go_library(
         "database.go",
         "skills_repository.go",
     ],
-    importpath = "github.com/retail-cortex/skills/pkg/data",
+    importpath = "github.com/retail-cortex/castor/pkg/data",
     deps = [
         "//pkg/embedding",
         "//pkg/model",

@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/model"
 )
 
 func runLogin(args []string, stdout, stderr io.Writer) int {

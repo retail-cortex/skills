@@ -38,7 +38,7 @@ examples/java/client/
 <build>
     <plugins>
         <plugin>
-            <groupId>com.retailcortex.skills</groupId>
+            <groupId>com.retailcortex.castor</groupId>
             <artifactId>skills-loader-maven-plugin</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <executions>
@@ -59,8 +59,8 @@ examples/java/client/
 ```java
 package com.company.example;
 
-import com.retailcortex.skills.loader.SkillDefinition;
-import com.retailcortex.skills.loader.SkillLoader;
+import com.retailcortex.castor.loader.SkillDefinition;
+import com.retailcortex.castor.loader.SkillLoader;
 import java.util.List;
 import java.util.Map;
 

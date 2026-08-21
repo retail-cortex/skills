@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.retailcortex.skills</groupId>
-    <artifactId>skills-loader-maven-plugin</artifactId>
+    <groupId>com.retailcortex.castor</groupId>
+    <artifactId>castor-loader-maven-plugin</artifactId>
     <version>1.0.0</version>
     <packaging>maven-plugin</packaging>
 

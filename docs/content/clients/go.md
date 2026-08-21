@@ -5,7 +5,7 @@ weight: 20
 
 # Go Client & Toolchain Integration (`skillsloader`)
 
-The Go client library (`github.com/retail-cortex/skills/clients/go/pkg/skillsloader`) integrates into Go's native build workflows via **`//go:generate` directives**, **`go test` validation hooks**, and **Bazel `rules_go`** targets.
+The Go client library (`github.com/retail-cortex/castor/clients/go/pkg/skillsloader`) integrates into Go's native build workflows via **`//go:generate` directives**, **`go test` validation hooks**, and **Bazel `rules_go`** targets.
 
 ---
 
@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 )
 
 // Embed pre-compiled skills manifest into static Go binary
@@ -98,7 +98,7 @@ package main_test
 import (
 	"testing"
 
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -122,7 +122,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 )
 
 func main() {
@@ -157,7 +157,7 @@ import (
 	"log"
 
 	"github.com/google/adk/agent"
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 	"github.com/rrmcguinness/modenv/pkg/modenv"
 )
 

@@ -65,7 +65,7 @@ graph TD
 
 ```bash
 # Download binary for your platform (macOS / Linux / Windows)
-curl -sL "https://github.com/retail-cortex/skills/releases/latest/download/cstr_$(uname -s)_$(uname -m)" -o cstr
+curl -sL "https://github.com/retail-cortex/castor/releases/latest/download/cstr_$(uname -s)_$(uname -m)" -o cstr
 chmod +x cstr
 sudo mv cstr /usr/local/bin/cstr
 

@@ -21,9 +21,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/retail-cortex/skills/pkg/data"
-	"github.com/retail-cortex/skills/pkg/model"
-	"github.com/retail-cortex/skills/pkg/service"
+	"github.com/retail-cortex/castor/pkg/data"
+	"github.com/retail-cortex/castor/pkg/model"
+	"github.com/retail-cortex/castor/pkg/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"

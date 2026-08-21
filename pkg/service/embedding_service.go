@@ -17,9 +17,9 @@ package service
 import (
 	"context"
 
-	"github.com/retail-cortex/skills/pkg/embedding"
-	"github.com/retail-cortex/skills/pkg/embedding/vertex"
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/embedding"
+	"github.com/retail-cortex/castor/pkg/embedding/vertex"
+	"github.com/retail-cortex/castor/pkg/model"
 )
 
 // EmbeddingConfig configures Vertex AI and Gemini embedding generation.

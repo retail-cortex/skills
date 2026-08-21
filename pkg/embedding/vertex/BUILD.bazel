@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "vertex",
     srcs = ["vertex.go"],
-    importpath = "github.com/retail-cortex/skills/pkg/embedding/vertex",
+    importpath = "github.com/retail-cortex/castor/pkg/embedding/vertex",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/embedding",

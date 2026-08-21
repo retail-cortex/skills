@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "embedding",
     srcs = ["provider.go"],
-    importpath = "github.com/retail-cortex/skills/pkg/embedding",
+    importpath = "github.com/retail-cortex/castor/pkg/embedding",
     visibility = ["//visibility:public"],
     deps = ["//pkg/model"],
 )

@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/retail-cortex/skills/pkg/embedding"
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/embedding"
+	"github.com/retail-cortex/castor/pkg/model"
 	"gorm.io/gorm"
 )
 

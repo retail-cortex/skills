@@ -17,6 +17,7 @@ package skillsloader
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -29,6 +30,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -727,8 +729,10 @@ func LoadSkillsFromGoModule(target, ref string, roots, filter []string) (map[str
 
 	if modDir == "" && ref != "" {
 		if _, err := exec.LookPath("go"); err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
 			modSpec := fmt.Sprintf("%s@%s", cleanMod, ref)
-			cmd := exec.Command("go", "mod", "download", "-json", modSpec)
+			cmd := exec.CommandContext(ctx, "go", "mod", "download", "-json", modSpec)
 			var out bytes.Buffer
 			cmd.Stdout = &out
 			if err := cmd.Run(); err == nil {
@@ -1045,6 +1049,31 @@ func LoadSkillsFromGitHub(repo string, ref string, roots []string, filter []stri
 	persistentRepoDir := filepath.Join(loaderBase, "github", repoSlug, gitRef)
 	_ = os.MkdirAll(persistentRepoDir, 0755)
 
+	if cachedEntries, err := os.ReadDir(persistentRepoDir); err == nil && len(cachedEntries) > 0 {
+		var loadedSkills = make(map[string]*SkillDefinition)
+		for _, rootRel := range rootPaths {
+			candidate := persistentRepoDir
+			if rootRel != "." {
+				candidate = filepath.Join(persistentRepoDir, rootRel)
+			}
+			if isDir(candidate) {
+				if s, err := LoadSkillFromDir(candidate); err == nil && s != nil {
+					if len(selectedSkills) == 0 || slices.Contains(selectedSkills, s.Name) {
+						loadedSkills[s.Name] = s
+					}
+				} else {
+					all, _ := LoadAllSkills(candidate, selectedSkills)
+					for k, v := range all {
+						loadedSkills[k] = v
+					}
+				}
+			}
+		}
+		if len(loadedSkills) > 0 {
+			return loadedSkills, nil
+		}
+	}
+
 	tmpDir, err := os.MkdirTemp("", "skills-loader-gh-*")
 	if err == nil {
 		defer os.RemoveAll(tmpDir)
@@ -1058,14 +1087,30 @@ func LoadSkillsFromGitHub(repo string, ref string, roots []string, filter []stri
 		cloneURL = fmt.Sprintf("https://x-access-token:%s@github.com/%s.git", gitToken, cleanRepo)
 	}
 
-	cmdClone := exec.Command("git", "clone", "--depth", "1", "--branch", gitRef, cloneURL, repoDir)
+	ctxClone, cancelClone := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelClone()
+
+	gitEnv := append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=true")
+
+	cmdClone := exec.CommandContext(ctxClone, "git", "clone", "--depth", "1", "--branch", gitRef, cloneURL, repoDir)
+	cmdClone.Env = gitEnv
 	if err := cmdClone.Run(); err == nil {
 		cloned = true
 	} else {
-		_ = exec.Command("git", "init", repoDir).Run()
-		_ = exec.Command("git", "-C", repoDir, "remote", "add", "origin", cloneURL).Run()
-		if errFetch := exec.Command("git", "-C", repoDir, "fetch", "--depth", "1", "origin", gitRef).Run(); errFetch == nil {
-			if errCo := exec.Command("git", "-C", repoDir, "checkout", "FETCH_HEAD").Run(); errCo == nil {
+		cmdInit := exec.CommandContext(ctxClone, "git", "init", repoDir)
+		cmdInit.Env = gitEnv
+		_ = cmdInit.Run()
+
+		cmdRemote := exec.CommandContext(ctxClone, "git", "-C", repoDir, "remote", "add", "origin", cloneURL)
+		cmdRemote.Env = gitEnv
+		_ = cmdRemote.Run()
+
+		cmdFetch := exec.CommandContext(ctxClone, "git", "-C", repoDir, "fetch", "--depth", "1", "origin", gitRef)
+		cmdFetch.Env = gitEnv
+		if errFetch := cmdFetch.Run(); errFetch == nil {
+			cmdCo := exec.CommandContext(ctxClone, "git", "-C", repoDir, "checkout", "FETCH_HEAD")
+			cmdCo.Env = gitEnv
+			if errCo := cmdCo.Run(); errCo == nil {
 				cloned = true
 			}
 		}
@@ -1076,12 +1121,13 @@ func LoadSkillsFromGitHub(repo string, ref string, roots []string, filter []stri
 		repoTargetDir = repoDir
 	} else {
 		archiveURL := fmt.Sprintf("https://api.github.com/repos/%s/zipball/%s", cleanRepo, gitRef)
-		req, _ := http.NewRequest("GET", archiveURL, nil)
+		req, _ := http.NewRequestWithContext(ctxClone, "GET", archiveURL, nil)
 		req.Header.Set("User-Agent", "skills-loader-go/1.0.0")
 		if gitToken != "" {
 			req.Header.Set("Authorization", "token "+gitToken)
 		}
-		resp, httpErr := http.DefaultClient.Do(req)
+		httpClient := &http.Client{Timeout: 3 * time.Second}
+		resp, httpErr := httpClient.Do(req)
 		if httpErr == nil && resp.StatusCode == http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()

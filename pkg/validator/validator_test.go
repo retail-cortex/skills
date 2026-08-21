@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/retail-cortex/skills/pkg/validator"
+	"github.com/retail-cortex/castor/pkg/validator"
 	"github.com/stretchr/testify/assert"
 )
 

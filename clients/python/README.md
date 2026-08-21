@@ -41,8 +41,8 @@ for name, skill in skills.items():
 registry = SkillRegistry.from_roots([
     "file://.",
     "pkg://retailcortex_skills_python",
-    "mod://github.com/retail-cortex/skills@v1.0.0",
-    "maven://com.retailcortex.skills:skills-java:1.0.0"
+    "mod://github.com/retail-cortex/castor@v1.0.0",
+    "maven://com.retailcortex.castor:skills-java:1.0.0"
 ])
 ```
 
@@ -52,10 +52,10 @@ registry = SkillRegistry.from_roots([
 from loader import load_skills_from_github, SkillRegistry
 
 # Load skills directly from GitHub
-skills = load_skills_from_github("retail-cortex/skills", ref="main")
+skills = load_skills_from_github("retail-cortex/castor", ref="main")
 
 # Instantiate registry directly from remote repository
-registry = SkillRegistry.from_github("retail-cortex/skills", ref="main")
+registry = SkillRegistry.from_github("retail-cortex/castor", ref="main")
 ```
 
 ## Zero-I/O Pre-Compiled Manifest Loading
@@ -88,7 +88,7 @@ build-backend = "loader.build_meta"
 # Optional: Target directory to bundle the skills into for packaging (defaults to .skills)
 dest = "src/my_package/skills"
 dependencies = [
-    "github://retail-cortex/skills@main/packages/skills-python"
+    "github://retail-cortex/castor@main/packages/skills-python"
 ]
 ```
 

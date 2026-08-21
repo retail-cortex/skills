@@ -17,7 +17,7 @@ proto_library(
 
 go_proto_library(
     name = "registration_v1_go_proto",
-    importpath = "github.com/retail-cortex/skills/proto/retailcortex/registration/v1",
+    importpath = "github.com/retail-cortex/castor/proto/retailcortex/registration/v1",
     proto = ":registration_v1_proto",
 )
 

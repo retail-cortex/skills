@@ -26,12 +26,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/retail-cortex/skills/pkg/data"
-	"github.com/retail-cortex/skills/pkg/embedding"
-	"github.com/retail-cortex/skills/pkg/embedding/alloydb"
-	"github.com/retail-cortex/skills/pkg/embedding/vertex"
-	"github.com/retail-cortex/skills/pkg/mcp"
-	"github.com/retail-cortex/skills/pkg/service"
+	"github.com/retail-cortex/castor/pkg/data"
+	"github.com/retail-cortex/castor/pkg/embedding"
+	"github.com/retail-cortex/castor/pkg/embedding/alloydb"
+	"github.com/retail-cortex/castor/pkg/embedding/vertex"
+	"github.com/retail-cortex/castor/pkg/mcp"
+	"github.com/retail-cortex/castor/pkg/service"
 )
 
 func SetupAppEngine(cfg *Config) *gin.Engine {

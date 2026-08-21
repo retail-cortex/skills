@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "examples_lib",
     srcs = ["service.go"],
-    importpath = "github.com/retail-cortex/skills/examples/skills/testing/multi-content-suite/examples",
+    importpath = "github.com/retail-cortex/castor/examples/skills/testing/multi-content-suite/examples",
     visibility = ["//visibility:private"],
 )
 

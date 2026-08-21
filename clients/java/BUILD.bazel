@@ -36,7 +36,7 @@ java_test(
     srcs = glob(["src/test/java/**/*.java"]),
     args = [
         "--select-package",
-        "com.retailcortex.skills.loader",
+        "com.retailcortex.castor.loader",
     ],
     data = [
         "//:skills_data",

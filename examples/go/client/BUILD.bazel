@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 go_library(
     name = "client_lib",
     srcs = ["main.go"],
-    importpath = "github.com/retail-cortex/skills/examples/go/client",
+    importpath = "github.com/retail-cortex/castor/examples/go/client",
     deps = [
         "//clients/go/pkg/skillsloader",
         "@com_github_rrmcguinness_modenv//pkg/modenv",

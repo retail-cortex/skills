@@ -5,8 +5,8 @@ build-backend = "loader.build_meta"
 [tool.retailcortex-loader]
 dest = ".skills"
 dependencies = [
-    "github://retail-cortex/skills@main/packages/skills-bazel",
-    "github://retail-cortex/skills@main/packages/skills-python"
+    "github://retail-cortex/castor@main/packages/skills-bazel",
+    "github://retail-cortex/castor@main/packages/skills-python"
 ]
 
 [project]

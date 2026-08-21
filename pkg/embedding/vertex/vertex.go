@@ -36,8 +36,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/retail-cortex/skills/pkg/embedding"
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/embedding"
+	"github.com/retail-cortex/castor/pkg/model"
 )
 
 // Config configures Vertex AI and Gemini embedding generation.

@@ -232,11 +232,11 @@ class TestSkillsLoaderPackage(unittest.TestCase):
         self.assertEqual((s, t, r, sub), ("mvn", "com.retailcortex:skills-java", "2.1.0", None))
 
         # Mod / Go URIs
-        s, t, r, sub = parse_skill_root_uri("mod://github.com/retail-cortex/skills@v1.5.0/skills/go/go-lang")
-        self.assertEqual((s, t, r, sub), ("mod", "github.com/retail-cortex/skills", "v1.5.0", "skills/go/go-lang"))
+        s, t, r, sub = parse_skill_root_uri("mod://github.com/retail-cortex/castor@v1.5.0/skills/go/go-lang")
+        self.assertEqual((s, t, r, sub), ("mod", "github.com/retail-cortex/castor", "v1.5.0", "skills/go/go-lang"))
 
-        s, t, r, sub = parse_skill_root_uri("go://github.com/retail-cortex/skills@v2.0.0")
-        self.assertEqual((s, t, r, sub), ("go", "github.com/retail-cortex/skills", "v2.0.0", None))
+        s, t, r, sub = parse_skill_root_uri("go://github.com/retail-cortex/castor@v2.0.0")
+        self.assertEqual((s, t, r, sub), ("go", "github.com/retail-cortex/castor", "v2.0.0", None))
 
     def test_load_skills_from_package(self) -> None:
         from loader.loader import load_skills_from_package
@@ -340,7 +340,13 @@ class TestSkillsLoaderPackage(unittest.TestCase):
                 skills = load_skills_from_go_module("github.com/mock-owner/mock-mod", "v1.0.0")
                 self.assertIn("mod-py-skill", skills)
 
-    def test_load_skills_from_github_cached(self) -> None:
+    @patch("urllib.request.urlopen")
+    @patch("subprocess.run")
+    def test_load_skills_from_github_cached(self, mock_run: MagicMock, mock_urlopen: MagicMock) -> None:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 1
+        mock_run.return_value = mock_proc
+        mock_urlopen.side_effect = Exception("network disabled")
         from loader.loader import load_skills_from_github, get_loader_skills_dir
         loader_base = get_loader_skills_dir()
         gh_dir = loader_base / "github" / "mock-owner_mock-repo" / "main"
@@ -360,7 +366,7 @@ class TestSkillsLoaderPackage(unittest.TestCase):
             if (loader_base / "github" / "mock-owner_mock-repo").exists():
                 shutil.rmtree(loader_base / "github" / "mock-owner_mock-repo")
 
-    def test_skill_registry_queries(self) -> None:
+    def test_skill_registry_queries_second(self) -> None:
         from loader.loader import SkillRegistry
         reg = SkillRegistry.from_roots(roots=["file://."])
         
@@ -381,7 +387,13 @@ class TestSkillsLoaderPackage(unittest.TestCase):
         domain_skills = reg.get_domain_skills("fastapi")
         self.assertGreaterEqual(len(domain_skills), 1)
 
-    def test_skill_registry_from_github_mocked(self) -> None:
+    @patch("urllib.request.urlopen")
+    @patch("subprocess.run")
+    def test_skill_registry_from_github_mocked(self, mock_run: MagicMock, mock_urlopen: MagicMock) -> None:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 1
+        mock_run.return_value = mock_proc
+        mock_urlopen.side_effect = Exception("network disabled")
         from loader.loader import SkillRegistry, get_loader_skills_dir, load_skills_from_github
         loader_base = get_loader_skills_dir()
         gh_dir = loader_base / "github" / "mock-owner_gh-reg-repo" / "main"
@@ -401,7 +413,11 @@ class TestSkillsLoaderPackage(unittest.TestCase):
             if (loader_base / "github" / "mock-owner_gh-reg-repo").exists():
                 shutil.rmtree(loader_base / "github" / "mock-owner_gh-reg-repo")
 
-    def test_github_loader_tree_url_and_errors(self) -> None:
+    @patch("subprocess.run")
+    def test_github_loader_tree_url_and_errors(self, mock_run: MagicMock) -> None:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 1
+        mock_run.return_value = mock_proc
         from loader.loader import load_skills_from_github
         with self.assertRaises(RuntimeError):
             load_skills_from_github("nonexistent/repo-xyz-999", "main")

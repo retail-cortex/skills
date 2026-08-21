@@ -1,4 +1,4 @@
-module github.com/retail-cortex/skills
+module github.com/retail-cortex/castor
 
 go 1.26.3
 

@@ -7,7 +7,7 @@ metadata:
   version: "1.0"
 authors:
   - name: Retail Cortex Engineering
-    url: https://github.com/retail-cortex/skills
+    url: https://github.com/retail-cortex/castor
 category: devops
 tags:
   - docker

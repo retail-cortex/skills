@@ -74,19 +74,19 @@ Fetch and install skills into `.skills/` (or `-d <path>`), generating a `.manife
 cstr add castor://skills/sk-9b1deb4d
 
 # Add from GitHub repository (branch, tag, or commit ref)
-cstr add github://retail-cortex/skills@main/packages/skills-python
+cstr add github://retail-cortex/castor@main/packages/skills-python
 
 # Add from Go module cache
-cstr add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
+cstr add mod://github.com/retail-cortex/castor@v1.0.0/packages/skills-go
 
 # Add from Java Maven artifact
-cstr add maven://com.retailcortex.skills:skills-java:1.0.0
+cstr add maven://com.retailcortex.castor:skills-java:1.0.0
 
 # Add from local filesystem directory with force overwrite
 cstr add file:///path/to/my-skill -d ./skills --force
 
 # Update .manifest.lock without copying files
-cstr add github://retail-cortex/skills@main/packages/skills-devops --manifest-only
+cstr add github://retail-cortex/castor@main/packages/skills-devops --manifest-only
 ```
 
 ### Polyglot URI Resolution Schemes

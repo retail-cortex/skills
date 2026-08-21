@@ -1,6 +1,6 @@
 load("@gazelle//:def.bzl", "gazelle")
 
-# gazelle:prefix github.com/retail-cortex/skills
+# gazelle:prefix github.com/retail-cortex/castor
 gazelle(name = "gazelle")
 
 package(default_visibility = ["//visibility:public"])

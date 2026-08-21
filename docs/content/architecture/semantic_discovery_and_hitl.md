@@ -5,7 +5,7 @@ weight: 10
 
 # Architectural Specification: Semantic Discovery, Skill Compiler, and HITL Execution Safety
 
-This document defines the technical architecture for dynamic Just-in-Time (JIT) skill discovery, compiled schema optimization, cryptographic manifest integrity, and Human-in-the-Loop (HITL) execution safety in the Enterprise AI Agent Skill Registry (`retail-cortex/skills`).
+This document defines the technical architecture for dynamic Just-in-Time (JIT) skill discovery, compiled schema optimization, cryptographic manifest integrity, and Human-in-the-Loop (HITL) execution safety in the Enterprise AI Agent Skill Registry (`retail-cortex/castor`).
 
 ---
 

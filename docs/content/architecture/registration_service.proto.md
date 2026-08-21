@@ -14,8 +14,8 @@
 
 | Name                | Value                                                              | Description |
 |---------------------|--------------------------------------------------------------------|-------------|
-| go_package          | github.com/retail-cortex/skills/proto/retailcortex/registration/v1 |             |
-| java_package        | com.retailcortex.skills.proto.retailcortex.registration.v1         |             |
+| go_package          | github.com/retail-cortex/castor/proto/retailcortex/registration/v1 |             |
+| java_package        | com.retailcortex.castor.proto.retailcortex.registration.v1         |             |
 | java_multiple_files | true                                                               |             |
 
 

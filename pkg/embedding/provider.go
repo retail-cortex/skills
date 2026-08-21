@@ -19,7 +19,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/retail-cortex/skills/pkg/model"
+	"github.com/retail-cortex/castor/pkg/model"
 )
 
 // Provider defines the standard interface for embedding generation across cloud, database, and local models.

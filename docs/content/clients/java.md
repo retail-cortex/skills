@@ -5,7 +5,7 @@ weight: 20
 
 # Java Client & Maven Build Integration (`skills-loader-maven-plugin`)
 
-The Java client library (`com.retailcortex.skills:skills-java`) is implemented as both a runtime library and a **native Maven Plugin** (`skills-loader-maven-plugin`). 
+The Java client library (`com.retailcortex.castor:skills-java`) is implemented as both a runtime library and a **native Maven Plugin** (`skills-loader-maven-plugin`). 
 
 By hooking directly into Maven's build lifecycle (`generate-resources`, `compile`), the plugin validates skill dependencies, enforces 5-point SDLC compliance, and packages pre-compiled `skills_manifest.json` resources into target application JARs automatically.
 
@@ -26,7 +26,7 @@ Configure the plugin in your application's `pom.xml`:
         <plugins>
             <!-- Enterprise Skills Loader Maven Plugin -->
             <plugin>
-                <groupId>com.retailcortex.skills</groupId>
+                <groupId>com.retailcortex.castor</groupId>
                 <artifactId>skills-loader-maven-plugin</artifactId>
                 <version>1.0.0</version>
                 <executions>
@@ -55,7 +55,7 @@ Configure the plugin in your application's `pom.xml`:
     <dependencies>
         <!-- Runtime Client Library -->
         <dependency>
-            <groupId>com.retailcortex.skills</groupId>
+            <groupId>com.retailcortex.castor</groupId>
             <artifactId>skills-java</artifactId>
             <version>1.0.0</version>
         </dependency>
@@ -80,7 +80,7 @@ In `MODULE.bazel`:
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     artifacts = [
-        "com.retailcortex.skills:skills-java:1.0.0",
+        "com.retailcortex.castor:skills-java:1.0.0",
         "com.fasterxml.jackson.core:jackson-databind:2.17.1",
         "org.slf4j:slf4j-api:2.0.12",
     ],
@@ -111,8 +111,8 @@ Because the Maven plugin automatically injects `skills_manifest.json` into class
 ```java
 package com.company.agent;
 
-import com.retailcortex.skills.loader.SkillLoader;
-import com.retailcortex.skills.loader.SkillDefinition;
+import com.retailcortex.castor.loader.SkillLoader;
+import com.retailcortex.castor.loader.SkillDefinition;
 
 import java.io.InputStream;
 import java.util.Map;
@@ -137,7 +137,7 @@ public class AgentApplication {
 `SkillLoader` includes a test helper hook `setHttpClient(HttpClient client)` for isolated JUnit 5 unit tests:
 
 ```java
-import com.retailcortex.skills.loader.SkillLoader;
+import com.retailcortex.castor.loader.SkillLoader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -189,8 +189,8 @@ The Java client provides dynamic pre-call tool suggestions for autonomous agents
 ```java
 package com.company.agent;
 
-import com.retailcortex.skills.loader.SkillRegistry;
-import com.retailcortex.skills.loader.SkillDefinition;
+import com.retailcortex.castor.loader.SkillRegistry;
+import com.retailcortex.castor.loader.SkillDefinition;
 
 import java.util.List;
 
@@ -221,8 +221,8 @@ Loaded `SkillDefinition` records map directly to Google ADK system instructions 
 ```java
 package com.company.agent;
 
-import com.retailcortex.skills.loader.SkillRegistry;
-import com.retailcortex.skills.loader.SkillDefinition;
+import com.retailcortex.castor.loader.SkillRegistry;
+import com.retailcortex.castor.loader.SkillDefinition;
 import com.google.adk.agent.Agent;
 
 import java.util.List;

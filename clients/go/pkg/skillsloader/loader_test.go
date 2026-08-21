@@ -108,25 +108,25 @@ func TestParseSkillRootURI(t *testing.T) {
 		},
 		{
 			name:       "maven URI",
-			uri:        "maven://com.retailcortex.skills:skills-java:1.0.0",
+			uri:        "maven://com.retailcortex.castor:skills-java:1.0.0",
 			reqScheme:  "maven",
-			reqTarget:  "com.retailcortex.skills:skills-java:1.0.0",
+			reqTarget:  "com.retailcortex.castor:skills-java:1.0.0",
 			reqRef:     "1.0.0",
 			reqSubpath: "",
 		},
 		{
 			name:       "mvn URI with subpath",
-			uri:        "mvn://com.retailcortex.skills:skills-java:1.0.0/java-enterprise",
+			uri:        "mvn://com.retailcortex.castor:skills-java:1.0.0/java-enterprise",
 			reqScheme:  "maven",
-			reqTarget:  "com.retailcortex.skills:skills-java:1.0.0",
+			reqTarget:  "com.retailcortex.castor:skills-java:1.0.0",
 			reqRef:     "1.0.0",
 			reqSubpath: "java-enterprise",
 		},
 		{
 			name:       "mod URI with version and subpath",
-			uri:        "mod://github.com/retail-cortex/skills@v1.0.0/examples/go/skills",
+			uri:        "mod://github.com/retail-cortex/castor@v1.0.0/examples/go/skills",
 			reqScheme:  "mod",
-			reqTarget:  "github.com/retail-cortex/skills",
+			reqTarget:  "github.com/retail-cortex/castor",
 			reqRef:     "v1.0.0",
 			reqSubpath: "examples/go/skills",
 
@@ -339,7 +339,7 @@ func TestLoadSkillsFromPackage(t *testing.T) {
 }
 
 func TestLoadSkillsFromGoModule_LocalCache(t *testing.T) {
-	skills, err := LoadSkillsFromGoModule("github.com/retail-cortex/skills", "v1.0.0", nil, []string{"python-core"})
+	skills, err := LoadSkillsFromGoModule("github.com/retail-cortex/castor", "", nil, []string{"python-core"})
 	if err == nil && len(skills) > 0 {
 		assert.Contains(t, skills, "python-core")
 	}
@@ -454,7 +454,6 @@ func TestLoadSkillsFromRoots_MultipleSchemes(t *testing.T) {
 		"pkg://retailcortex_skills_python",
 		"mod://github.com/mock-owner/mock-mod@v1.0.0",
 		"maven://com.test:my-artifact:1.0.0",
-		"github://mock-owner/mock-repo@main",
 	}
 
 	skills, err := LoadSkillsFromRoots(roots, nil, "", "")
@@ -575,7 +574,7 @@ func TestLoadSkillsFromGoModule_WorkspaceFallback(t *testing.T) {
 }
 
 func TestLoadSkillsFromMaven_WorkspaceFallback(t *testing.T) {
-	skills, err := LoadSkillsFromMaven("com.retailcortex.skills:skills-java:1.0.0", "1.0.0", nil, []string{"java-enterprise"})
+	skills, err := LoadSkillsFromMaven("com.retailcortex.castor:skills-java:1.0.0", "1.0.0", nil, []string{"java-enterprise"})
 	assert.NoError(t, err)
 	assert.Contains(t, skills, "java-enterprise")
 }

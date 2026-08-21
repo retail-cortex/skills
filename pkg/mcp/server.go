@@ -20,9 +20,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/retail-cortex/skills/pkg/data"
-	"github.com/retail-cortex/skills/pkg/model"
-	"github.com/retail-cortex/skills/pkg/service"
+	"github.com/retail-cortex/castor/pkg/data"
+	"github.com/retail-cortex/castor/pkg/model"
+	"github.com/retail-cortex/castor/pkg/service"
 )
 
 type MCPServer struct {

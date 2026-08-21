@@ -1,6 +1,6 @@
 # Castor: Enterprise Project Pattern Registry
 
-[![Coverage](coverage.svg)](https://github.com/retail-cortex/skills)
+[![Coverage](coverage.svg)](https://github.com/retail-cortex/castor)
 
 **Castor** is an enterprise-grade AI Agent Skills registry and lifecycle tooling platform built for the **Google Agent Development Kit (ADK)** and autonomous multi-agent ecosystems. While extending the foundational [agentskills.io](https://agentskills.io/specification) standard, Castor implements strict enterprise governance, multi-modal vector search, and dynamic JIT tool retrieval.
 
@@ -29,7 +29,7 @@ graph TD
         CLI["Castor CLI (cstr)"]
         PY["Python Client (loader)"]
         GO["Go Client (skillsloader)"]
-        JV["Java Client (com.retailcortex.skills)"]
+        JV["Java Client (com.retailcortex.castor)"]
         ADK["ADK Programming Agent"]
     end
 
@@ -59,9 +59,9 @@ bazel run //cmd/cstr -- list --remote --page 1 --max 5
 
 # Add skill dependencies from polyglot URIs (creates .manifest.lock)
 bazel run //cmd/cstr -- add castor://skills/example.com/retail/cart-service/1.0.0
-bazel run //cmd/cstr -- add github://retail-cortex/skills@main/packages/skills-python
-bazel run //cmd/cstr -- add mod://github.com/retail-cortex/skills@v1.0.0/packages/skills-go
-bazel run //cmd/cstr -- add maven://com.retailcortex.skills:skills-java:1.0.0
+bazel run //cmd/cstr -- add github://retail-cortex/castor@main/packages/skills-python
+bazel run //cmd/cstr -- add mod://github.com/retail-cortex/castor@v1.0.0/packages/skills-go
+bazel run //cmd/cstr -- add maven://com.retailcortex.castor:skills-java:1.0.0
 
 # 5-Point SDLC Quality Audit
 bazel run //cmd/cstr -- validate -r ./skills --json
@@ -130,17 +130,17 @@ bazel test //...
 ### Go SDK (`skillsloader`)
 * **JIT Dynamic Suggestions**:
   ```go
-  import "github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+  import "github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 
   registry, _ := skillsloader.NewSkillRegistry("", nil, nil, "")
   suggested := registry.SuggestSkills("render canvas image", 3, "http://localhost:8000")
   ```
 * **Build Directives**: Use `//go:generate cstr compile -d ./skills` and `//go:embed skills_manifest.json` for zero-I/O static binary embeds.
 
-### Java SDK (`com.retailcortex.skills`)
+### Java SDK (`com.retailcortex.castor`)
 * **JIT Suggestions**:
   ```java
-  import com.retailcortex.skills.loader.SkillRegistry;
+  import com.retailcortex.castor.loader.SkillRegistry;
 
   SkillRegistry registry = new SkillRegistry();
   var suggested = registry.suggestSkills("render canvas image", 3, "http://localhost:8000");

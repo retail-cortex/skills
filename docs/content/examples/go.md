@@ -15,7 +15,7 @@ This section details the Go integration examples in `examples/go/`, covering sta
 Located at `examples/go/client`, this example demonstrates how a standalone Go application loads server configuration using `modenv` and resolves skills dynamically via `skillsloader`.
 
 ### Key Features & Design
-- **Zero Bazel Dependency for Native Go**: Contains its own `go.mod` module definition utilizing local relative replaces (`replace github.com/retail-cortex/skills => ../../../`).
+- **Zero Bazel Dependency for Native Go**: Contains its own `go.mod` module definition utilizing local relative replaces (`replace github.com/retail-cortex/castor => ../../../`).
 - **Cascading TOML Property Resolution**: Uses [`github.com/rrmcguinness/modenv/pkg/modenv`](https://github.com/rrmcguinness/modenv) to load settings from `configs/.env.toml` with environment variable overrides.
 - **Dynamic Skills Discovery**: Initializes `skillsloader.LoadSkillsFromRoots` and queries `skillsloader.LoadSkillsFromPackage`.
 
@@ -39,7 +39,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/retail-cortex/skills/clients/go/pkg/skillsloader"
+	"github.com/retail-cortex/castor/clients/go/pkg/skillsloader"
 	"github.com/rrmcguinness/modenv/pkg/modenv"
 )
 

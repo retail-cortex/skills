@@ -133,9 +133,9 @@ func TestAddSkills_AllSchemes(t *testing.T) {
 
 	uris := []string{
 		"pkg://retailcortex_skills_python",
-		"mod://github.com/retail-cortex/skills@v1.0.0",
-		"maven://com.retailcortex.skills:skills-java:1.0.0",
-		"github://retail-cortex/skills@main",
+		"mod://github.com/retail-cortex/castor@v1.0.0",
+		"maven://com.retailcortex.castor:skills-java:1.0.0",
+		"github://retail-cortex/castor@main",
 	}
 
 	results, err := AddSkills(uris, destDir, []string{"python-core"}, true)

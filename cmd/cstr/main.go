@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 
-	"github.com/retail-cortex/skills/internal/commands"
+	"github.com/retail-cortex/castor/internal/commands"
 )
 
 func main() {

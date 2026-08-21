@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package retailcortex.skills.v1;
+package retailcortex.castor.v1;
 
-option go_package = "github.com/retail-cortex/skills/proto/retailcortex/skills/v1;skillsv1";
-option java_package = "com.retailcortex.skills.proto.retailcortex.skills.v1";
+option go_package = "github.com/retail-cortex/castor/proto/retailcortex/castor/v1;castorv1";
+option java_package = "com.retailcortex.castor.proto.retailcortex.castor.v1";
 option java_multiple_files = true;
 
 // ManifestLockEntry records the skill identity, download URI, and calculated SHA-256 hash.
@@ -49,4 +49,3 @@ message VerificationReport {
   int32 missing_count = 5;
   repeated VerificationResult results = 6;
 }
-
